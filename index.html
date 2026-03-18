@@ -468,22 +468,111 @@ if (USE_FIREBASE) {
   db = firebase.firestore();
 }
 
+const YAHOO_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&symbols=';
+
+// Multi-proxy fallback for price fetching (bulk requests, not per-keystroke)
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.org/?',
 ];
-const YAHOO_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&symbols=';
-
 async function fetchWithProxy(url) {
   for (const proxy of CORS_PROXIES) {
     try {
-      const res = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(5000)});
+      const res = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
       if (res.ok) return res;
     } catch { /* try next proxy */ }
   }
   throw new Error('All proxies failed');
 }
+
+// ═══════════════════════════════════════════════════════════
+//  VALID TICKERS — static list, instant validation, no API needed
+//  Covers S&P 500, NASDAQ, FTSE 100 (.L suffix), and major ETFs
+// ═══════════════════════════════════════════════════════════
+const VALID_TICKERS = new Set([
+  // ── S&P 500 ──────────────────────────────────────────────────────────────
+  'AAPL','MSFT','NVDA','AMZN','GOOGL','GOOG','META','BRK-B','LLY','AVGO',
+  'JPM','XOM','TSLA','UNH','V','JNJ','MA','PG','HD','COST',
+  'MRK','ABBV','CVX','CRM','BAC','NFLX','AMD','WFC','KO','PEP',
+  'TMO','CSCO','ORCL','ABT','ADBE','ACN','TXN','MCD','PM','DHR',
+  'DIS','CAT','AMGN','GE','IBM','INTU','GS','RTX','QCOM','NOW',
+  'ISRG','SPGI','BLK','BKNG','SYK','PLD','AXP','TJX','GILD','LMT',
+  'MDT','SCHW','MMC','CB','T','C','BSX','MDLZ','NOC','REGN',
+  'MU','DE','LOW','AMAT','PGR','AON','VRTX','HCA','SHW','ELV',
+  'SBUX','CL','MO','BMY','ETN','CI','LRCX','ZTS','CME','APH',
+  'MSI','MMM','GD','ADI','SO','USB','NSC','HLT','PH','EW',
+  'AIG','KLAC','MCO','MAR','EMR','WM','ADP','MPC','APD','TDG',
+  'ITW','FICO','MCHP','PSX','MNST','ORLY','LULU','SRE','SNPS','CDNS',
+  'PCAR','CTAS','D','WMB','OXY','ROP','PYPL','TRV','HUM','BDX',
+  'FTNT','F','GM','TEL','NKE','URI','NXPI','DUK','COF','OTIS',
+  'CARR','NEM','WELL','EXC','GIS','TRGP','WEC','PAYX','CBRE','FAST',
+  'KMB','ECL','ED','VRSK','PPG','STZ','DG','TFC','HIG','RSG',
+  'KEYS','IDXX','ROK','PEG','ES','WST','ANSS','BR','ROST','HPE',
+  'ODFL','PCG','SBAC','AME','BKR','EQT','MTD','SNA','GLW','FSLR',
+  'GRMN','HPQ','CDW','VLO','BIIB','EFX','ENPH','FTV','MTB','NTAP',
+  'GPN','AWK','MOH','AVB','EQR','WTW','CTSH','FANG','LIN','BALL',
+  'IR','WY','MKC','INVH','SUI','LYV','APTV','STLD','HES','FDS',
+  'IQV','CBOE','DRI','TROW','TTWO','DVN','XYL','ARE','IT','NVR',
+  'JBHT','CLX','NUE','RMD','MLM','EXPD','SYY','APA','DECK','AKAM',
+  'ROL','NDAQ','TT','IPG','HBAN','RF','FITB','EG','CCI','EQIX',
+  'AMT','PSA','SWK','BAX','PPL','LKQ','JCI','SAIC','LDOS','VTRS',
+  'IP','SWKS','ZBRA','PTC','WRB','CINF','AEE','OKE','CSGP','PNR',
+  'AXON','GDDY','GPC','LUV','DAL','UAL','AAL','ALK','JBLU','ULTA',
+  'EL','BBWI','TPR','PVH','RL','VFC','ANF','URBN','GPS','AN',
+  'KMX','POOL','RH','WSM','ETSY','EBAY','CHWY','BBY','ALGN','HOLX',
+  'PRGO','WAT','A','PODD','PFE','CNC','TGT','AAP','AZO',
+  'PRU','MET','AFL','ALL','L','GL','AIZ','RE','RNR','ACGL',
+  'AJG','BRO','ERIE','WEX','BK','STT','NTRS','KEY','CFG','ALLY',
+  'SYF','DFS','ZION','CMA','FHN','IBOC','FFIN','FCX','VMC',
+  'MOS','CF','IFF','ALB','EMN','HUN','CC','OLN','FMC','RS',
+  'BA','LHX','TDG','HII','UPS','FDX','CHRW','XPO','SAIA',
+  'CSX','UNP','NSC','WAB','ROK','AME','HUBB','ALLE','GNRC',
+  'NEE','DUK','SO','AEP','SRE','XEL','WEC','DTE','FE','ETR',
+  'EIX','CMS','NI','LNT','EVRG','AES','CNP','PNW','AWK',
+  'EQR','AVB','BXP','VTR','O','SPG','KIM','REG','FRT','ESS',
+  'UDR','NNN','VICI','GLPI','STAG','EXR','CUBE','ELS','MAA','CPT','AMH',
+  'MRNA','BNTX','ILMN','GEHC','INCY','ALNY','EXAS','GH','PODD',
+  'AXON','GDDY','TRMB','PAYC','VEEV','HUBS','SMAR','GTLB','DDOG',
+  // ── NASDAQ / high-growth / popular ───────────────────────────────────────
+  'COIN','MELI','ZM','DOCU','OKTA','CRWD','ZS','NET','SNOW','MDB',
+  'TEAM','SHOP','ABNB','LYFT','UBER','DASH','RBLX','U','PLTR','BILL',
+  'S','WIX','ZI','APPF','PCTY','TOST','FRSH','BRZE','CFLT','AFRM',
+  'UPST','SOFI','HOOD','COUR','DUOL','BMBL','IONQ','PATH','AI','SMCI',
+  'MARA','RIOT','BITF','HUT','CLSK','IREN','BTBT','MSTR',
+  'GME','AMC','BB','SPCE','LCID','RIVN','NIO','LI','XPEV','NKLA',
+  'BLNK','CHPT','EVGO','SNAP','PINS','SPOT','SQ','HOOD',
+  // ── FTSE 100 (.L suffix = London Stock Exchange on Yahoo Finance) ─────────
+  'AZN.L','HSBA.L','SHEL.L','ULVR.L','BP.L','RIO.L','GSK.L','DGE.L',
+  'LSEG.L','NG.L','VOD.L','BT-A.L','BARC.L','LLOY.L','NWG.L','STAN.L',
+  'PRU.L','AV.L','LGEN.L','IMB.L','BATS.L','RR.L','BA.L','REL.L',
+  'EXPN.L','HLMA.L','CRH.L','AAL.L','ANTO.L','GLEN.L','BHP.L','FRES.L',
+  'MNG.L','ABDN.L','SSE.L','SVT.L','UU.L','CNA.L','JD.L','NEXT.L',
+  'MKS.L','SBRY.L','TSCO.L','ABF.L','WPP.L','ITV.L','RMV.L','AUTO.L',
+  'IHG.L','MNDI.L','PSN.L','TW.L','BDEV.L','BKG.L','LAND.L','SGRO.L',
+  'BLND.L','CRDA.L','RKT.L','AHT.L','SDR.L','WTB.L','SN.L','PHNX.L',
+  'OCDO.L','KGF.L','DPLM.L','III.L','CPG.L','BRBY.L','CCH.L','ITRK.L',
+  'HMSO.L','HL.L','IAG.L','EZJ.L','IMI.L','WEIR.L','SMT.L','ENT.L',
+  'TUI.L','OSB.L','SPX.L','WDS.L','FCIT.L','ADM.L','AGK.L','SKG.L',
+  'HWDN.L','MNDI.L','SMDS.L','RS1.L','DARK.L','UTG.L','TATE.L','SGRO.L',
+  // ── Major ETFs ────────────────────────────────────────────────────────────
+  'SPY','VOO','IVV','QQQ','VTI','VEA','VWO','EFA','EEM','GLD',
+  'SLV','GDX','GDXJ','TLT','IEF','SHY','HYG','JNK','LQD','AGG',
+  'BND','BNDX','VIG','VYM','DVY','NOBL','DGRO','SCHD','JEPI','JEPQ',
+  'DIVO','SDY','VNQ','XLRE','XLK','XLF','XLV','XLE','XLY','XLP',
+  'XLI','XLB','XLU','XLC','IWM','IWB','IWF','IWD','MDY','RSP',
+  'SPLG','SCHX','SCHF','SCHB','SCHA','VB','VO','VV','VXUS','VT',
+  'ACWI','QUAL','MTUM','USMV','VLUE','VHT','IBB','XBI','ARKG','ARKK',
+  'ARKW','ARKF','ARKQ','BOTZ','ROBO','IGV','SKYY','CLOU','HACK','LIT',
+  'COPX','SIL','IAU','GLDM','CPER','SIVR','UNG','USO','UCO','BNO',
+  'TQQQ','SQQQ','UPRO','SPXU','UDOW','SDOW','TNA','TZA','SPXL','SPXS',
+  'SOXL','SOXS','TECL','TECS','FXI','MCHI','KWEB','ASHR','EWZ','EWT',
+  'EWY','EWJ','EWH','EWA','EWC','EWG','EWU','EWI','EWQ','EWP',
+  'EWN','EWL','EWD','EWO','EWK','EPHE','EWM','TUR','EWW','EPU',
+  'EZA','ECH','ARGT','GXG','FM','VGT','IYW','SOXX','FTEC','IGM',
+  'FINX','IPAY','KBWB','KRE','KBE','MUB','VTEB','GOVT','VGIT','VGLT',
+  'VGSH','VTIP','SCHP','TIP','VNQI','IEMG','SCHE','DEM','IEFA','IDEV',
+]);
 const REFRESH_MS  = 5 * 60 * 1000;
 const PICK_IDS    = ['pick-0','pick-1','pick-2'];
 
@@ -726,23 +815,16 @@ function onTickerInput(input) {
   if (!raw) { applyTickerState(id,'idle','',''); updateAddBtn(); return; }
   applyTickerState(id,'checking',raw,'');
   updateAddBtn();
-  tickerTimers[id] = setTimeout(()=>validateTicker(id,raw), 650);
+  tickerTimers[id] = setTimeout(()=>validateTicker(id,raw), 150);
 }
 
-async function validateTicker(id, sym) {
+function validateTicker(id, sym) {
   const input = document.getElementById(id);
   if (!input || input.value.trim().toUpperCase()!==sym) return;
   if (tickerCache[sym]!==undefined) { applyCacheResult(id,sym); return; }
-  try {
-    const res  = await fetchWithProxy(YAHOO_URL+sym);
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    const q    = data.quoteResponse?.result?.[0];
-    tickerCache[sym] = q?.regularMarketPrice!=null
-      ? {valid:true,  name:q.shortName||q.longName||sym}
-      : {valid:false, name:''};
-  } catch { tickerCache[sym] = {valid:null,name:''}; }
-  if (!input||input.value.trim().toUpperCase()!==sym) return;
+  tickerCache[sym] = VALID_TICKERS.has(sym)
+    ? {valid:true,  name:sym}
+    : {valid:false, name:''};
   applyCacheResult(id,sym);
 }
 
