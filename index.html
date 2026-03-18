@@ -167,6 +167,8 @@
     .card-head { display:flex; justify-content:space-between; align-items:center; padding:13px 17px; background:var(--surface2); border-bottom:1px solid var(--border); }
     .card-name { font-size:15px; font-weight:700; }
     .card-gain { font-size:17px; font-weight:800; }
+    .card-rank-medal { font-size:20px; line-height:1; flex-shrink:0; }
+    .card-rank-num { font-size:11px; font-weight:800; color:var(--dim); background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:2px 7px; flex-shrink:0; min-width:26px; text-align:center; }
     .card-body { padding:0 17px; }
     .asset-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); gap:10px; }
     .asset-row:last-child { border-bottom:none; }
@@ -1662,7 +1664,7 @@ function renderLeaderboard(sorted) {
 }
 
 function renderCards(sorted) {
-  document.getElementById('cards-grid').innerHTML=sorted.map(p=>{
+  document.getElementById('cards-grid').innerHTML=sorted.map((p,i)=>{
     const assets=p.picks.map((sym,j)=>{
       const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
       const label=data?.name||(p.names&&p.names[j])||sym;
@@ -1677,9 +1679,15 @@ function renderCards(sorted) {
         </div>
       </div>`;
     }).join('');
+    const rankBadge = i < 3
+      ? `<span class="card-rank-medal">${MEDALS[i]}</span>`
+      : `<span class="card-rank-num">${i+1}</span>`;
     return `<div class="player-card">
       <div class="card-head">
-        <div class="card-name">${esc(p.name)}</div>
+        <div style="display:flex;align-items:center;gap:9px">
+          ${rankBadge}
+          <div class="card-name">${esc(p.name)}</div>
+        </div>
         <div class="card-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
       </div>
       <div class="card-body">${assets}</div>
@@ -1864,19 +1872,67 @@ class LineChart {
 
 function initChart() {
   if (myChart) return;
-  const playerList = isDemoMode ? DEMO_PLAYERS : S.players;
-  const labels = TRADING_DAYS.map(d=>{
-    const dt=new Date(d);
-    return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+
+  if (isDemoMode) {
+    // Demo mode: full simulated history across all trading days
+    const labels = TRADING_DAYS.map(d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    const datasets = DEMO_PLAYERS.map((p,i) => ({
+      label: p.name,
+      data:  portfolioIndexHistory(p),
+      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+    }));
+    myChart = new LineChart('portfolio-chart');
+    myChart.setData(labels, datasets);
+    buildChartLegend(DEMO_PLAYERS);
+    return;
+  }
+
+  // Real game — build chart from game start date up to today using real prices
+  const hasStart = Object.keys(S.startPrices||{}).length > 0;
+  const hasLive  = Object.keys(prices||{}).length > 0;
+
+  if (!hasStart) {
+    // No start prices locked yet — show a helpful placeholder
+    const canvas = document.getElementById('portfolio-chart');
+    if (!canvas) return;
+    canvas.width  = canvas.offsetWidth  || 900;
+    canvas.height = canvas.offsetHeight || 440;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#3a4e72';
+    ctx.font = '15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Lock start prices first (⚙ → Lock Current Prices) to enable the chart.', canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  // Labels: one per calendar day from game start to today
+  const start = new Date(S.startDate);
+  const now   = new Date();
+  const labels = [];
+  const d = new Date(start);
+  while (d <= now) {
+    labels.push(d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    d.setDate(d.getDate()+1);
+  }
+  if (!labels.length) labels.push(start.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+
+  const datasets = S.players.map((p,i) => {
+    // Compute each player's current index based on real prices
+    const currentRatio = hasLive
+      ? p.picks.reduce((sum,sym) => {
+          const sp = S.startPrices[sym], cp = prices[sym]?.price;
+          return sum + (sp && cp ? cp/sp : 1);
+        }, 0) / p.picks.length
+      : 1;
+    const currentIndex = parseFloat((1000 * currentRatio).toFixed(2));
+    // All historical days stay at 1000 (start); only today shows the real value
+    const data = labels.map((_,j) => j < labels.length - 1 ? 1000 : currentIndex);
+    return { label: p.name, data, color: PLAYER_COLORS[i % PLAYER_COLORS.length] };
   });
-  const datasets = playerList.map((p,i)=>({
-    label: p.name,
-    data:  portfolioIndexHistory(p),
-    color: PLAYER_COLORS[i%PLAYER_COLORS.length],
-  }));
+
   myChart = new LineChart('portfolio-chart');
   myChart.setData(labels, datasets);
-  buildChartLegend(playerList);
+  buildChartLegend(S.players);
 }
 
 function buildChartLegend(playerList) {
