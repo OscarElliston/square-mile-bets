@@ -2,37 +2,30 @@ export default async function handler(req, res) {
   const { symbols } = req.query;
   if (!symbols) return res.status(400).json({ error: 'symbols required' });
 
+  const token = process.env.FINNHUB_KEY;
+  if (!token) return res.status(500).json({ error: 'FINNHUB_KEY not set' });
+
   const symList = symbols.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
-    // Yahoo Finance v8 chart API — still works without auth
     const results = await Promise.all(symList.map(async sym => {
       try {
         const r = await fetch(
-          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
-          {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-              'Accept': 'application/json',
-              'Accept-Language': 'en-US,en;q=0.9',
-            }
-          }
+          `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${token}`
         );
         const d = await r.json();
-        const meta = d?.chart?.result?.[0]?.meta;
-        if (!meta) return null;
+        if (!d.c || d.c === 0) return null; // no data for this symbol
         return {
           symbol: sym,
-          regularMarketPrice: meta.regularMarketPrice,
-          shortName: meta.longName || meta.shortName || sym,
-          regularMarketChangePercent: meta.regularMarketPrice && meta.chartPreviousClose
-            ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+          regularMarketPrice: d.c,           // current price
+          shortName: sym,
+          regularMarketChangePercent: d.pc
+            ? ((d.c - d.pc) / d.pc) * 100
             : 0
         };
       } catch { return null; }
     }));
 
-    // Return in same shape as v7 so the app code doesn't need to change
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(200).json({
       quoteResponse: {
