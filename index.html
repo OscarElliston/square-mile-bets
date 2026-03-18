@@ -474,18 +474,26 @@ if (USE_FIREBASE) {
 
 const YAHOO_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&symbols=';
 
-// Multi-proxy fallback for price fetching (bulk requests, not per-keystroke)
+// Price fetching — Vercel serverless function first, CORS proxies as fallback
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.org/?',
 ];
 async function fetchWithProxy(url) {
+  // Primary: our own Vercel /api/quote (same domain, no CORS issues)
+  try {
+    const symbols = url.split('symbols=')[1];
+    const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`,
+                            {signal: AbortSignal.timeout(8000)});
+    if (res.ok) return res;
+  } catch { /* fall through */ }
+  // Fallback: public CORS proxies
   for (const proxy of CORS_PROXIES) {
     try {
       const res = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
       if (res.ok) return res;
-    } catch { /* try next proxy */ }
+    } catch { /* try next */ }
   }
   throw new Error('All proxies failed');
 }
