@@ -304,9 +304,13 @@
           <input class="form-input" id="start-date" type="date" />
         </div>
         <div>
-          <label class="form-label">Admin Password <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
-          <input class="form-input" id="admin-pwd" type="password" placeholder="Protects settings" />
+          <label class="form-label">Game Length (weeks)</label>
+          <input class="form-input" id="game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
         </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Admin Password <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input class="form-input" id="admin-pwd" type="password" placeholder="Protects settings" />
       </div>
       <div id="setup-error" class="error-box hidden"></div>
       <button class="btn btn-primary btn-full" id="start-btn" disabled onclick="startGame()">🚀 Start Game</button>
@@ -461,7 +465,7 @@ const FIREBASE_CONFIG = {
   appId:             "1:768948529412:web:a22789c56e8627747d0851",
   measurementId:     "G-LDX3H0910C"
 };
-const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
 let db = null;
 if (USE_FIREBASE) {
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -940,7 +944,8 @@ async function startGame() {
   if (!startDate) { showSetupError('Please choose a start date.'); return; }
   if (!submittedPlayers.length) { showSetupError('Add at least one player first.'); return; }
   document.getElementById('setup-error').classList.add('hidden');
-  const end=new Date(startDate); end.setMonth(end.getMonth()+3);
+  const weeks=parseInt(document.getElementById('game-weeks').value)||12;
+  const end=new Date(startDate); end.setDate(end.getDate()+(weeks*7));
   S.players=submittedPlayers.map(p=>({...p}));
   S.startDate=startDate; S.endDate=end.toISOString().slice(0,10);
   S.adminPwd=document.getElementById('admin-pwd').value;
