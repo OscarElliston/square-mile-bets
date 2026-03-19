@@ -419,9 +419,11 @@
     <div id="dt-history" class="hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:13px">
         <div class="section-title" style="margin-bottom:0">Portfolio Value Over Time (index: 1,000 = start)</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:11px;color:var(--dim)">scroll to zoom · drag to pan · double-click to reset</span>
-          <button id="chart-reset-zoom" class="btn btn-secondary" style="padding:5px 11px;font-size:11px;display:none" onclick="if(myChart)myChart.resetZoom()">↺ Reset zoom</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span id="chart-zoom-hint" style="font-size:11px;color:var(--dim);margin-right:4px">scroll or use buttons to zoom · drag to pan</span>
+          <button id="chart-zoom-in" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom in (tighten value scale)" onclick="if(myChart)myChart._zoom(0.65)">+</button>
+          <button id="chart-zoom-out" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom out (widen value scale)" onclick="if(myChart)myChart._zoom(1.55)">−</button>
+          <button id="chart-reset-zoom" class="btn btn-secondary" style="padding:5px 11px;font-size:11px;display:none" onclick="if(myChart)myChart.resetZoom()">↺ Reset</button>
         </div>
       </div>
       <div class="chart-card">
@@ -1751,13 +1753,9 @@ class LineChart {
     this.datasets = [];
     this.hidden   = new Set();
     this.hovered  = null;
-    // Zoom / pan state
-    this.vs = 0;   // viewStart index
+    this.vs = 0;   // viewStart index (X range — always full)
     this.ve = 0;   // viewEnd index
-    this.dragging = false;
-    this.dragX0   = 0;
-    this.dragVS0  = 0;
-    this.dragVE0  = 0;
+    this.yZoom = 1.0;  // Y-axis zoom: 1.0 = default range; lower = zoomed in (tighter)
     this._bindEvents();
     window.addEventListener('resize', ()=>this._resize());
   }
@@ -1767,15 +1765,17 @@ class LineChart {
     this.datasets = datasets;
     this.vs = 0;
     this.ve = Math.max(0, labels.length - 1);
+    this.yZoom = 1.0;
     this._resize();
+    this._updateUI();
   }
 
   resetZoom() {
-    this.vs = 0; this.ve = Math.max(0, this.labels.length - 1);
+    this.yZoom = 1.0;
     this._updateUI(); this.draw();
   }
 
-  isZoomed() { return this.vs > 0 || this.ve < this.labels.length - 1; }
+  isZoomed() { return this.yZoom < 0.99; }
 
   _resize() {
     const w = this.canvas.parentElement.clientWidth || 800;
@@ -1784,14 +1784,21 @@ class LineChart {
     this.draw();
   }
 
-  _m()  { return {t:24, r:24, b:48, l:58}; }
+  _m()  { return {t:24, r:24, b:54, l:58}; }
   _p()  { const m=this._m(), W=this.canvas.width, H=this.canvas.height; return {x:m.l,y:m.t,w:W-m.l-m.r,h:H-m.t-m.b}; }
 
   _yRange() {
     const vis = this.datasets.filter((_,i)=>!this.hidden.has(i)).flatMap(d=>d.data.slice(this.vs, this.ve+1));
     if (!vis.length) return {mn:880,mx:1120};
-    const mn=Math.min(...vis), mx=Math.max(...vis), pad=Math.max((mx-mn)*0.14,25);
-    return {mn:Math.floor((mn-pad)/10)*10, mx:Math.ceil((mx+pad)/10)*10};
+    const mn=Math.min(...vis), mx=Math.max(...vis);
+    const pad=Math.max((mx-mn)*0.14, 25);
+    // Full (unzoomed) range centred on data midpoint with natural padding
+    const baseMn=mn-pad, baseMx=mx+pad;
+    const mid=(baseMn+baseMx)/2, halfSpan=(baseMx-baseMn)/2;
+    // yZoom < 1 = zoomed in (tighter range); 1.0 = default; clamped
+    const z = Math.max(0.07, Math.min(1.5, this.yZoom));
+    const zHalf = halfSpan * z;
+    return {mn:Math.floor((mid-zHalf)/10)*10, mx:Math.ceil((mid+zHalf)/10)*10};
   }
 
   _xS(i,p) { const r=Math.max(1,this.ve-this.vs); return p.x+((i-this.vs)/r)*p.w; }
@@ -1815,13 +1822,15 @@ class LineChart {
 
     // X grid + labels (visible range only)
     const visLen=ve-vs+1, xStep=Math.max(1,Math.ceil(visLen/9));
+    ctx.font='12px -apple-system,BlinkMacSystemFont,sans-serif';
     for (let i=vs; i<=ve; i+=xStep) {
       const x=this._xS(i,p);
       ctx.strokeStyle='#1c2840'; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
-      ctx.fillStyle='#5a6e96'; ctx.textAlign='center';
-      ctx.fillText(this.labels[i], x, p.y+p.h+18);
+      ctx.fillStyle='#7a90b8'; ctx.textAlign='center';
+      ctx.fillText(this.labels[i], x, p.y+p.h+20);
     }
+    ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
 
     // Clip all drawn content to chart area
     ctx.save();
@@ -1868,69 +1877,68 @@ class LineChart {
     ctx.restore();
   }
 
-  _zoom(factor, frac) {
-    const n=this.labels.length, vs=this.vs, ve=this.ve;
-    const range=ve-vs, newRange=Math.max(1,Math.min(n-1,Math.round(range*factor)));
-    const center=vs+frac*range;
-    const newVs=Math.max(0,Math.min(n-1-newRange,Math.round(center-frac*newRange)));
-    this.vs=newVs; this.ve=Math.min(n-1,newVs+newRange);
+  // factor < 1 = zoom in (tighter Y range, differences look bigger)
+  // factor > 1 = zoom out (wider Y range)
+  _zoom(factor) {
+    this.yZoom = Math.max(0.07, Math.min(1.5, this.yZoom * factor));
     this._updateUI(); this.draw();
   }
 
-  _pan(deltaPx) {
-    const p=this._p(), range=this.dragVE0-this.dragVS0;
-    const delta=Math.round(-(deltaPx/p.w)*range);
-    const n=this.labels.length;
-    const newVs=Math.max(0,Math.min(n-1-range,this.dragVS0+delta));
-    this.vs=newVs; this.ve=newVs+range;
-    this.draw();
-  }
-
   _updateUI() {
-    const zoomed=this.isZoomed();
-    this.canvas.style.cursor=zoomed?'grab':'crosshair';
-    const btn=document.getElementById('chart-reset-zoom');
-    if (btn) btn.style.display=zoomed?'inline-flex':'none';
+    this.canvas.style.cursor = 'crosshair';
+    const zoomed = this.isZoomed();
+
+    // Reset button: hidden when not zoomed; glows blue when active
+    const resetBtn = document.getElementById('chart-reset-zoom');
+    if (resetBtn) {
+      if (zoomed) {
+        resetBtn.style.display = 'inline-flex';
+        resetBtn.style.background = 'var(--accent)';
+        resetBtn.style.color = '#fff';
+        resetBtn.style.borderColor = 'var(--accent)';
+        resetBtn.style.boxShadow = '0 0 10px rgba(59,130,246,.45)';
+        resetBtn.style.fontWeight = '700';
+      } else {
+        resetBtn.style.display = 'none';
+        resetBtn.style.background = '';
+        resetBtn.style.color = '';
+        resetBtn.style.borderColor = '';
+        resetBtn.style.boxShadow = '';
+        resetBtn.style.fontWeight = '';
+      }
+    }
+
+    const zoomIn  = document.getElementById('chart-zoom-in');
+    const zoomOut = document.getElementById('chart-zoom-out');
+    const hint    = document.getElementById('chart-zoom-hint');
+    if (zoomIn)  zoomIn.disabled  = this.yZoom <= 0.08;
+    if (zoomOut) zoomOut.disabled = this.yZoom >= 1.49;
+    if (hint) hint.textContent = 'scroll or use + / − to zoom the value axis';
   }
 
   _bindEvents() {
-    const c=this.canvas;
+    const c = this.canvas;
 
-    // Scroll wheel = zoom
+    // Scroll wheel = Y-axis zoom (up = zoom in, down = zoom out)
     c.addEventListener('wheel', e=>{
       e.preventDefault();
-      const rect=c.getBoundingClientRect(), mx=(e.clientX-rect.left)*(c.width/rect.width);
-      const p=this._p(), frac=Math.max(0,Math.min(1,(mx-p.x)/p.w));
-      this._zoom(e.deltaY>0?1.25:0.8, frac);
+      this._zoom(e.deltaY > 0 ? 1.3 : 0.77);
     }, {passive:false});
 
     // Double-click = reset zoom
     c.addEventListener('dblclick', ()=>this.resetZoom());
 
-    // Mouse drag = pan (only when zoomed)
-    c.addEventListener('mousedown', e=>{
-      if (!this.isZoomed()) return;
-      const rect=c.getBoundingClientRect();
-      this.dragging=true;
-      this.dragX0=(e.clientX-rect.left)*(c.width/rect.width);
-      this.dragVS0=this.vs; this.dragVE0=this.ve;
-      c.style.cursor='grabbing';
-    });
-
     c.addEventListener('mousemove', e=>{
       const rect=c.getBoundingClientRect(), mx=(e.clientX-rect.left)*(c.width/rect.width);
       const p=this._p();
-      if (this.dragging) { this._pan(mx-this.dragX0); return; }
       const fi=this.vs+(mx-p.x)/p.w*(this.ve-this.vs);
       this.hovered=Math.max(this.vs,Math.min(this.ve,Math.round(fi)));
       this.draw(); this._showTip(e,this.hovered);
     });
 
-    c.addEventListener('mouseup', ()=>{ this.dragging=false; this._updateUI(); });
-
     c.addEventListener('mouseleave', ()=>{
-      this.dragging=false; this.hovered=null;
-      this._updateUI(); this.draw();
+      this.hovered=null;
+      this.draw();
       const t=document.getElementById('chart-tooltip'); if(t)t.style.display='none';
     });
   }
