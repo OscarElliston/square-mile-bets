@@ -419,7 +419,7 @@
       <div class="live-dot" id="live-dot"></div>
       <span class="last-updated" id="last-updated">Loading…</span>
       <!-- Join is now inline on the dashboard -->
-      <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
+<button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
       <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px">⚙</button>
     </div>
   </div>
@@ -1458,6 +1458,7 @@ function startRealtimeSync() {
         stopCountdown();
         show('game-content');
         refreshPrices();
+        updateNewsBtn();
       }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
@@ -2178,6 +2179,12 @@ async function startGameManually() {
   if (!S.players || S.players.length === 0) {
     toast('⚡ Add at least one player before starting.'); return;
   }
+  // Password gate
+  if (S.adminPwd) {
+    const entered = prompt('Enter the admin password to start the game:');
+    if (entered === null) return; // cancelled
+    if (entered !== S.adminPwd) { toast('❌ Incorrect password.'); return; }
+  }
   if (!confirm(`Start the game now?\n\nThis will lock in today's prices as the starting point for all ${S.players.length} player(s). The leaderboard will become visible to everyone.`)) return;
 
   const startBtn = document.querySelector('#start-game-row .btn');
@@ -2206,7 +2213,6 @@ async function startGameManually() {
 
     // Kick off the normal refresh cycle
     if (!isGameOver()) refreshTimer = setTimeout(refreshPrices, REFRESH_MS);
-
     toast('🚀 Game started! Prices locked in.');
   } catch(e) {
     toast('❌ Failed to fetch prices: ' + e.message);
@@ -2266,6 +2272,7 @@ function showDash() {
   updateJoinBtn();
   updateInlineJoinPanel();
   startCountdown();
+  updateNewsBtn();
 
   const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
 
@@ -2458,7 +2465,7 @@ function renderLeaderboard(sorted) {
     const gainEl=p.pg!==null
       ?`<div class="lb-gain-wrap">
           <div class="lb-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
-          <div class="lb-value muted">${p.pv!==null?'index: '+p.pv.toFixed(1):''}</div>
+          <div class="lb-value muted">${p.pv!==null?p.pv.toFixed(1):''}</div>
         </div>`
       :`<div class="lb-gain waiting">Waiting…</div>`;
     const rowCls=i===0?'top-1':i===1?'top-2':i===2?'top-3':'';
@@ -2896,6 +2903,7 @@ function toggleDataset(idx) {
   myChart.toggle(idx);
   document.getElementById('li-'+idx)?.classList.toggle('faded', myChart.hidden.has(idx));
 }
+
 
 // ═══════════════════════════════════════════════════════════
 //  ADMIN
