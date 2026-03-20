@@ -244,6 +244,31 @@
     .winner-sub    { font-size:11px; color:var(--muted); margin-top:6px; font-family:var(--mono); }
     .game-over-note { background:rgba(249,115,22,.05); border:1px solid rgba(249,115,22,.15); border-radius:var(--radius); padding:8px 14px; font-size:11px; color:var(--accent); margin-bottom:20px; text-align:center; font-family:var(--mono); }
 
+    /* ── COUNTDOWN ── */
+    .countdown-section { background:var(--surface); border:1px solid var(--border2); border-top:2px solid var(--accent); border-radius:var(--radius); padding:18px 22px; margin-bottom:16px; text-align:center; }
+    .countdown-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); margin-bottom:10px; }
+    .countdown-digits { display:flex; justify-content:center; gap:10px; align-items:flex-end; }
+    .countdown-unit { display:flex; flex-direction:column; align-items:center; min-width:52px; }
+    .countdown-num { font-size:34px; font-weight:800; font-family:var(--mono); color:#fff; line-height:1; }
+    .countdown-sub { font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:3px; font-family:var(--mono); }
+    .countdown-sep { font-size:28px; font-weight:700; color:var(--dim); padding-bottom:6px; font-family:var(--mono); }
+
+    /* ── INLINE JOIN PANEL ── */
+    .join-panel { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px; }
+    .join-panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .join-panel-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); }
+    .join-panel-sub { font-size:12px; color:var(--muted); }
+    .join-panel-fields { display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:start; }
+    .join-panel-players { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; display:flex; flex-wrap:wrap; gap:7px; }
+    .join-player-chip { background:var(--surface2); border:1px solid var(--border2); border-radius:20px; padding:4px 12px 4px 10px; font-size:12px; color:var(--text); display:flex; align-items:center; gap:6px; font-family:var(--mono); }
+    .join-player-chip .chip-picks { color:var(--muted); font-size:11px; }
+    @media (max-width:860px) {
+      .join-panel-fields { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:560px) {
+      .join-panel-fields { grid-template-columns:1fr; }
+    }
+
     /* Responsive */
     @media (max-width:700px) {
       .slb-head, .slb-row { grid-template-columns:28px 52px 1fr 60px 64px; }
@@ -377,7 +402,7 @@
     <div class="topbar-right">
       <div class="live-dot" id="live-dot"></div>
       <span class="last-updated" id="last-updated">Loading…</span>
-      <button id="join-game-btn" class="btn btn-primary" style="padding:6px 14px;display:none" onclick="openJoin()">+ Join</button>
+      <!-- Join is now inline on the dashboard -->
       <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
       <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px">⚙</button>
     </div>
@@ -398,6 +423,81 @@
         <span class="progress-days" id="progress-days"></span>
       </div>
       <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Countdown to game start -->
+    <div id="countdown-section" class="countdown-section hidden">
+      <div class="countdown-label">⏳ Game starts in</div>
+      <div class="countdown-digits">
+        <div class="countdown-unit"><span class="countdown-num" id="cd-days">00</span><span class="countdown-sub">days</span></div>
+        <div class="countdown-sep">:</div>
+        <div class="countdown-unit"><span class="countdown-num" id="cd-hours">00</span><span class="countdown-sub">hours</span></div>
+        <div class="countdown-sep">:</div>
+        <div class="countdown-unit"><span class="countdown-num" id="cd-mins">00</span><span class="countdown-sub">mins</span></div>
+        <div class="countdown-sep">:</div>
+        <div class="countdown-unit"><span class="countdown-num" id="cd-secs">00</span><span class="countdown-sub">secs</span></div>
+      </div>
+    </div>
+
+    <!-- Inline join panel — visible before game starts (prices not locked) -->
+    <div id="inline-join-panel" class="join-panel hidden">
+      <div class="join-panel-head">
+        <div>
+          <div class="join-panel-title">+ Join the Game</div>
+          <div class="join-panel-sub">Enter your name and 3 stock picks to join. Updates are shared live.</div>
+        </div>
+      </div>
+      <div id="inline-join-error" class="error-box hidden" style="margin-bottom:10px"></div>
+      <div class="join-panel-fields">
+        <div>
+          <label class="form-label">Your Name</label>
+          <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
+                 oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
+        </div>
+        <div style="position:relative">
+          <label class="form-label">Pick 1</label>
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ij-pick-0" placeholder="Search ticker…"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ij-pick-0"></span>
+            <div class="ac-dropdown" id="dropdown-ij-pick-0"></div>
+          </div>
+          <div class="pick-msg" id="msg-ij-pick-0"></div>
+        </div>
+        <div style="position:relative">
+          <label class="form-label">Pick 2</label>
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ij-pick-1" placeholder="Search ticker…"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ij-pick-1"></span>
+            <div class="ac-dropdown" id="dropdown-ij-pick-1"></div>
+          </div>
+          <div class="pick-msg" id="msg-ij-pick-1"></div>
+        </div>
+        <div style="position:relative">
+          <label class="form-label">Pick 3</label>
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ij-pick-2" placeholder="Search ticker…"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ij-pick-2"></span>
+            <div class="ac-dropdown" id="dropdown-ij-pick-2"></div>
+          </div>
+          <div class="pick-msg" id="msg-ij-pick-2"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end">
+          <label class="form-label" style="visibility:hidden">Add</label>
+          <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">Add Player</button>
+          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
+        </div>
+      </div>
+      <!-- Already joined players -->
+      <div id="ij-players" class="join-panel-players" style="display:none"></div>
     </div>
 
     <!-- Winner banner — shown only when game has ended -->
@@ -570,6 +670,9 @@
                  onkeydown="if(event.key==='Enter') checkAdminPwd()" />
         </div>
         <button class="btn btn-primary btn-full" onclick="checkAdminPwd()">Unlock Settings</button>
+        <div style="text-align:center;margin-top:14px">
+          <button onclick="resetEverything()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:var(--mono)">Forgot password? Reset game</button>
+        </div>
       </div>
       <div id="admin-panel" class="hidden">
         <div class="modal-section">
@@ -1092,6 +1195,7 @@ const SEARCH_LIST = (() => {
 const REFRESH_MS  = 5 * 60 * 1000;
 const PICK_IDS      = ['pick-0','pick-1','pick-2'];
 const JOIN_PICK_IDS = ['join-pick-0','join-pick-1','join-pick-2'];
+const IJ_PICK_IDS   = ['ij-pick-0','ij-pick-1','ij-pick-2'];
 
 // ═══════════════════════════════════════════════════════════
 //  DEMO DATA DEFINITIONS
@@ -1265,6 +1369,7 @@ function startRealtimeSync() {
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
       if (currentDashTab === 'history')  { myChart = null; initChart(); }
       updateJoinBtn();
+      updateInlineJoinPanel();
       toast('🔄 Dashboard synced!');
     }
   });
@@ -1278,6 +1383,7 @@ async function init() {
   document.getElementById('ps-start-date').value = todayStr();
   PICK_IDS.forEach(id      => { tickerState[id] = {status:'idle',sym:'',name:''}; });
   JOIN_PICK_IDS.forEach(id => { tickerState[id] = {status:'idle',sym:'',name:''}; });
+  IJ_PICK_IDS.forEach(id   => { tickerState[id] = {status:'idle',sym:'',name:''}; });
 
   if (USE_FIREBASE) {
     // Firebase mode: try to load shared game from Firestore
@@ -1494,23 +1600,25 @@ function confirmSelection(id, sym, name, closeDropdown) {
   tickerCache[sym] = {valid:true, name};
   if (closeDropdown) hideDropdown(id);
 
-  // Determine context: are we in the join modal or the setup form?
-  const isJoin = JOIN_PICK_IDS.includes(id);
-  const currentSet = isJoin ? JOIN_PICK_IDS : PICK_IDS;
+  // Determine context: join modal, inline join panel, or setup form?
+  const isJoin   = JOIN_PICK_IDS.includes(id);
+  const isInline = IJ_PICK_IDS.includes(id);
+  const currentSet = isJoin ? JOIN_PICK_IDS : isInline ? IJ_PICK_IDS : PICK_IDS;
 
   // Self-duplicate check (other fields in the same form)
   const selfDupe = currentSet.some(pid => pid !== id && document.getElementById(pid)?.value.trim().toUpperCase() === sym);
   if (selfDupe) {
     applyTickerState(id, 'duplicate', sym, `⚡ You already entered ${sym}`);
-  } else if (isJoin) {
-    // In join modal: check against picks already in the live game
+  } else if (isJoin || isInline) {
+    // In join modal or inline join panel: check against picks already in the live game
     const liveOwner = (S.players || []).find(p => p.picks.includes(sym))?.name;
     if (liveOwner) {
       applyTickerState(id, 'duplicate', sym, `⚡ Already picked by ${liveOwner}`);
     } else {
       applyTickerState(id, 'valid', sym, `✓ ${name}`);
       if (closeDropdown) {
-        const nextEmpty = JOIN_PICK_IDS.find(pid => !document.getElementById(pid)?.value.trim());
+        const idSet = isInline ? IJ_PICK_IDS : JOIN_PICK_IDS;
+        const nextEmpty = idSet.find(pid => !document.getElementById(pid)?.value.trim());
         if (nextEmpty && nextEmpty !== id) setTimeout(() => document.getElementById(nextEmpty)?.focus(), 60);
       }
     }
@@ -1528,7 +1636,9 @@ function confirmSelection(id, sym, name, closeDropdown) {
     }
   }
 
-  if (isJoin) updateJoinBtn(); else updateAddBtn();
+  if (isInline) updateInlineJoinBtn();
+  else if (isJoin) updateJoinBtn();
+  else updateAddBtn();
 }
 
 function hideDropdown(id) {
@@ -1687,10 +1797,8 @@ async function submitPresetup() {
   await save();
   if (USE_FIREBASE) startRealtimeSync();
   closePresetup();
-  // Show dashboard, then immediately open join modal so the first user can add themselves
+  // Show dashboard — the inline join panel will be visible automatically
   showDash();
-  updateJoinBtn();
-  openJoin();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1779,6 +1887,118 @@ async function submitJoin() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  INLINE JOIN PANEL (embedded in dashboard)
+// ═══════════════════════════════════════════════════════════
+function updateInlineJoinPanel() {
+  const panel = document.getElementById('inline-join-panel');
+  if (!panel) return;
+  const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
+  const gameOver     = isGameOver();
+  if (!pricesLocked && !gameOver && !isDemoMode && S.startDate) {
+    panel.classList.remove('hidden');
+    renderInlinePlayers();
+  } else {
+    panel.classList.add('hidden');
+  }
+  updateInlineJoinBtn();
+}
+
+function renderInlinePlayers() {
+  const el = document.getElementById('ij-players');
+  if (!el) return;
+  const players = S.players || [];
+  if (!players.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = players.map(p =>
+    `<div class="join-player-chip">
+       <span>${esc(p.name)}</span>
+       <span class="chip-picks">${p.picks.map(s => esc(s)).join(' · ')}</span>
+     </div>`
+  ).join('');
+}
+
+function updateInlineJoinBtn() {
+  const btn  = document.getElementById('ij-submit-btn');
+  const hint = document.getElementById('ij-hint');
+  if (!btn) return;
+  const name = document.getElementById('ij-name')?.value.trim();
+  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your name first.'; return; }
+  const states = IJ_PICK_IDS.map(id => tickerState[id]?.status || 'idle');
+  if (states.some(s => s === 'checking'))                     { btn.disabled = true; if (hint) hint.textContent = 'Checking tickers…'; return; }
+  if (states.some(s => s === 'invalid' || s === 'duplicate')) { btn.disabled = true; if (hint) hint.textContent = 'Fix the errors above first.'; return; }
+  const filled = IJ_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
+  if (filled < 3) { btn.disabled = true; if (hint) hint.textContent = `Need all 3 picks — ${3 - filled} more to go.`; return; }
+  if (!states.every(s => s === 'valid' || s === 'unknown'))   { btn.disabled = true; if (hint) hint.textContent = 'Waiting for validation…'; return; }
+  btn.disabled = false; if (hint) hint.textContent = 'Ready to join!';
+}
+
+async function submitInlineJoin() {
+  const name   = document.getElementById('ij-name').value.trim();
+  const errEl  = document.getElementById('inline-join-error');
+  if (!name) { errEl.textContent = 'Please enter your name.'; errEl.classList.remove('hidden'); return; }
+  if ((S.players || []).some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    errEl.textContent = `"${name}" has already joined. Choose a different name.`;
+    errEl.classList.remove('hidden'); return;
+  }
+  const picks = [], names = [];
+  for (const id of IJ_PICK_IDS) {
+    const sym = document.getElementById(id).value.trim().toUpperCase();
+    if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name || sym); }
+  }
+  if (picks.length < 3) { errEl.textContent = 'Please fill in all 3 picks.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+
+  const btn = document.getElementById('ij-submit-btn');
+  btn.disabled = true; btn.textContent = 'Joining…';
+
+  S.players = [...(S.players || []), {name, picks, names}];
+  await save();
+
+  // Clear the form
+  document.getElementById('ij-name').value = '';
+  IJ_PICK_IDS.forEach(id => { document.getElementById(id).value = ''; applyTickerState(id, 'idle', '', ''); });
+  btn.textContent = 'Add Player';
+  updateInlineJoinBtn();
+  renderInlinePlayers();
+  toast(`✅ ${name} joined! Good luck!`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COUNTDOWN TIMER
+// ═══════════════════════════════════════════════════════════
+let countdownInterval = null;
+
+function startCountdown() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  function tick() {
+    const section = document.getElementById('countdown-section');
+    if (!section) return;
+    if (!S.startDate) { section.classList.add('hidden'); return; }
+    const now   = new Date();
+    const start = new Date(S.startDate);
+    const diff  = start - now;
+    if (diff <= 0 || isGameOver()) {
+      section.classList.add('hidden');
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      return;
+    }
+    section.classList.remove('hidden');
+    const totalSecs = Math.floor(diff / 1000);
+    const days  = Math.floor(totalSecs / 86400);
+    const hours = Math.floor((totalSecs % 86400) / 3600);
+    const mins  = Math.floor((totalSecs % 3600) / 60);
+    const secs  = totalSecs % 60;
+    document.getElementById('cd-days').textContent  = String(days).padStart(2, '0');
+    document.getElementById('cd-hours').textContent = String(hours).padStart(2, '0');
+    document.getElementById('cd-mins').textContent  = String(mins).padStart(2, '0');
+    document.getElementById('cd-secs').textContent  = String(secs).padStart(2, '0');
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════
 function showDash() {
@@ -1787,6 +2007,8 @@ function showDash() {
   if (USE_FIREBASE && !isDemoMode) show('firebase-notice'); else hide('firebase-notice');
   updateProgress();
   updateJoinBtn();
+  updateInlineJoinPanel();
+  startCountdown();
 
   if (isDemoMode) {
     setDot('live');
@@ -1850,6 +2072,7 @@ async function refreshPrices() {
     if (!Object.keys(S.startPrices).length) {
       syms.forEach(s=>{ if(prices[s]) S.startPrices[s]=prices[s].price; });
       save(); toast('📌 Start prices locked!');
+      updateInlineJoinPanel(); // hide the join form now that prices are locked
     }
     // Save daily price snapshot (once per calendar day) so the History chart builds up over time
     const todayKey = new Date().toISOString().slice(0,10);
