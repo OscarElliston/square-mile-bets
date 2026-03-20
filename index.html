@@ -1458,7 +1458,6 @@ function startRealtimeSync() {
         stopCountdown();
         show('game-content');
         refreshPrices();
-        updateNewsBtn();
       }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
@@ -2272,7 +2271,6 @@ function showDash() {
   updateJoinBtn();
   updateInlineJoinPanel();
   startCountdown();
-  updateNewsBtn();
 
   const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
 
