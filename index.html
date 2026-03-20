@@ -259,9 +259,25 @@
     .join-panel-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); }
     .join-panel-sub { font-size:12px; color:var(--muted); }
     .join-panel-fields { display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:start; }
-    .join-panel-players { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; display:flex; flex-wrap:wrap; gap:7px; }
-    .join-player-chip { background:var(--surface2); border:1px solid var(--border2); border-radius:20px; padding:4px 12px 4px 10px; font-size:12px; color:var(--text); display:flex; align-items:center; gap:6px; font-family:var(--mono); }
-    .join-player-chip .chip-picks { color:var(--muted); font-size:11px; }
+    /* ── PLAYER CARDS (pre-game) ── */
+    .ij-players-section { margin-top:18px; border-top:1px solid var(--border); padding-top:14px; }
+    .ij-players-header  { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .ij-players-label   { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); }
+    .ij-players-count   { font-size:11px; color:var(--muted); font-family:var(--mono); }
+    .ij-cards-grid      { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; }
+    .ij-card            { background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius); padding:14px; position:relative; }
+    .ij-card-head       { display:flex; justify-content:space-between; align-items:center; margin-bottom:11px; }
+    .ij-card-name       { font-size:14px; font-weight:700; color:#fff; }
+    .ij-card-menu-btn   { background:none; border:none; color:var(--dim); cursor:pointer; font-size:16px; padding:2px 6px; line-height:1; border-radius:var(--radius); transition:color .15s,background .15s; }
+    .ij-card-menu-btn:hover { color:var(--text); background:var(--border2); }
+    .ij-card-picks      { display:flex; flex-direction:column; gap:6px; }
+    .ij-card-pick       { display:flex; align-items:baseline; gap:8px; }
+    .ij-card-ticker     { font-size:12px; font-weight:700; color:var(--accent); font-family:var(--mono); min-width:46px; flex-shrink:0; }
+    .ij-card-fullname   { font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ij-card-menu       { position:absolute; top:36px; right:10px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); z-index:20; min-width:160px; box-shadow:0 8px 28px rgba(0,0,0,.55); }
+    .ij-card-menu-item  { padding:10px 14px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:9px; color:var(--text); font-family:var(--mono); transition:background .12s; }
+    .ij-card-menu-item:hover { background:var(--border); }
+    .ij-card-menu-item.danger { color:var(--red); }
     @media (max-width:860px) {
       .join-panel-fields { grid-template-columns:1fr 1fr; }
     }
@@ -496,8 +512,14 @@
           <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
         </div>
       </div>
-      <!-- Already joined players -->
-      <div id="ij-players" class="join-panel-players" style="display:none"></div>
+      <!-- Players section -->
+      <div id="ij-players-section" class="ij-players-section" style="display:none">
+        <div class="ij-players-header">
+          <span class="ij-players-label">Players</span>
+          <span class="ij-players-count" id="ij-players-count"></span>
+        </div>
+        <div class="ij-cards-grid" id="ij-players-grid"></div>
+      </div>
       <!-- Start Game button — visible to everyone, triggers price lock -->
       <div id="start-game-row" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">When everyone's in, start the game to lock prices and reveal the leaderboard.</span>
@@ -659,6 +681,58 @@
       </div>
       <button class="btn btn-primary btn-full" id="join-submit-btn" disabled onclick="submitJoin()">Join Game</button>
       <div class="add-btn-hint" id="join-hint">Enter your name and 3 valid picks to join.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     EDIT PLAYER MODAL
+══════════════════════════════════════ -->
+<div id="edit-player-overlay" class="overlay hidden" onclick="closeEditPlayerIfOutside(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title" id="edit-player-title">Edit Picks</div>
+      <button class="btn btn-secondary" onclick="closeEditPlayer()" style="padding:5px 10px;letter-spacing:0;text-transform:none;font-size:14px">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="edit-player-error" class="error-box hidden" style="margin-bottom:10px"></div>
+      <div class="picks-container">
+        <label class="form-label" style="margin-bottom:6px">Stock Picks</label>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ep-pick-0" placeholder="Pick 1 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ep-pick-0"></span>
+            <div class="ac-dropdown" id="dropdown-ep-pick-0"></div>
+          </div>
+          <div class="pick-msg" id="msg-ep-pick-0"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ep-pick-1" placeholder="Pick 2 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ep-pick-1"></span>
+            <div class="ac-dropdown" id="dropdown-ep-pick-1"></div>
+          </div>
+          <div class="pick-msg" id="msg-ep-pick-1"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="ep-pick-2" placeholder="Pick 3 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-ep-pick-2"></span>
+            <div class="ac-dropdown" id="dropdown-ep-pick-2"></div>
+          </div>
+          <div class="pick-msg" id="msg-ep-pick-2"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="ep-submit-btn" style="margin-top:16px" onclick="submitEditPlayer()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -1206,6 +1280,7 @@ const REFRESH_MS  = 5 * 60 * 1000;
 const PICK_IDS      = ['pick-0','pick-1','pick-2'];
 const JOIN_PICK_IDS = ['join-pick-0','join-pick-1','join-pick-2'];
 const IJ_PICK_IDS   = ['ij-pick-0','ij-pick-1','ij-pick-2'];
+const EP_PICK_IDS   = ['ep-pick-0','ep-pick-1','ep-pick-2'];
 
 // ═══════════════════════════════════════════════════════════
 //  DEMO DATA DEFINITIONS
@@ -1403,6 +1478,7 @@ async function init() {
   PICK_IDS.forEach(id      => { tickerState[id] = {status:'idle',sym:'',name:''}; });
   JOIN_PICK_IDS.forEach(id => { tickerState[id] = {status:'idle',sym:'',name:''}; });
   IJ_PICK_IDS.forEach(id   => { tickerState[id] = {status:'idle',sym:'',name:''}; });
+  EP_PICK_IDS.forEach(id   => { tickerState[id] = {status:'idle',sym:'',name:''}; });
 
   if (USE_FIREBASE) {
     // Firebase mode: try to load shared game from Firestore
@@ -1619,24 +1695,26 @@ function confirmSelection(id, sym, name, closeDropdown) {
   tickerCache[sym] = {valid:true, name};
   if (closeDropdown) hideDropdown(id);
 
-  // Determine context: join modal, inline join panel, or setup form?
+  // Determine context: join modal, inline join panel, edit modal, or setup form?
   const isJoin   = JOIN_PICK_IDS.includes(id);
   const isInline = IJ_PICK_IDS.includes(id);
-  const currentSet = isJoin ? JOIN_PICK_IDS : isInline ? IJ_PICK_IDS : PICK_IDS;
+  const isEdit   = EP_PICK_IDS.includes(id);
+  const currentSet = isJoin ? JOIN_PICK_IDS : isInline ? IJ_PICK_IDS : isEdit ? EP_PICK_IDS : PICK_IDS;
 
   // Self-duplicate check (other fields in the same form)
   const selfDupe = currentSet.some(pid => pid !== id && document.getElementById(pid)?.value.trim().toUpperCase() === sym);
   if (selfDupe) {
     applyTickerState(id, 'duplicate', sym, `⚡ You already entered ${sym}`);
-  } else if (isJoin || isInline) {
-    // In join modal or inline join panel: check against picks already in the live game
-    const liveOwner = (S.players || []).find(p => p.picks.includes(sym))?.name;
+  } else if (isJoin || isInline || isEdit) {
+    // In join/inline/edit context: check against other live players (skip the player being edited)
+    const editingIdx = isEdit ? (window._editingPlayerIdx ?? -1) : -1;
+    const liveOwner = (S.players || []).find((p, i) => i !== editingIdx && p.picks.includes(sym))?.name;
     if (liveOwner) {
       applyTickerState(id, 'duplicate', sym, `⚡ Already picked by ${liveOwner}`);
     } else {
       applyTickerState(id, 'valid', sym, `✓ ${name}`);
       if (closeDropdown) {
-        const idSet = isInline ? IJ_PICK_IDS : JOIN_PICK_IDS;
+        const idSet = isEdit ? EP_PICK_IDS : isInline ? IJ_PICK_IDS : JOIN_PICK_IDS;
         const nextEmpty = idSet.find(pid => !document.getElementById(pid)?.value.trim());
         if (nextEmpty && nextEmpty !== id) setTimeout(() => document.getElementById(nextEmpty)?.focus(), 60);
       }
@@ -1656,6 +1734,7 @@ function confirmSelection(id, sym, name, closeDropdown) {
   }
 
   if (isInline) updateInlineJoinBtn();
+  else if (isEdit) updateEditSubmitBtn();
   else if (isJoin) updateJoinBtn();
   else updateAddBtn();
 }
@@ -1915,25 +1994,135 @@ function updateInlineJoinPanel() {
   const gameOver     = isGameOver();
   if (!pricesLocked && !gameOver && !isDemoMode && S.startDate) {
     panel.classList.remove('hidden');
-    renderInlinePlayers();
   } else {
     panel.classList.add('hidden');
   }
+  renderInlinePlayers();
   updateInlineJoinBtn();
 }
 
+let _openMenuIdx = -1;
+
 function renderInlinePlayers() {
-  const el = document.getElementById('ij-players');
-  if (!el) return;
-  const players = S.players || [];
-  if (!players.length) { el.style.display = 'none'; return; }
-  el.style.display = 'flex';
-  el.innerHTML = players.map(p =>
-    `<div class="join-player-chip">
-       <span>${esc(p.name)}</span>
-       <span class="chip-picks">${p.picks.map(s => esc(s)).join(' · ')}</span>
-     </div>`
-  ).join('');
+  const section  = document.getElementById('ij-players-section');
+  const grid     = document.getElementById('ij-players-grid');
+  const countEl  = document.getElementById('ij-players-count');
+  if (!section || !grid) return;
+  const players  = S.players || [];
+  const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
+  if (!players.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  if (countEl) countEl.textContent = players.length + ' joined';
+  grid.innerHTML = players.map((p, i) => `
+    <div class="ij-card" id="ij-card-${i}">
+      <div class="ij-card-head">
+        <div class="ij-card-name">${esc(p.name)}</div>
+        ${!pricesLocked ? `<button class="ij-card-menu-btn" onclick="togglePlayerMenu(${i},event)" title="Options">⋮</button>` : ''}
+      </div>
+      <div class="ij-card-picks">
+        ${p.picks.map((sym, j) => `
+          <div class="ij-card-pick">
+            <span class="ij-card-ticker">${esc(sym)}</span>
+            <span class="ij-card-fullname">${esc(p.names?.[j] || sym)}</span>
+          </div>`).join('')}
+      </div>
+      ${!pricesLocked && _openMenuIdx === i ? `
+        <div class="ij-card-menu" id="ij-menu-${i}">
+          <div class="ij-card-menu-item" onclick="editPlayerAtIdx(${i})">✏️ Edit picks</div>
+          <div class="ij-card-menu-item danger" onclick="deletePlayerAtIdx(${i})">🗑 Remove player</div>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+function togglePlayerMenu(idx, e) {
+  e.stopPropagation();
+  _openMenuIdx = (_openMenuIdx === idx) ? -1 : idx;
+  renderInlinePlayers();
+}
+
+// Close any open menu on outside click
+document.addEventListener('click', () => {
+  if (_openMenuIdx !== -1) { _openMenuIdx = -1; renderInlinePlayers(); }
+});
+
+async function deletePlayerAtIdx(idx) {
+  _openMenuIdx = -1;
+  const p = S.players[idx];
+  if (!p) return;
+  if (!confirm(`Remove ${p.name} from the game?`)) return;
+  S.players.splice(idx, 1);
+  await save();
+  renderInlinePlayers();
+  updateInlineJoinBtn();
+  toast(`Removed ${p.name}`);
+}
+
+// ── Edit player modal ───────────────────────────────────────
+let _editingPlayerIdx = -1;
+window._editingPlayerIdx = -1;
+
+function editPlayerAtIdx(idx) {
+  _openMenuIdx = -1;
+  renderInlinePlayers();
+  const p = S.players[idx];
+  if (!p) return;
+  _editingPlayerIdx = idx;
+  window._editingPlayerIdx = idx;
+
+  document.getElementById('edit-player-title').textContent = `Edit picks — ${p.name}`;
+  document.getElementById('edit-player-error').classList.add('hidden');
+
+  EP_PICK_IDS.forEach((id, j) => {
+    const sym  = p.picks[j] || '';
+    const name = p.names?.[j] || sym;
+    const input = document.getElementById(id);
+    if (input) input.value = sym;
+    if (sym) {
+      tickerCache[sym] = { valid: true, name };
+      applyTickerState(id, 'valid', sym, `✓ ${name}`);
+    } else {
+      applyTickerState(id, 'idle', '', '');
+    }
+  });
+  updateEditSubmitBtn();
+  show('edit-player-overlay');
+}
+
+function closeEditPlayer() {
+  hide('edit-player-overlay');
+  _editingPlayerIdx = -1;
+  window._editingPlayerIdx = -1;
+  EP_PICK_IDS.forEach(id => applyTickerState(id, 'idle', '', ''));
+}
+function closeEditPlayerIfOutside(e) { if (e.target.id === 'edit-player-overlay') closeEditPlayer(); }
+
+function updateEditSubmitBtn() {
+  const btn = document.getElementById('ep-submit-btn');
+  if (!btn) return;
+  const states = EP_PICK_IDS.map(id => tickerState[id]?.status || 'idle');
+  const filled = EP_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
+  const hasError = states.some(s => s === 'invalid' || s === 'duplicate');
+  const checking = states.some(s => s === 'checking');
+  btn.disabled = hasError || checking || filled < 3;
+  btn.textContent = checking ? 'Checking…' : 'Save Changes';
+}
+
+async function submitEditPlayer() {
+  const idx = _editingPlayerIdx;
+  if (idx < 0 || !S.players[idx]) return;
+  const errEl = document.getElementById('edit-player-error');
+  const picks = [], names = [];
+  for (const id of EP_PICK_IDS) {
+    const sym = document.getElementById(id)?.value.trim().toUpperCase();
+    if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name || sym); }
+  }
+  if (picks.length < 3) { errEl.textContent = 'Please fill in all 3 picks.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  S.players[idx] = { ...S.players[idx], picks, names };
+  await save();
+  closeEditPlayer();
+  renderInlinePlayers();
+  toast(`✅ ${S.players[idx].name}'s picks updated!`);
 }
 
 function updateInlineJoinBtn() {
@@ -1976,7 +2165,7 @@ async function submitInlineJoin() {
   // Clear the form
   document.getElementById('ij-name').value = '';
   IJ_PICK_IDS.forEach(id => { document.getElementById(id).value = ''; applyTickerState(id, 'idle', '', ''); });
-  btn.textContent = 'Add Player';
+  btn.disabled = false; btn.textContent = 'Add Player';
   updateInlineJoinBtn();
   renderInlinePlayers();
   toast(`✅ ${name} joined! Good luck!`);
