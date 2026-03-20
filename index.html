@@ -498,7 +498,15 @@
       </div>
       <!-- Already joined players -->
       <div id="ij-players" class="join-panel-players" style="display:none"></div>
+      <!-- Start Game button — visible to everyone, triggers price lock -->
+      <div id="start-game-row" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">When everyone's in, start the game to lock prices and reveal the leaderboard.</span>
+        <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
+      </div>
     </div>
+
+    <!-- Game content — hidden until game starts -->
+    <div id="game-content" class="hidden">
 
     <!-- Winner banner — shown only when game has ended -->
     <div id="winner-banner" class="hidden"></div>
@@ -558,6 +566,8 @@
         <div class="chart-legend-custom" id="chart-legend"></div>
       </div>
     </div>
+
+    </div><!-- /game-content -->
 
   </div>
 </div>
@@ -1348,7 +1358,7 @@ function load() {
 async function loadFromFirebase() {
   try {
     const doc = await db.collection('squaremile').doc('game').get();
-    if (!doc.exists || !doc.data().players?.length) return false;
+    if (!doc.exists || !doc.data().startDate) return false;
     S = {...S, ...doc.data()};
     return true;
   } catch(e) { console.error('Firebase load error:', e); return false; }
@@ -1364,7 +1374,16 @@ function startRealtimeSync() {
       JSON.stringify(incoming.players)     !== JSON.stringify(S.players) ||
       JSON.stringify(incoming.startPrices) !== JSON.stringify(S.startPrices);
     if (changed) {
+      const wasLocked = Object.keys(S.startPrices || {}).length > 0;
       S = {...S, ...incoming};
+      const nowLocked = Object.keys(S.startPrices || {}).length > 0;
+      // If the game just started on another browser, reveal the game content
+      if (!wasLocked && nowLocked) {
+        hide('inline-join-panel');
+        stopCountdown();
+        show('game-content');
+        refreshPrices();
+      }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
       if (currentDashTab === 'history')  { myChart = null; initChart(); }
@@ -1964,6 +1983,49 @@ async function submitInlineJoin() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  START GAME
+// ═══════════════════════════════════════════════════════════
+async function startGameManually() {
+  if (!S.players || S.players.length === 0) {
+    toast('⚡ Add at least one player before starting.'); return;
+  }
+  if (!confirm(`Start the game now?\n\nThis will lock in today's prices as the starting point for all ${S.players.length} player(s). The leaderboard will become visible to everyone.`)) return;
+
+  const startBtn = document.querySelector('#start-game-row .btn');
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Locking prices…'; }
+
+  try {
+    const syms = allSymbols();
+    if (!syms.length) { toast('⚡ No tickers to lock prices for.'); return; }
+    const p = await fetchYahooPrices(syms);
+    syms.forEach(s => { if (p[s]) S.startPrices[s] = p[s].price; });
+    prices = p;
+    await save();
+
+    // Hide pre-game section, reveal game content
+    hide('inline-join-panel');
+    hide('countdown-section');
+    show('game-content');
+    stopCountdown();
+
+    // Render leaderboard
+    hide('loading-state'); hide('error-state');
+    renderDash(); show('dash-content');
+    renderStockLeaderboard();
+    setDot('live');
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Kick off the normal refresh cycle
+    if (!isGameOver()) refreshTimer = setTimeout(refreshPrices, REFRESH_MS);
+
+    toast('🚀 Game started! Prices locked in.');
+  } catch(e) {
+    toast('❌ Failed to fetch prices: ' + e.message);
+    if (startBtn) { startBtn.disabled = false; startBtn.textContent = '🚀 Start Game'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  COUNTDOWN TIMER
 // ═══════════════════════════════════════════════════════════
 let countdownInterval = null;
@@ -1998,6 +2060,12 @@ function startCountdown() {
   countdownInterval = setInterval(tick, 1000);
 }
 
+function stopCountdown() {
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  const section = document.getElementById('countdown-section');
+  if (section) section.classList.add('hidden');
+}
+
 // ═══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════
@@ -2010,14 +2078,23 @@ function showDash() {
   updateInlineJoinPanel();
   startCountdown();
 
+  const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
+
   if (isDemoMode) {
+    show('game-content');
     setDot('live');
     document.getElementById('last-updated').textContent = 'Simulated data';
     hide('loading-state'); hide('error-state');
     renderDash(); show('dash-content');
     renderStockLeaderboard();
-  } else {
+  } else if (pricesLocked) {
+    // Game already started — show tabs and fetch prices as normal
+    show('game-content');
     refreshPrices();
+  } else {
+    // Game not yet started — hide game tabs, show pre-game view only
+    hide('game-content');
+    hide('loading-state');
   }
 }
 
@@ -2069,11 +2146,6 @@ async function refreshPrices() {
   if (!syms.length) { hide('loading-state'); return; }
   try {
     prices=await fetchYahooPrices(syms);
-    if (!Object.keys(S.startPrices).length) {
-      syms.forEach(s=>{ if(prices[s]) S.startPrices[s]=prices[s].price; });
-      save(); toast('📌 Start prices locked!');
-      updateInlineJoinPanel(); // hide the join form now that prices are locked
-    }
     // Save daily price snapshot (once per calendar day) so the History chart builds up over time
     const todayKey = new Date().toISOString().slice(0,10);
     if (Object.keys(S.startPrices).length) {
