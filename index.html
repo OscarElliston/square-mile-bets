@@ -179,8 +179,8 @@
     .card-body { padding:0 15px; }
     .asset-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); gap:10px; }
     .asset-row:last-child { border-bottom:none; }
-    .asset-ticker     { font-size:12px; font-weight:800; letter-spacing:.06em; font-family:var(--mono); color:var(--accent); }
-    .asset-name-label { font-size:11px; color:var(--muted); margin-top:2px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .asset-ticker     { font-size:10px; font-weight:700; letter-spacing:.06em; font-family:var(--mono); color:var(--muted); margin-top:2px; }
+    .asset-name-label { font-size:12px; font-weight:600; color:var(--fg); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .asset-right      { text-align:right; flex-shrink:0; }
     .asset-gain  { font-size:13px; font-weight:700; font-family:var(--mono); }
     .asset-price { font-size:10px; color:var(--muted); margin-top:2px; font-family:var(--mono); }
@@ -803,30 +803,21 @@ if (USE_FIREBASE) {
   db = firebase.firestore();
 }
 
-const YAHOO_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&symbols=';
-
-// Price fetching — Vercel serverless function first, CORS proxies as fallback
-const CORS_PROXIES = [
-  'https://corsproxy.io/?',
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.org/?',
-];
-async function fetchWithProxy(url) {
-  // Primary: our own Vercel /api/quote (same domain, no CORS issues)
-  try {
-    const symbols = url.split('symbols=')[1];
-    const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`,
-                            {signal: AbortSignal.timeout(8000)});
-    if (res.ok) return res;
-  } catch { /* fall through */ }
-  // Fallback: public CORS proxies
-  for (const proxy of CORS_PROXIES) {
-    try {
-      const res = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
-      if (res.ok) return res;
-    } catch { /* try next */ }
-  }
-  throw new Error('All proxies failed');
+// Price fetching — Vercel serverless function (Finnhub)
+async function fetchPrices(symbols) {
+  const res = await fetch('/api/quote?symbols=' + encodeURIComponent(symbols.join(',')),
+                          { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const out = {};
+  (data.quoteResponse?.result || []).forEach(q => {
+    out[q.symbol] = {
+      price:    q.regularMarketPrice,
+      name:     q.shortName || q.symbol,
+      change1d: q.regularMarketChangePercent
+    };
+  });
+  return out;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -885,7 +876,7 @@ const VALID_TICKERS = new Set([
   'MARA','RIOT','BITF','HUT','CLSK','IREN','BTBT','MSTR',
   'GME','AMC','BB','SPCE','LCID','RIVN','NIO','LI','XPEV','NKLA',
   'BLNK','CHPT','EVGO','SNAP','PINS','SPOT','SQ','HOOD',
-  // ── FTSE 100 (.L suffix = London Stock Exchange on Yahoo Finance) ─────────
+  // ── FTSE 100 (.L suffix = London Stock Exchange) ────────────────────────
   'AZN.L','HSBA.L','SHEL.L','ULVR.L','BP.L','RIO.L','GSK.L','DGE.L',
   'LSEG.L','NG.L','VOD.L','BT-A.L','BARC.L','LLOY.L','NWG.L','STAN.L',
   'PRU.L','AV.L','LGEN.L','IMB.L','BATS.L','RR.L','BA.L','REL.L',
@@ -2192,7 +2183,7 @@ async function startGameManually() {
   try {
     const syms = allSymbols();
     if (!syms.length) { toast('⚡ No tickers to lock prices for.'); return; }
-    const p = await fetchYahooPrices(syms);
+    const p = await fetchPrices(syms);
     syms.forEach(s => { if (p[s]) S.startPrices[s] = p[s].price; });
     prices = p;
     await save();
@@ -2322,15 +2313,6 @@ function switchDashTab(tab) {
 // ═══════════════════════════════════════════════════════════
 function allSymbols() { return [...new Set(S.players.flatMap(p=>p.picks))]; }
 
-async function fetchYahooPrices(symbols) {
-  const res = await fetchWithProxy(YAHOO_URL+symbols.join(','));
-  if (!res.ok) throw new Error('HTTP '+res.status);
-  const data=await res.json(), out={};
-  (data.quoteResponse?.result||[]).forEach(q=>{
-    out[q.symbol]={price:q.regularMarketPrice,name:q.shortName||q.longName||q.symbol,change1d:q.regularMarketChangePercent};
-  });
-  return out;
-}
 
 async function refreshPrices() {
   if (isDemoMode) return;
@@ -2339,7 +2321,7 @@ async function refreshPrices() {
   const syms=allSymbols();
   if (!syms.length) { hide('loading-state'); return; }
   try {
-    prices=await fetchYahooPrices(syms);
+    prices=await fetchPrices(syms);
     // Save daily price snapshot (once per calendar day) so the History chart builds up over time
     const todayKey = new Date().toISOString().slice(0,10);
     if (Object.keys(S.startPrices).length) {
@@ -2482,11 +2464,11 @@ function renderCards(sorted) {
   document.getElementById('cards-grid').innerHTML=sorted.map((p,i)=>{
     const assets=p.picks.map((sym,j)=>{
       const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
-      const label=data?.name||(p.names&&p.names[j])||sym;
+      const label=(p.names&&p.names[j])||data?.name||sym;
       return `<div class="asset-row">
         <div>
-          <div class="asset-ticker">${esc(sym)}</div>
-          <div class="asset-name-label muted">${esc(label)}</div>
+          <div class="asset-name-label">${esc(label)}</div>
+          <div class="asset-ticker muted">${esc(sym)}</div>
         </div>
         <div class="asset-right">
           <div class="asset-gain ${gainCls(g)}">${fmt(g)}</div>
@@ -2920,7 +2902,7 @@ function checkAdminPwd() {
 async function lockStartPrices() {
   if (!confirm('Overwrite start prices with today\'s current prices?')) return;
   try {
-    const p=await fetchYahooPrices(allSymbols());
+    const p=await fetchPrices(allSymbols());
     allSymbols().forEach(s=>{ if(p[s]) S.startPrices[s]=p[s].price; });
     prices=p; await save(); toast('✅ Start prices updated!'); closeAdmin(); renderDash();
   } catch(e) { toast('❌ Failed: '+e.message); }
