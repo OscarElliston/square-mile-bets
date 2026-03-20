@@ -377,8 +377,9 @@
     <div class="topbar-right">
       <div class="live-dot" id="live-dot"></div>
       <span class="last-updated" id="last-updated">Loading…</span>
-      <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:7px 12px">↻ Refresh</button>
-      <button class="btn btn-secondary" onclick="openAdmin()" style="padding:7px 12px">⚙</button>
+      <button id="join-game-btn" class="btn btn-primary" style="padding:6px 14px;display:none" onclick="openJoin()">+ Join</button>
+      <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
+      <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px">⚙</button>
     </div>
   </div>
 
@@ -461,6 +462,96 @@
   </div>
 </div>
 
+
+<!-- ══════════════════════════════════════
+     PRE-SETUP MODAL (first visitor configures the game)
+══════════════════════════════════════ -->
+<div id="presetup-overlay" class="overlay hidden" onclick="closePresetupIfOutside(event)">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head">
+      <div class="modal-title">Configure Game</div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6">
+        You're the first here. Set the game parameters — then share the link so players can join and submit their picks.
+      </div>
+      <div id="presetup-error" class="error-box hidden"></div>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div>
+          <label class="form-label">Start Date</label>
+          <input class="form-input" id="ps-start-date" type="date" />
+        </div>
+        <div>
+          <label class="form-label">Game Length (weeks)</label>
+          <input class="form-input" id="ps-game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <label class="form-label">Admin Password <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0;font-family:inherit">(optional — protects ⚙ settings)</span></label>
+        <input class="form-input" id="ps-admin-pwd" type="password" placeholder="Leave blank for no password" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="submitPresetup()">Create Game →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     JOIN MODAL (players self-submit picks)
+══════════════════════════════════════ -->
+<div id="join-overlay" class="overlay hidden" onclick="closeJoinIfOutside(event)">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-head">
+      <div class="modal-title">Join Game</div>
+      <button class="btn btn-secondary" onclick="closeJoin()" style="padding:5px 10px;letter-spacing:0;text-transform:none;font-size:14px">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="join-error" class="error-box hidden"></div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Your Name</label>
+        <input class="form-input" id="join-name" placeholder="e.g. Sarah"
+               oninput="updateJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('join-pick-0')?.focus()" />
+      </div>
+      <div class="picks-container">
+        <label class="form-label" style="margin-bottom:4px">Your 3 Stock Picks</label>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="join-pick-0" placeholder="Pick 1 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-join-pick-0"></span>
+            <div class="ac-dropdown" id="dropdown-join-pick-0"></div>
+          </div>
+          <div class="pick-msg" id="msg-join-pick-0"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="join-pick-1" placeholder="Pick 2 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-join-pick-1"></span>
+            <div class="ac-dropdown" id="dropdown-join-pick-1"></div>
+          </div>
+          <div class="pick-msg" id="msg-join-pick-1"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row" style="position:relative">
+            <input type="text" class="ticker-input" id="join-pick-2" placeholder="Pick 3 — search by name or ticker"
+                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                   autocomplete="off" spellcheck="false" maxlength="50" />
+            <span class="pick-icon" id="icon-join-pick-2"></span>
+            <div class="ac-dropdown" id="dropdown-join-pick-2"></div>
+          </div>
+          <div class="pick-msg" id="msg-join-pick-2"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="join-submit-btn" disabled onclick="submitJoin()">Join Game</button>
+      <div class="add-btn-hint" id="join-hint">Enter your name and 3 valid picks to join.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════
      ADMIN MODAL
@@ -999,7 +1090,8 @@ const SEARCH_LIST = (() => {
 })();
 
 const REFRESH_MS  = 5 * 60 * 1000;
-const PICK_IDS    = ['pick-0','pick-1','pick-2'];
+const PICK_IDS      = ['pick-0','pick-1','pick-2'];
+const JOIN_PICK_IDS = ['join-pick-0','join-pick-1','join-pick-2'];
 
 // ═══════════════════════════════════════════════════════════
 //  DEMO DATA DEFINITIONS
@@ -1172,6 +1264,7 @@ function startRealtimeSync() {
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
       if (currentDashTab === 'history')  { myChart = null; initChart(); }
+      updateJoinBtn();
       toast('🔄 Dashboard synced!');
     }
   });
@@ -1182,24 +1275,29 @@ function startRealtimeSync() {
 // ═══════════════════════════════════════════════════════════
 async function init() {
   document.getElementById('start-date').value = todayStr();
-  PICK_IDS.forEach(id => { tickerState[id] = {status:'idle',sym:'',name:''}; });
+  document.getElementById('ps-start-date').value = todayStr();
+  PICK_IDS.forEach(id      => { tickerState[id] = {status:'idle',sym:'',name:''}; });
+  JOIN_PICK_IDS.forEach(id => { tickerState[id] = {status:'idle',sym:'',name:''}; });
 
   if (USE_FIREBASE) {
     // Firebase mode: try to load shared game from Firestore
     const loaded = await loadFromFirebase();
     if (loaded) {
       isDemoMode = false;
-      showDash();
       startRealtimeSync();
+      showDash();
+      updateJoinBtn();
     } else {
-      // No game exists yet on Firebase — show setup screen
-      show('setup-screen'); hide('dashboard-screen');
+      // No game exists yet — first visitor configures dates via pre-setup modal
+      hide('setup-screen'); hide('dashboard-screen');
+      openPresetup();
     }
   } else {
     // Local mode: fall back to localStorage, then demo data
     if (load()) {
       isDemoMode = false;
       showDash();
+      updateJoinBtn();
     } else {
       loadDemoData();
       isDemoMode = true;
@@ -1395,24 +1493,42 @@ function confirmSelection(id, sym, name, closeDropdown) {
   input.value = sym;  // always store the ticker symbol in the field
   tickerCache[sym] = {valid:true, name};
   if (closeDropdown) hideDropdown(id);
-  // Duplicate checks
-  const selfDupe = PICK_IDS.some(pid => pid !== id && document.getElementById(pid)?.value.trim().toUpperCase() === sym);
+
+  // Determine context: are we in the join modal or the setup form?
+  const isJoin = JOIN_PICK_IDS.includes(id);
+  const currentSet = isJoin ? JOIN_PICK_IDS : PICK_IDS;
+
+  // Self-duplicate check (other fields in the same form)
+  const selfDupe = currentSet.some(pid => pid !== id && document.getElementById(pid)?.value.trim().toUpperCase() === sym);
   if (selfDupe) {
     applyTickerState(id, 'duplicate', sym, `⚡ You already entered ${sym}`);
+  } else if (isJoin) {
+    // In join modal: check against picks already in the live game
+    const liveOwner = (S.players || []).find(p => p.picks.includes(sym))?.name;
+    if (liveOwner) {
+      applyTickerState(id, 'duplicate', sym, `⚡ Already picked by ${liveOwner}`);
+    } else {
+      applyTickerState(id, 'valid', sym, `✓ ${name}`);
+      if (closeDropdown) {
+        const nextEmpty = JOIN_PICK_IDS.find(pid => !document.getElementById(pid)?.value.trim());
+        if (nextEmpty && nextEmpty !== id) setTimeout(() => document.getElementById(nextEmpty)?.focus(), 60);
+      }
+    }
   } else {
+    // In setup form: check against already-submitted players
     const owner = getTickerOwner(sym);
     if (owner) {
       applyTickerState(id, 'duplicate', sym, `⚡ Already picked by ${owner}`);
     } else {
       applyTickerState(id, 'valid', sym, `✓ ${name}`);
-      // Auto-advance to next empty field
       if (closeDropdown) {
         const nextEmpty = PICK_IDS.find(pid => !document.getElementById(pid)?.value.trim());
         if (nextEmpty && nextEmpty !== id) setTimeout(() => document.getElementById(nextEmpty)?.focus(), 60);
       }
     }
   }
-  updateAddBtn();
+
+  if (isJoin) updateJoinBtn(); else updateAddBtn();
 }
 
 function hideDropdown(id) {
@@ -1539,6 +1655,130 @@ async function startGame() {
 function showSetupError(msg) { const e=document.getElementById('setup-error'); e.textContent=msg; e.classList.remove('hidden'); }
 
 // ═══════════════════════════════════════════════════════════
+//  PRE-SETUP MODAL (first visitor creates the game)
+// ═══════════════════════════════════════════════════════════
+function openPresetup() { show('presetup-overlay'); }
+function closePresetup() { hide('presetup-overlay'); }
+function closePresetupIfOutside(e) { if (e.target.id === 'presetup-overlay') closePresetup(); }
+
+async function submitPresetup() {
+  const startDate = document.getElementById('ps-start-date').value;
+  const weeks     = parseInt(document.getElementById('ps-game-weeks').value) || 12;
+  const pwd       = document.getElementById('ps-admin-pwd').value;
+  const errEl     = document.getElementById('presetup-error');
+
+  if (!startDate) {
+    errEl.textContent = 'Please choose a start date.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+
+  const end = new Date(startDate);
+  end.setDate(end.getDate() + weeks * 7);
+
+  S.startDate = startDate;
+  S.endDate   = end.toISOString().slice(0, 10);
+  S.adminPwd  = pwd;
+  S.players   = [];
+  S.startPrices = {};
+  isDemoMode = false;
+
+  await save();
+  if (USE_FIREBASE) startRealtimeSync();
+  closePresetup();
+  // Show dashboard, then immediately open join modal so the first user can add themselves
+  showDash();
+  updateJoinBtn();
+  openJoin();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  JOIN MODAL (players self-submit picks once game is set up)
+// ═══════════════════════════════════════════════════════════
+function openJoin() {
+  // Only allow joining before start prices are locked
+  if (Object.keys(S.startPrices).length > 0) {
+    toast('⚡ Game already started — picks are locked.'); return;
+  }
+  JOIN_PICK_IDS.forEach(id => {
+    document.getElementById(id).value = '';
+    applyTickerState(id, 'idle', '', '');
+  });
+  document.getElementById('join-name').value = '';
+  const errEl = document.getElementById('join-error');
+  if (errEl) errEl.classList.add('hidden');
+  updateJoinBtn();
+  show('join-overlay');
+}
+
+function closeJoin() { hide('join-overlay'); }
+function closeJoinIfOutside(e) { if (e.target.id === 'join-overlay') closeJoin(); }
+
+function updateJoinBtn() {
+  // Update topbar Join button visibility
+  const topbarBtn = document.getElementById('join-game-btn');
+  if (topbarBtn) {
+    const gameConfigured = !!(S.startDate && S.endDate);
+    const pricesLocked   = Object.keys(S.startPrices || {}).length > 0;
+    const gameOver       = isGameOver();
+    topbarBtn.style.display = (gameConfigured && !pricesLocked && !gameOver && !isDemoMode) ? '' : 'none';
+  }
+  // Update submit button inside the join modal
+  const name  = document.getElementById('join-name')?.value.trim();
+  const hint  = document.getElementById('join-hint');
+  const btn   = document.getElementById('join-submit-btn');
+  if (!btn) return;
+  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your name first.'; return; }
+  const states = JOIN_PICK_IDS.map(id => tickerState[id]?.status || 'idle');
+  if (states.some(s => s === 'checking'))                      { btn.disabled = true; if (hint) hint.textContent = 'Checking tickers…'; return; }
+  if (states.some(s => s === 'invalid' || s === 'duplicate'))  { btn.disabled = true; if (hint) hint.textContent = 'Fix the errors above first.'; return; }
+  const filled = JOIN_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
+  if (filled < 3) { btn.disabled = true; if (hint) hint.textContent = `Need all 3 picks — ${3 - filled} more to go.`; return; }
+  if (!states.every(s => s === 'valid' || s === 'unknown'))    { btn.disabled = true; if (hint) hint.textContent = 'Waiting for ticker validation…'; return; }
+  btn.disabled = false; if (hint) hint.textContent = 'All good — ready to join!';
+}
+
+async function submitJoin() {
+  const name   = document.getElementById('join-name').value.trim();
+  const errEl  = document.getElementById('join-error');
+  if (!name) { errEl.textContent='Please enter your name.'; errEl.classList.remove('hidden'); return; }
+
+  // Name uniqueness check
+  if ((S.players||[]).some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    errEl.textContent = `"${name}" has already joined. Pick a different name.`;
+    errEl.classList.remove('hidden'); return;
+  }
+
+  const picks = [], names = [];
+  for (const id of JOIN_PICK_IDS) {
+    const sym = document.getElementById(id).value.trim().toUpperCase();
+    if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name || sym); }
+  }
+  if (picks.length < 3) { errEl.textContent='Please enter all 3 picks.'; errEl.classList.remove('hidden'); return; }
+
+  errEl.classList.add('hidden');
+  const btn = document.getElementById('join-submit-btn');
+  btn.disabled = true; btn.textContent = 'Joining…';
+
+  // Append to live players and save
+  S.players = [...(S.players||[]), {name, picks, names}];
+  await save();
+
+  btn.textContent = 'Join Game';
+  closeJoin();
+  updateJoinBtn();
+  toast(`✅ ${name} joined! Good luck!`);
+
+  // If already on dashboard, re-render
+  if (document.getElementById('dashboard-screen')?.style.display !== 'none') {
+    renderDash();
+    if (currentDashTab === 'stocks')  renderStockLeaderboard();
+    if (currentDashTab === 'history') { myChart = null; initChart(); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════
 function showDash() {
@@ -1546,6 +1786,7 @@ function showDash() {
   if (isDemoMode) show('demo-notice'); else hide('demo-notice');
   if (USE_FIREBASE && !isDemoMode) show('firebase-notice'); else hide('firebase-notice');
   updateProgress();
+  updateJoinBtn();
 
   if (isDemoMode) {
     setDot('live');
