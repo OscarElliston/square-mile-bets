@@ -10,14 +10,19 @@ export default async function handler(req, res) {
   try {
     const results = await Promise.all(symList.map(async sym => {
       try {
+        // Finnhub uses "LSE:BA" format for London-listed stocks (not "BA.L")
+        const finnhubSym = sym.endsWith('.L')
+          ? 'LSE:' + sym.slice(0, -2)
+          : sym;
+
         const r = await fetch(
-          `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${token}`
+          `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSym)}&token=${token}`
         );
         const d = await r.json();
         if (!d.c || d.c === 0) return null; // no data for this symbol
         return {
-          symbol: sym,
-          regularMarketPrice: d.c,           // current price
+          symbol: sym, // always return the original symbol (e.g. "BA.L")
+          regularMarketPrice: d.c,
           shortName: sym,
           regularMarketChangePercent: d.pc
             ? ((d.c - d.pc) / d.pc) * 100
