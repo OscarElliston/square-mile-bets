@@ -2497,9 +2497,16 @@ function renderCards(sorted) {
 // ═══════════════════════════════════════════════════════════
 function renderStockLeaderboard() {
   const all=[];
+  // Build sym→name lookup from stored player names (most reliable source)
+  const nameMap = {};
+  S.players.forEach(p => p.picks.forEach((sym,j) => {
+    if (!nameMap[sym]) nameMap[sym] = p.names?.[j] || sym;
+  }));
+
   S.players.forEach(p=>{
     p.picks.forEach(sym=>{
-      all.push({sym, name:prices[sym]?.name||STOCK_DEFS[sym]?.name||sym, gain:gainPct(sym), cur:prices[sym]?.price, player:p.name});
+      const name = nameMap[sym] || prices[sym]?.name || STOCK_DEFS[sym]?.name || sym;
+      all.push({sym, name, gain:gainPct(sym), cur:prices[sym]?.price, player:p.name});
     });
   });
   all.sort((a,b)=>(b.gain??-999)-(a.gain??-999));
