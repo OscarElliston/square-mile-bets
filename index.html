@@ -2472,7 +2472,7 @@ function renderLeaderboard(sorted) {
 function renderCards(sorted) {
   document.getElementById('cards-grid').innerHTML=sorted.map((p,i)=>{
     const sortedPicks=[...p.picks.map((sym,j)=>({sym,j}))].sort((a,b)=>{
-      const va=prices[a.sym]?.price??0, vb=prices[b.sym]?.price??0; return vb-va;
+      const ga=gainPct(a.sym)??-Infinity, gb=gainPct(b.sym)??-Infinity; return gb-ga;
     });
     const assets=sortedPicks.map(({sym,j})=>{
       const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
@@ -2888,7 +2888,7 @@ function renderStackedBarChart() {
     const cx   = padL + colW * (i + 0.5);
     const {r,g,b} = parseHex(PLAYER_COLORS[pidx % PLAYER_COLORS.length]);
     // Sort segments: most valuable at bottom, least at top
-    const sortedStocks = [...stocks].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    const sortedStocks = [...stocks].sort((a, b) => (b.g ?? -Infinity) - (a.g ?? -Infinity));
     let stackY = yPos(0);
 
     sortedStocks.forEach((s, j) => {
