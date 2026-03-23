@@ -537,7 +537,7 @@
     <div class="dash-tabs">
       <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">🏆 Standings</button>
       <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">📊 All Stocks</button>
-      <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">📈 History</button>
+      <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">📈 Dashboard</button>
     </div>
 
     <!-- ── TAB: STANDINGS ── -->
@@ -586,6 +586,14 @@
           <div id="chart-tooltip"></div>
         </div>
         <div class="chart-legend-custom" id="chart-legend"></div>
+      </div>
+
+      <div style="margin:28px 0 13px">
+        <div class="section-title" style="margin-bottom:0">Portfolio Breakdown by Stock</div>
+      </div>
+      <div class="chart-card" style="position:relative">
+        <canvas id="breakdown-chart" style="display:block;width:100%"></canvas>
+        <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
       </div>
     </div>
 
@@ -2437,6 +2445,7 @@ function renderDash() {
   renderWinnerBanner(sorted);
   renderLeaderboard(sorted);
   renderCards(sorted);
+  renderStackedBarChart();
 }
 
 function renderLeaderboard(sorted) {
@@ -2462,7 +2471,10 @@ function renderLeaderboard(sorted) {
 
 function renderCards(sorted) {
   document.getElementById('cards-grid').innerHTML=sorted.map((p,i)=>{
-    const assets=p.picks.map((sym,j)=>{
+    const sortedPicks=[...p.picks.map((sym,j)=>({sym,j}))].sort((a,b)=>{
+      const va=prices[a.sym]?.price??0, vb=prices[b.sym]?.price??0; return vb-va;
+    });
+    const assets=sortedPicks.map(({sym,j})=>{
       const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
       const label=(p.names&&p.names[j])||data?.name||sym;
       return `<div class="asset-row">
@@ -2790,6 +2802,163 @@ class LineChart {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+//  STACKED BAR CHART — Portfolio Breakdown
+// ═══════════════════════════════════════════════════════════
+function parseHex(hex) {
+  const h = hex.replace('#','');
+  return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
+}
+
+function renderStackedBarChart() {
+  const canvas = document.getElementById('breakdown-chart');
+  if (!canvas || !S.players?.length) return;
+
+  // Each stock is indexed to 100 at start. Current value = 100 * (1 + gainPct/100).
+  // Total portfolio = sum of stock values (max 300 if 3 stocks each at 100).
+  const playerData = S.players.map((p, pidx) => {
+    const stocks = p.picks.map((sym, j) => {
+      const g = gainPct(sym);
+      return { sym, name: p.names?.[j] || sym, g, value: g !== null ? 100 * (1 + g/100) : null };
+    });
+    const known = stocks.filter(s => s.value !== null);
+    if (!known.length) return null;
+    const total = known.reduce((a, s) => a + s.value, 0);
+    return { p, pidx, stocks, total };
+  }).filter(Boolean);
+
+  if (!playerData.length) return;
+
+  // Sort ascending — smallest portfolio on the left
+  playerData.sort((a, b) => a.total - b.total);
+
+  // Y-axis: 0 → max total + padding
+  const maxTotal = Math.max(...playerData.map(d => d.total));
+  const yMax = Math.max(320, maxTotal + Math.max(15, maxTotal * 0.12));
+  const yMin = 0;
+  const yRange = yMax - yMin;
+
+  // Canvas sizing (hi-DPI)
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.offsetWidth || 700;
+  const cssH = 300;
+  canvas.style.height = cssH + 'px';
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = cssW, H = cssH;
+
+  const padL=44, padR=16, padT=24, padB=38;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const colW   = chartW / playerData.length;
+  const barW   = Math.min(60, colW * 0.62);
+  const yPos   = val => padT + chartH * (1 - (val - yMin) / yRange);
+
+  // Background
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0f1b35';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines + y-axis labels
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const val = yMin + (yRange * i / ticks);
+    const y   = yPos(val);
+    ctx.strokeStyle = '#1e2d4d'; ctx.lineWidth = 0.5; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#566a8a'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(0), padL-4, y+3.5);
+  }
+
+  // Reference line at 300 (starting value)
+  const refY = yPos(300);
+  ctx.strokeStyle = 'rgba(249,115,22,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(padL, refY); ctx.lineTo(W-padR, refY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(249,115,22,0.8)'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
+  ctx.fillText('start 300', padL+4, refY-4);
+
+  // Store bar hit areas for tooltip
+  canvas._barAreas = [];
+
+  // Draw bars
+  playerData.forEach(({p, pidx, stocks, total}, i) => {
+    const cx   = padL + colW * (i + 0.5);
+    const {r,g,b} = parseHex(PLAYER_COLORS[pidx % PLAYER_COLORS.length]);
+    // Sort segments: most valuable at bottom, least at top
+    const sortedStocks = [...stocks].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    let stackY = yPos(0);
+
+    sortedStocks.forEach((s, j) => {
+      if (s.value === null) return;
+      const segH = (s.value / yRange) * chartH;
+      const segY = stackY - segH;
+      ctx.fillStyle = `rgba(${r},${g},${b},${1 - j * 0.27})`;
+      ctx.fillRect(cx - barW/2, segY, barW, segH);
+      // Thin separator between segments
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx - barW/2, segY, barW, 1);
+      stackY = segY;
+    });
+
+    // Total label above bar
+    const topY = yPos(total);
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = total >= 300 ? '#4ade80' : '#f87171';
+    ctx.fillText(total.toFixed(1), cx, topY - 5);
+
+    // Player name
+    ctx.fillStyle = '#8899bb'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    const lbl = p.name.length > 9 ? p.name.slice(0,8)+'…' : p.name;
+    ctx.fillText(lbl, cx, H - padB + 16);
+
+    // Hit area for tooltip
+    canvas._barAreas.push({ x1: cx - colW/2, x2: cx + colW/2, p, pidx, stocks, total });
+  });
+
+
+  // Attach tooltip listeners (once per render — safe to reassign)
+  canvas.onmousemove = (e) => {
+    const rect   = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const tip    = document.getElementById('breakdown-tooltip');
+    if (!tip) return;
+    const hit = (canvas._barAreas || []).find(a => mouseX >= a.x1 && mouseX <= a.x2);
+    if (!hit) { tip.style.display = 'none'; return; }
+    const hex = PLAYER_COLORS[hit.pidx % PLAYER_COLORS.length];
+    const rows = hit.stocks.map(s => {
+      if (s.value === null) return '';
+      const gStr = s.g !== null ? (s.g >= 0 ? '+' : '') + s.g.toFixed(2) + '%' : '—';
+      const col  = s.g === null ? '' : s.g >= 0 ? 'color:#4ade80' : 'color:#f87171';
+      return `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:4px">
+        <span style="color:var(--muted)">${esc(s.name)}</span>
+        <span style="font-family:var(--mono);font-weight:700;${col}">${gStr}</span>
+      </div>`;
+    }).join('');
+    const totalDiff = hit.total - 300;
+    const totalCol  = totalDiff >= 0 ? '#4ade80' : '#f87171';
+    tip.innerHTML = `
+      <div style="font-weight:700;color:${hex};margin-bottom:6px;font-size:12px">${esc(hit.p.name)}</div>
+      ${rows}
+      <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:16px">
+        <span style="color:var(--muted);font-size:11px">Portfolio value</span>
+        <span style="font-family:var(--mono);font-weight:700;color:${totalCol}">${hit.total.toFixed(1)}</span>
+      </div>`;
+    // Position tooltip — flip left if near right edge
+    const tipW = 210;
+    const offsetX = (e.clientX - rect.left + tipW + 16 > rect.width) ? -tipW - 8 : 16;
+    tip.style.display   = 'block';
+    tip.style.left      = (e.clientX - rect.left + offsetX) + 'px';
+    tip.style.top       = Math.max(0, e.clientY - rect.top - 20) + 'px';
+  };
+  canvas.onmouseleave = () => {
+    const tip = document.getElementById('breakdown-tooltip');
+    if (tip) tip.style.display = 'none';
+  };
+}
+
 function initChart() {
   if (myChart) return;
 
@@ -2875,6 +3044,7 @@ function initChart() {
   myChart = new LineChart('portfolio-chart');
   myChart.setData(labels, datasets);
   buildChartLegend(S.players);
+  renderStackedBarChart();
 }
 
 function buildChartLegend(playerList) {
