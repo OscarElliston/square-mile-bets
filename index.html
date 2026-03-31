@@ -336,19 +336,19 @@
 <!-- ══════════════════════════════════════
      SIGN-IN SCREEN
 ══════════════════════════════════════ -->
-<div id="signin-screen" class="hidden">
-  <div class="setup-card" style="max-width:420px;margin:0 auto">
-    <div class="setup-hero">
-      <span class="icon">📈</span>
-      <h1>Square Mile Bets</h1>
-      <p style="color:var(--muted);margin-top:8px">Sign in to join or view the game.</p>
+<div id="signin-screen" class="overlay hidden" onclick="if(event.target.id==='signin-screen')hide('signin-screen')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <div class="modal-title">Sign in to participate</div>
+      <button class="btn btn-secondary" onclick="hide('signin-screen')" style="padding:6px 10px">✕</button>
     </div>
-    <div class="setup-body" style="padding-top:0">
-      <button class="btn btn-primary btn-full" onclick="signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;padding:14px">
-        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Sign in with Google
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6">You can view the leaderboard without signing in. Sign in with Google to join the game and submit your picks.</p>
+      <button class="btn btn-primary btn-full" onclick="signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;padding:13px">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
       </button>
-      <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--dim)">Your Google account is used only to identify you in the game.</p>
+      <p style="text-align:center;margin-top:14px;font-size:11px;color:var(--dim)">Your Google account is used only to identify you in the game.</p>
     </div>
   </div>
 </div>
@@ -467,6 +467,7 @@
       <span class="last-updated" id="last-updated">Loading…</span>
       <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
       <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px">⚙</button>
+      <button id="signin-topbar-btn" class="btn btn-primary" onclick="show('signin-screen')" style="padding:6px 14px;font-size:12px;display:none">Sign In</button>
       <div id="user-badge" style="display:none;align-items:center;gap:7px;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;cursor:pointer" onclick="toggleUserMenu()" title="Account">
         <img id="user-avatar" src="" width="22" height="22" style="border-radius:50%;display:none" />
         <span id="user-name" style="font-size:12px;font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
@@ -863,7 +864,7 @@ const FIREBASE_CONFIG = {
   measurementId:     "G-LDX3H0910C"
 };
 // ── Admin email whitelist ────────────────────────────────────────────────────
-const ADMIN_EMAILS = ['oscar.elliston@attio.com'];
+const ADMIN_EMAILS = ['oscarelliston@gmail.com'];
 
 const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
 let db   = null;
@@ -880,7 +881,9 @@ function isAdmin() { return ADMIN_EMAILS.includes(currentUser?.email); }
 
 function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e => toast('Sign-in failed: ' + e.message));
+  auth.signInWithPopup(provider)
+    .then(() => hide('signin-screen'))
+    .catch(e => toast('Sign-in failed: ' + e.message));
 }
 function signOut() {
   closeUserMenu();
@@ -1210,25 +1213,13 @@ async function init() {
   EP_PICK_IDS.forEach(id   => { tickerState[id] = {status:'idle',sym:'',name:''}; });
 
   if (USE_FIREBASE) {
-    // Wait for Firebase Auth state before loading anything
-    await new Promise(resolve => {
-      auth.onAuthStateChanged(user => {
-        currentUser = user;
-        resolve();
-      });
+    // Track auth state in the background — does NOT block loading the game
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      updateUserBadge();
     });
 
-    if (!currentUser) {
-      // Not signed in — show sign-in screen
-      hide('setup-screen'); hide('dashboard-screen');
-      show('signin-screen');
-      return;
-    }
-
-    // Signed in — update user badge
-    updateUserBadge();
-
-    // Firebase mode: try to load shared game from Firestore
+    // Load the game immediately — no login required to view
     const loaded = await loadFromFirebase();
     if (loaded) {
       isDemoMode = false;
@@ -1238,15 +1229,7 @@ async function init() {
     } else {
       // No game exists yet — admin configures via pre-setup modal
       hide('setup-screen'); hide('dashboard-screen');
-      if (isAdmin()) {
-        openPresetup();
-      } else {
-        hide('signin-screen');
-        show('dashboard-screen');
-        show('game-content');
-        document.getElementById('game-content').innerHTML =
-          '<div style="padding:40px;text-align:center;color:var(--muted)">No active game yet. Ask the admin to set one up.</div>';
-      }
+      openPresetup();
     }
   } else {
     // Local mode: fall back to localStorage, then demo data
@@ -1263,18 +1246,32 @@ async function init() {
 }
 
 function updateUserBadge() {
-  if (!currentUser) return;
-  const badge = document.getElementById('user-badge');
-  const nameEl = document.getElementById('user-name');
-  const avatarEl = document.getElementById('user-avatar');
-  const emailEl = document.getElementById('user-menu-email');
-  if (badge) badge.style.display = 'flex';
-  if (nameEl) nameEl.textContent = currentUser.displayName || currentUser.email || 'You';
-  if (avatarEl && currentUser.photoURL) {
-    avatarEl.src = currentUser.photoURL;
-    avatarEl.style.display = 'block';
+  const badge   = document.getElementById('user-badge');
+  const signBtn = document.getElementById('signin-topbar-btn');
+
+  if (currentUser) {
+    const nameEl   = document.getElementById('user-name');
+    const avatarEl = document.getElementById('user-avatar');
+    const emailEl  = document.getElementById('user-menu-email');
+    if (badge)   badge.style.display = 'flex';
+    if (signBtn) signBtn.style.display = 'none';
+    if (nameEl)  nameEl.textContent = currentUser.displayName || currentUser.email || 'You';
+    if (avatarEl && currentUser.photoURL) {
+      avatarEl.src = currentUser.photoURL;
+      avatarEl.style.display = 'block';
+    }
+    if (emailEl) emailEl.textContent = currentUser.email || '';
+  } else {
+    if (badge)   badge.style.display = 'none';
+    if (signBtn) signBtn.style.display = '';
   }
-  if (emailEl) emailEl.textContent = currentUser.email || '';
+}
+
+// Gate any participatory action behind auth — shows sign-in modal if needed
+function requireAuth() {
+  if (currentUser) return true;
+  show('signin-screen');
+  return false;
 }
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -1651,6 +1648,7 @@ async function submitPresetup() {
 //  JOIN MODAL (players self-submit picks once game is set up)
 // ═══════════════════════════════════════════════════════════
 function openJoin() {
+  if (!requireAuth()) return;
   // Only allow joining before start prices are locked
   if (Object.keys(S.startPrices).length > 0) {
     toast('⚡ Game already started — picks are locked.'); return;
@@ -1894,6 +1892,7 @@ function updateInlineJoinBtn() {
 }
 
 async function submitInlineJoin() {
+  if (!requireAuth()) return;
   const name   = document.getElementById('ij-name').value.trim();
   const errEl  = document.getElementById('inline-join-error');
   if (!name) { errEl.textContent = 'Please enter your name.'; errEl.classList.remove('hidden'); return; }
