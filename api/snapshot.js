@@ -8,16 +8,18 @@
  * Also accepts manual POST for one-off triggers.
  *
  * Env vars required:
- *   FINNHUB_KEY       — Finnhub API token (same as used by /api/quote)
  *   FIREBASE_API_KEY  — Firebase Web API key (same value as in index.html)
  */
 
-const PROJECT_ID   = 'square-mile-bets';
-const DOC_URL      = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/game/state`;
+const PROJECT_ID = 'square-mile-bets';
+const DOC_URL    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/game/state`;
+
+const YF_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
 
 // ── Firestore REST helpers ────────────────────────────────────────────────────
 
-/** Recursively parse a Firestore typed-value object into plain JS */
 function parseValue(v) {
   if (!v) return null;
   if ('stringValue'  in v) return v.stringValue;
@@ -28,15 +30,12 @@ function parseValue(v) {
   if ('arrayValue'   in v) return (v.arrayValue.values || []).map(parseValue);
   if ('mapValue'     in v) {
     const out = {};
-    for (const [k, val] of Object.entries(v.mapValue.fields || {})) {
-      out[k] = parseValue(val);
-    }
+    for (const [k, val] of Object.entries(v.mapValue.fields || {})) out[k] = parseValue(val);
     return out;
   }
   return null;
 }
 
-/** Recursively serialise a plain JS value into a Firestore typed-value object */
 function toFsValue(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'string')         return { stringValue: v };
@@ -51,30 +50,15 @@ function toFsValue(v) {
   return { nullValue: null };
 }
 
-// ── Price fetching (mirrors /api/quote logic) ─────────────────────────────────
+// ── Price fetching via Yahoo Finance v8 (all tickers) ────────────────────────
 
-async function fetchAllPrices(tickers, finnhubKey) {
-  const usSyms = tickers.filter(s => !s.endsWith('.L'));
-  const ukSyms = tickers.filter(s =>  s.endsWith('.L'));
+async function fetchAllPrices(tickers) {
   const snapshot = {};
-
-  // US tickers via Finnhub
-  await Promise.all(usSyms.map(async sym => {
-    try {
-      const r = await fetch(
-        `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${finnhubKey}`
-      );
-      const d = await r.json();
-      if (d.c && d.c !== 0) snapshot[sym] = d.c;
-    } catch { /* skip */ }
-  }));
-
-  // London tickers via Yahoo Finance v8 chart endpoint
-  await Promise.all(ukSyms.map(async sym => {
+  await Promise.all(tickers.map(async sym => {
     try {
       const r = await fetch(
         `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
-        { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }
+        { headers: YF_HEADERS }
       );
       if (!r.ok) return;
       const data = await r.json();
@@ -82,7 +66,6 @@ async function fetchAllPrices(tickers, finnhubKey) {
       if (meta?.regularMarketPrice) snapshot[sym] = meta.regularMarketPrice;
     } catch { /* skip */ }
   }));
-
   return snapshot;
 }
 
@@ -94,10 +77,7 @@ export default async function handler(req, res) {
   }
 
   const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
-  const FINNHUB_KEY      = process.env.FINNHUB_KEY;
-
   if (!FIREBASE_API_KEY) return res.status(500).json({ error: 'FIREBASE_API_KEY not set' });
-  if (!FINNHUB_KEY)      return res.status(500).json({ error: 'FINNHUB_KEY not set' });
 
   try {
     // 1. Read game state from Firestore
@@ -108,26 +88,26 @@ export default async function handler(req, res) {
 
     // 2. Extract all unique tickers from every player's picks
     const players = parseValue(fields.players);
-    if (!Array.isArray(players) || players.length === 0) {
-      throw new Error('No players found in game state');
-    }
+    if (!Array.isArray(players) || players.length === 0) throw new Error('No players found');
     const allTickers = [...new Set(players.flatMap(p => Array.isArray(p.picks) ? p.picks : []))];
-    if (allTickers.length === 0) throw new Error('No tickers found in any player picks');
+    if (allTickers.length === 0) throw new Error('No tickers found');
 
-    // 3. Fetch current prices
-    const snapshot = await fetchAllPrices(allTickers, FINNHUB_KEY);
+    // 3. Fetch current prices (weekday check — cron is already Mon-Fri but belt-and-braces)
+    const todayDow = new Date().getUTCDay();
+    if (todayDow === 0 || todayDow === 6) {
+      return res.status(200).json({ skipped: true, reason: 'weekend' });
+    }
+
+    const snapshot = await fetchAllPrices(allTickers);
     const fetchedCount = Object.keys(snapshot).length;
     if (fetchedCount === 0) throw new Error('Price fetch returned no data');
 
-    // 4. Build date key — UTC date string (YYYY-MM-DD)
+    // 4. Merge into existing priceHistory
     const today = new Date().toISOString().slice(0, 10);
-
-    // 5. Merge into existing priceHistory
     const existingHistory = parseValue(fields.priceHistory) || {};
     existingHistory[today] = snapshot;
 
-    // 6. Write updated priceHistory back to Firestore (field-mask update,
-    //    so only priceHistory is touched — nothing else in the document changes)
+    // 5. Write updated priceHistory back to Firestore
     const patchUrl = `${DOC_URL}?key=${FIREBASE_API_KEY}&updateMask.fieldPaths=priceHistory`;
     const patchRes = await fetch(patchUrl, {
       method:  'PATCH',
@@ -140,13 +120,7 @@ export default async function handler(req, res) {
     }
 
     console.log(`[snapshot] ${today}: saved ${fetchedCount}/${allTickers.length} tickers`);
-    return res.status(200).json({
-      success: true,
-      date:    today,
-      saved:   fetchedCount,
-      total:   allTickers.length,
-      tickers: Object.keys(snapshot)
-    });
+    return res.status(200).json({ success: true, date: today, saved: fetchedCount, total: allTickers.length });
 
   } catch (err) {
     console.error('[snapshot] error:', err.message);
