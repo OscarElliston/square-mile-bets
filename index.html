@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎰 Square Mile Bets</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <!-- Firebase SDK (compat mode — no build step needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -2330,9 +2331,11 @@ async function refreshPrices() {
   if (!syms.length) { hide('loading-state'); return; }
   try {
     prices=await fetchPrices(syms);
-    // Save daily price snapshot (once per calendar day) so the History chart builds up over time
+    // Save daily price snapshot (once per calendar day, weekdays only) so the History chart builds up over time
     const todayKey = new Date().toISOString().slice(0,10);
-    if (Object.keys(S.startPrices).length) {
+    const todayDow = new Date().getUTCDay(); // 0=Sun, 6=Sat
+    const isTradingDay = todayDow !== 0 && todayDow !== 6;
+    if (Object.keys(S.startPrices).length && isTradingDay) {
       if (!S.priceHistory) S.priceHistory = {};
       if (!S.priceHistory[todayKey]) {
         S.priceHistory[todayKey] = {};
@@ -3012,7 +3015,12 @@ function initChart() {
   allSymbols().forEach(s => { if (S.startPrices[s]) startSnap[s] = S.startPrices[s]; });
   allSnapshots['0000-00-00'] = startSnap;
 
-  const sortedDates = Object.keys(allSnapshots).sort();
+  // Filter out weekend dates (markets closed — flat lines add no information)
+  const sortedDates = Object.keys(allSnapshots).sort().filter(d => {
+    if (d === '0000-00-00') return true; // always keep the start baseline
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay(); // noon UTC avoids timezone edge cases
+    return dow !== 0 && dow !== 6; // drop Saturday (6) and Sunday (0)
+  });
   if (!sortedDates.length) {
     const canvas = document.getElementById('portfolio-chart');
     if (!canvas) return;
