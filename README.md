@@ -1,100 +1,150 @@
-# 🎰 Square Mile Bets
+# Square Mile Bets
 
-A multiplayer fantasy finance game where players pick a portfolio of stocks and compete to see whose picks perform best over a fixed period.
+A multiplayer fantasy finance game for groups of friends. Each player picks three stocks at the start of a season, and the leaderboard tracks everyone's portfolio performance in real time. At the end of the season, final standings are archived to an all-time Medal Table.
+
+Built as a single-page app — no framework, no build step. Deployed on Vercel with Firebase Firestore for shared state and Google Auth for player identity.
 
 Live at **[square-mile-bets.vercel.app](https://square-mile-bets.vercel.app)**
 
 ---
 
-## How It Works
+## How it works
 
-1. Before the game starts, each player submits their name and picks 3 stocks or funds
-2. An admin locks in the starting prices to set the baseline
-3. Everyone's portfolio is indexed to **300** at the start (100 per stock)
-4. Prices update automatically throughout the game
-5. The leaderboard ranks players by average % gain across their 3 picks
-
----
-
-## Features
-
-- **Real-time leaderboard** — standings update automatically as prices move
-- **Standings tab** — portfolio leaderboard + individual player cards showing each stock sorted by performance
-- **All Stocks tab** — every pick ranked by % gain, with company name and owning player
-- **Dashboard tab** — portfolio value over time (line chart) + a stacked bar chart showing portfolio composition and value breakdown per player
-- **Hover tooltips** — mouse over any bar to see a breakdown of that player's stocks and their individual % changes
-- **London Stock Exchange support** — `.L` suffix tickers (e.g. `BA.L`, `BP.L`) alongside US stocks
-- **Shared state** — all players see the same data in real time via Firebase
-- **Admin controls** — password-protected game management including start game, re-lock prices, and reset
+1. The admin opens the app for the first time and sets a start date and season length
+2. Players visit the link and sign in with Google to submit their name and three stock picks
+3. When everyone is ready, the admin locks current prices as the baseline and starts the game
+4. Prices update automatically every 5 minutes during market hours; a daily snapshot is saved by a cron job each weekday evening
+5. The leaderboard, stock rankings, portfolio chart and breakdown are visible to anyone — no login required to view
+6. At season end the admin archives results to the Medal Table, then resets for the next round
 
 ---
 
-## Tech Stack
+## Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Single-file HTML/CSS/JS |
+| Frontend | Vanilla HTML/CSS/JS — single `index.html` |
+| Database | Firebase Firestore (real-time sync across all browsers) |
+| Auth | Firebase Google Sign-In |
+| Price data | Yahoo Finance (via Vercel serverless function) |
 | Hosting | Vercel |
-| Database | Firebase Firestore (real-time sync) |
-| Price data (US) | Finnhub API (via Vercel serverless function) |
-| Price data (London) | Yahoo Finance v8 (via Vercel serverless function) |
+| Cron | Vercel cron job — daily snapshot at 9:30pm UTC, Mon–Fri |
+
+---
+
+## Project structure
+
+```
+index.html          Main app — all UI, game logic and chart rendering
+api/
+  quote.js          Serverless function — fetches live prices from Yahoo Finance
+  search.js         Serverless function — proxies Yahoo Finance ticker autocomplete
+  snapshot.js       Serverless function — saves daily price snapshot to Firestore
+vercel.json         Cron schedule config
+favicon.png         App icon
+```
 
 ---
 
 ## Setup
 
-### 1. Clone the repo
+### 1. Firebase
 
-```bash
-git clone https://github.com/OscarElliston/square-mile-bets.git
-cd square-mile-bets
+Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
+
+- Enable **Firestore** (Native mode)
+- Enable **Authentication → Google** sign-in
+- Add your Vercel deployment domain to **Authentication → Settings → Authorised domains**
+
+Copy your project config (Project Settings → Your apps → Web app) and paste it into `index.html`:
+
+```js
+const FIREBASE_CONFIG = {
+  apiKey:            "...",
+  authDomain:        "...",
+  projectId:         "...",
+  storageBucket:     "...",
+  messagingSenderId: "...",
+  appId:             "..."
+};
 ```
 
-### 2. Firebase
+### 2. Admin access
 
-- Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-- Enable **Firestore** in your project
-- Copy your Firebase config into `index.html` where the `firebaseConfig` object is defined
+Edit the `ADMIN_EMAILS` array in `index.html` to include your Google account email. Only listed addresses can access Settings, start the game, and end seasons.
 
-### 3. Finnhub API key
+```js
+const ADMIN_EMAILS = ['you@gmail.com'];
+```
 
-- Sign up for a free key at [finnhub.io](https://finnhub.io)
-- In Vercel, add an environment variable: `FINNHUB_KEY = your_key_here`
+### 3. Deploy to Vercel
 
-### 4. Deploy to Vercel
+Push the repo to GitHub and import it as a new Vercel project. No build command or output directory is needed — Vercel detects the serverless functions in `/api` automatically.
 
-- Push to GitHub and connect the repo in [vercel.com](https://vercel.com)
-- Vercel will automatically deploy the `api/quote.js` serverless function alongside `index.html`
+Add one environment variable in the Vercel dashboard:
+
+| Variable | Value |
+|---|---|
+| `FIREBASE_API_KEY` | Your Firebase `apiKey` from the config above |
+
+The cron job in `vercel.json` runs daily at 9:30pm UTC and requires a Vercel Hobby plan or above.
 
 ---
 
-## File Structure
+## Features
+
+**Submission**
+- Players sign in with Google and submit their name and three stock picks
+- Live ticker search powered by Yahoo Finance autocomplete
+- Category keywords (e.g. "electric cars", "AI", "UK stocks") surface themed suggestions instantly
+- Duplicate pick detection across all players in real time
+- Admin can edit or remove any player's picks before the game starts
+
+**Live game**
+- Leaderboard sorted by portfolio return, refreshed every 5 minutes
+- Per-player portfolio cards with individual stock performance and daily change %
+- All Stocks tab ranking every pick across all players with a visual performance bar
+- Dashboard tab with a portfolio value chart (rebased to 100 at start) and a stacked bar breakdown by stock
+- Prices sync in real time across all open browsers via Firestore
+
+**Season end**
+- Winner banner with confetti fires when the game ends
+- Admin archives final standings to the Medal Table from the Settings panel
+- Medal Table tracks gold, silver and bronze counts per player across all seasons, sortable by any column
+- All previous season results stored and browsable
+
+**Access model**
+- Anyone can view the leaderboard without an account
+- Google sign-in required to join or submit picks
+- Settings panel and Start Game button visible to the admin only
+
+---
+
+## Supported tickers
+
+Any equity or ETF available on Yahoo Finance, including:
+
+- **US stocks and ETFs** — S&P 500, NASDAQ, major ETFs
+- **London Stock Exchange** — use the `.L` suffix (e.g. `BP.L`, `HSBA.L`, `AZN.L`)
+
+---
+
+## Demo mode
+
+If no Firebase config is provided the app runs in demo mode with simulated data for 10 players across a full season — useful for testing the UI without any setup.
+
+---
+
+## Firestore data structure
 
 ```
-/
-├── index.html        # Entire frontend — UI, game logic, Firebase sync
-├── api/
-│   └── quote.js      # Vercel serverless function — price fetching proxy
-└── firebase.json     # Firebase config
+squaremile/game          Active game state (players, picks, start prices, price history)
+seasons/{id}             Archived season results
+players/{uid}            All-time player stats (gold, silver, bronze, avg return)
 ```
 
 ---
 
-## Game Admin
+## License
 
-The ⚙ button in the top right opens the admin panel (password protected). From there you can:
-
-- **Start the game** — locks in current prices as the starting baseline
-- **Re-lock start prices** — useful if prices need to be reset mid-game
-- **Reset everything** — wipes all game data and starts fresh
-
----
-
-## Supported Tickers
-
-Any ticker available on Yahoo Finance or Finnhub can be used, including:
-
-- **US stocks & ETFs** — S&P 500, NASDAQ, major ETFs
-- **London Stock Exchange** — use the `.L` suffix (e.g. `BRBY.L`, `BP.L`, `BA.L`)
-
-Ticker validation uses a built-in static list covering the S&P 500, NASDAQ 100, and FTSE 100 with autocomplete on the join form.
+MIT
