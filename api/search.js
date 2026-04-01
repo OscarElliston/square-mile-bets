@@ -5,7 +5,15 @@
  * hit Yahoo directly (CORS). Returns a cleaned list of equity/ETF results.
  *
  * GET /api/search?q=apple
- * → { results: [{ symbol, name, exchange, type }, ...] }
+ * → { results: [{ symbol, name, exchange, type, currency }, ...] }
+ *
+ * The `currency` field indicates what currency prices are quoted in:
+ *   USD  — US dollars (most US stocks)
+ *   GBp  — British pence (LSE stocks with .L suffix — divide by 100 for GBP)
+ *   EUR  — Euros (Euronext, Xetra, etc.)
+ *   JPY  — Japanese yen (Tokyo Stock Exchange)
+ *   HKD  — Hong Kong dollars (HKEX)
+ *   etc.
  */
 
 const YF_HEADERS = {
@@ -30,7 +38,8 @@ export default async function handler(req, res) {
         symbol:   item.symbol,
         name:     item.shortname || item.longname || item.symbol,
         exchange: item.exchDisp || item.exchange || '',
-        type:     item.quoteType
+        type:     item.quoteType,
+        currency: item.currency || '',
       }))
       .slice(0, 8);
 

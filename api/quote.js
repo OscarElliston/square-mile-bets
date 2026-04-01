@@ -3,8 +3,12 @@
  *
  * Fetches real-time prices for a comma-separated list of symbols
  * using the Yahoo Finance v8 chart endpoint.
- * Works for all tickers on Yahoo Finance: US stocks, UK (.L), ETFs, crypto, etc.
+ * Works for all tickers on Yahoo Finance: US stocks, UK (.L), ETFs,
+ * FX cross-rates (e.g. GBPUSD=X), crypto, etc.
  * No API key required.
+ *
+ * Returns: { symbol, regularMarketPrice, shortName,
+ *            regularMarketChangePercent, currency }
  */
 
 const YF_HEADERS = {
@@ -34,7 +38,8 @@ export default async function handler(req, res) {
         symbol:                     sym,
         regularMarketPrice:         meta.regularMarketPrice,
         shortName:                  meta.shortName || meta.longName || meta.symbol || sym,
-        regularMarketChangePercent: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0
+        regularMarketChangePercent: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0,
+        currency:                   meta.currency || 'USD',
       });
     } catch { /* skip */ }
   }));
