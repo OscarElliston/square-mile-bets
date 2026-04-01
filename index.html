@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🎰 Square Mile Bets</title>
+  <title>Square Mile Bets</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <!-- Firebase SDK (compat mode — no build step needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -291,6 +292,31 @@
       .slb-head, .slb-row { grid-template-columns:28px 52px 1fr 60px 64px; }
       .slb-head span:nth-child(4),.slb-bar-wrap { display:none; }
     }
+    /* ── Day gain badge ── */
+    .day-gain { font-size:10px; font-family:var(--mono); font-weight:600; padding:2px 5px; border-radius:4px; }
+    .day-gain.green { color:#4ade80; background:rgba(74,222,128,.12); }
+    .day-gain.red   { color:#f87171; background:rgba(248,113,113,.12); }
+    .day-gain.muted { color:var(--muted); }
+
+    /* ── All-time leaderboard table ── */
+    .alltime-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .alltime-table th { text-align:left; color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:8px 10px; border-bottom:1px solid var(--border); }
+    .alltime-table td { padding:11px 10px; border-bottom:1px solid var(--border2,rgba(255,255,255,.04)); }
+    .alltime-table tr:last-child td { border-bottom:none; }
+    .alltime-table .rank-col { font-weight:700; width:36px; color:var(--muted); }
+
+    /* ── Season archive card ── */
+    .season-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:12px; }
+    .season-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .season-card-title { font-weight:700; font-size:14px; }
+    .season-card-dates { font-size:11px; color:var(--muted); font-family:var(--mono); }
+    .season-standings-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border2,rgba(255,255,255,.04)); font-size:12px; }
+    .season-standings-row:last-child { border-bottom:none; }
+
+    /* ── Search loading indicator ── */
+    .ac-loading { display:flex; align-items:center; gap:8px; padding:10px 14px; color:var(--muted); font-size:13px; }
+    .ac-category-label { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent,#5b8af0); font-weight:700; padding:6px 14px 2px; }
+
     @media (max-width:580px) {
       .setup-body { padding:20px 18px 24px; }
       .setup-hero { padding:26px 18px 22px; }
@@ -306,6 +332,26 @@
   </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════
+     SIGN-IN SCREEN
+══════════════════════════════════════ -->
+<div id="signin-screen" class="overlay hidden" onclick="if(event.target.id==='signin-screen')hide('signin-screen')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <div class="modal-title">Sign in to participate</div>
+      <button class="btn btn-secondary" onclick="hide('signin-screen')" style="padding:6px 10px">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6">You can view the leaderboard without signing in. Sign in with Google to join the game and submit your picks.</p>
+      <button class="btn btn-primary btn-full" onclick="signInWithGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:14px;padding:13px">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+      <p style="text-align:center;margin-top:14px;font-size:11px;color:var(--dim)">Your Google account is used only to identify you in the game.</p>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════
      SETUP SCREEN
@@ -419,9 +465,18 @@
     <div class="topbar-right">
       <div class="live-dot" id="live-dot"></div>
       <span class="last-updated" id="last-updated">Loading…</span>
-      <!-- Join is now inline on the dashboard -->
-<button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
+      <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px">↻</button>
       <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px">⚙</button>
+      <button id="signin-topbar-btn" class="btn btn-primary" onclick="show('signin-screen')" style="padding:6px 14px;font-size:12px;display:none">Sign In</button>
+      <div id="user-badge" style="display:none;align-items:center;gap:7px;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;cursor:pointer" onclick="toggleUserMenu()" title="Account">
+        <img id="user-avatar" src="" width="22" height="22" style="border-radius:50%;display:none" />
+        <span id="user-name" style="font-size:12px;font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span style="font-size:10px;color:var(--muted)">▾</span>
+      </div>
+    </div>
+    <div id="user-menu" style="display:none;position:absolute;top:52px;right:16px;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:8px;padding:8px;z-index:500;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+      <div id="user-menu-email" style="font-size:11px;color:var(--muted);padding:4px 8px 8px;border-bottom:1px solid var(--border);margin-bottom:4px"></div>
+      <button onclick="signOut()" style="width:100%;background:none;border:none;color:var(--fg);font-size:13px;cursor:pointer;text-align:left;padding:6px 8px;border-radius:4px" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">Sign out</button>
     </div>
   </div>
 
@@ -539,6 +594,7 @@
       <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">🏆 Standings</button>
       <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">📊 All Stocks</button>
       <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">📈 Dashboard</button>
+      <button class="dash-tab" id="dt-btn-alltime"  onclick="switchDashTab('alltime')">🌟 All-Time</button>
     </div>
 
     <!-- ── TAB: STANDINGS ── -->
@@ -564,7 +620,7 @@
       <div class="slb-card">
         <div class="slb-head">
           <span>#</span><span>Ticker</span><span>Company</span>
-          <span>Performance</span><span style="text-align:right">Gain</span><span>Player</span>
+          <span>Performance</span><span style="text-align:right">Total</span><span style="text-align:right">Today</span><span>Player</span>
         </div>
         <div id="stock-leaderboard"></div>
       </div>
@@ -598,6 +654,16 @@
       </div>
     </div>
 
+    <!-- ── TAB: ALL-TIME ── -->
+    <div id="dt-alltime" class="hidden">
+      <div class="section-title">All-Time Leaderboard</div>
+      <div id="alltime-content">
+        <div style="color:var(--muted);font-size:13px;padding:20px 0">No completed seasons yet. End a season from ⚙️ Settings to start tracking all-time records.</div>
+      </div>
+      <div class="section-title" style="margin-top:28px">Previous Seasons</div>
+      <div id="seasons-archive" style="color:var(--muted);font-size:13px;padding:8px 0">No archived seasons yet.</div>
+    </div>
+
     </div><!-- /game-content -->
 
   </div>
@@ -626,10 +692,6 @@
           <label class="form-label">Game Length (weeks)</label>
           <input class="form-input" id="ps-game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
         </div>
-      </div>
-      <div style="margin-bottom:18px">
-        <label class="form-label">Admin Password <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0;font-family:inherit">(optional — protects ⚙ settings)</span></label>
-        <input class="form-input" id="ps-admin-pwd" type="password" placeholder="Leave blank for no password" />
       </div>
       <button class="btn btn-primary btn-full" onclick="submitPresetup()">Create Game →</button>
     </div>
@@ -756,22 +818,18 @@
       <button class="btn btn-secondary" onclick="closeAdmin()" style="padding:6px 10px">✕</button>
     </div>
     <div class="modal-body">
-      <div id="admin-auth">
-        <div style="margin-bottom:12px">
-          <label class="form-label">Admin Password</label>
-          <input class="form-input" id="admin-pwd-check" type="password" placeholder="Enter password"
-                 onkeydown="if(event.key==='Enter') checkAdminPwd()" />
-        </div>
-        <button class="btn btn-primary btn-full" onclick="checkAdminPwd()">Unlock Settings</button>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="resetEverything()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:var(--mono)">Forgot password? Reset game</button>
-        </div>
-      </div>
-      <div id="admin-panel" class="hidden">
+      <div id="admin-auth" class="hidden"></div>
+      <div id="admin-panel">
         <div class="modal-section">
           <div class="modal-section-title">Lock Start Prices</div>
           <div class="modal-desc">Re-lock today's prices as the game baseline. Overwrites existing start prices.</div>
           <button class="btn btn-primary" onclick="lockStartPrices()">🔒 Lock Current Prices</button>
+        </div>
+        <div class="divider" style="margin:16px 0"></div>
+        <div class="modal-section">
+          <div class="modal-section-title">End Season</div>
+          <div class="modal-desc">Archive the current season's final standings to the All-Time leaderboard. The game data is kept — use Reset to clear it.</div>
+          <button class="btn btn-secondary" onclick="endSeason()">🏁 End & Archive Season</button>
         </div>
         <div class="divider" style="margin:16px 0"></div>
         <div class="modal-section" style="margin-bottom:0">
@@ -805,12 +863,43 @@ const FIREBASE_CONFIG = {
   appId:             "1:768948529412:web:a22789c56e8627747d0851",
   measurementId:     "G-LDX3H0910C"
 };
+// ── Admin email whitelist ────────────────────────────────────────────────────
+const ADMIN_EMAILS = ['oscarelliston@gmail.com'];
+
 const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
-let db = null;
+let db   = null;
+let auth = null;
+let currentUser = null;
+
 if (USE_FIREBASE) {
   firebase.initializeApp(FIREBASE_CONFIG);
-  db = firebase.firestore();
+  db   = firebase.firestore();
+  auth = firebase.auth();
 }
+
+function isAdmin() { return ADMIN_EMAILS.includes(currentUser?.email); }
+
+function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then(() => hide('signin-screen'))
+    .catch(e => toast('Sign-in failed: ' + e.message));
+}
+function signOut() {
+  closeUserMenu();
+  auth.signOut().then(() => location.reload());
+}
+function toggleUserMenu() {
+  const m = document.getElementById('user-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+function closeUserMenu() {
+  const m = document.getElementById('user-menu');
+  if (m) m.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#user-badge') && !e.target.closest('#user-menu')) closeUserMenu();
+});
 
 // Price fetching — Vercel serverless function (Finnhub)
 async function fetchPrices(symbols) {
@@ -830,451 +919,94 @@ async function fetchPrices(symbols) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  VALID TICKERS — static list, instant validation, no API needed
-//  Covers S&P 500, NASDAQ, FTSE 100 (.L suffix), and major ETFs
+//  CATEGORY SEARCH MAP
+//  Typing a theme keyword surfaces these tickers instantly,
+//  before the live Yahoo autocomplete results arrive.
 // ═══════════════════════════════════════════════════════════
-const VALID_TICKERS = new Set([
-  // ── S&P 500 ──────────────────────────────────────────────────────────────
-  'AAPL','MSFT','NVDA','AMZN','GOOGL','GOOG','META','BRK-B','LLY','AVGO',
-  'JPM','XOM','TSLA','UNH','V','JNJ','MA','PG','HD','COST',
-  'MRK','ABBV','CVX','CRM','BAC','NFLX','AMD','WFC','KO','PEP',
-  'TMO','CSCO','ORCL','ABT','ADBE','ACN','TXN','MCD','PM','DHR',
-  'DIS','CAT','AMGN','GE','IBM','INTU','GS','RTX','QCOM','NOW',
-  'ISRG','SPGI','BLK','BKNG','SYK','PLD','AXP','TJX','GILD','LMT',
-  'MDT','SCHW','MMC','CB','T','C','BSX','MDLZ','NOC','REGN',
-  'MU','DE','LOW','AMAT','PGR','AON','VRTX','HCA','SHW','ELV',
-  'SBUX','CL','MO','BMY','ETN','CI','LRCX','ZTS','CME','APH',
-  'MSI','MMM','GD','ADI','SO','USB','NSC','HLT','PH','EW',
-  'AIG','KLAC','MCO','MAR','EMR','WM','ADP','MPC','APD','TDG',
-  'ITW','FICO','MCHP','PSX','MNST','ORLY','LULU','SRE','SNPS','CDNS',
-  'PCAR','CTAS','D','WMB','OXY','ROP','PYPL','TRV','HUM','BDX',
-  'FTNT','F','GM','TEL','NKE','URI','NXPI','DUK','COF','OTIS',
-  'CARR','NEM','WELL','EXC','GIS','TRGP','WEC','PAYX','CBRE','FAST',
-  'KMB','ECL','ED','VRSK','PPG','STZ','DG','TFC','HIG','RSG',
-  'KEYS','IDXX','ROK','PEG','ES','WST','ANSS','BR','ROST','HPE',
-  'ODFL','PCG','SBAC','AME','BKR','EQT','MTD','SNA','GLW','FSLR',
-  'GRMN','HPQ','CDW','VLO','BIIB','EFX','ENPH','FTV','MTB','NTAP',
-  'GPN','AWK','MOH','AVB','EQR','WTW','CTSH','FANG','LIN','BALL',
-  'IR','WY','MKC','INVH','SUI','LYV','APTV','STLD','HES','FDS',
-  'IQV','CBOE','DRI','TROW','TTWO','DVN','XYL','ARE','IT','NVR',
-  'JBHT','CLX','NUE','RMD','MLM','EXPD','SYY','APA','DECK','AKAM',
-  'ROL','NDAQ','TT','IPG','HBAN','RF','FITB','EG','CCI','EQIX',
-  'AMT','PSA','SWK','BAX','PPL','LKQ','JCI','SAIC','LDOS','VTRS',
-  'IP','SWKS','ZBRA','PTC','WRB','CINF','AEE','OKE','CSGP','PNR',
-  'AXON','GDDY','GPC','LUV','DAL','UAL','AAL','ALK','JBLU','ULTA',
-  'EL','BBWI','TPR','PVH','RL','VFC','ANF','URBN','GPS','AN',
-  'KMX','POOL','RH','WSM','ETSY','EBAY','CHWY','BBY','ALGN','HOLX',
-  'PRGO','WAT','A','PODD','PFE','CNC','TGT','AAP','AZO',
-  'PRU','MET','AFL','ALL','L','GL','AIZ','RE','RNR','ACGL',
-  'AJG','BRO','ERIE','WEX','BK','STT','NTRS','KEY','CFG','ALLY',
-  'SYF','DFS','ZION','CMA','FHN','IBOC','FFIN','FCX','VMC',
-  'MOS','CF','IFF','ALB','EMN','HUN','CC','OLN','FMC','RS',
-  'BA','LHX','TDG','HII','UPS','FDX','CHRW','XPO','SAIA',
-  'CSX','UNP','NSC','WAB','ROK','AME','HUBB','ALLE','GNRC',
-  'NEE','DUK','SO','AEP','SRE','XEL','WEC','DTE','FE','ETR',
-  'EIX','CMS','NI','LNT','EVRG','AES','CNP','PNW','AWK',
-  'EQR','AVB','BXP','VTR','O','SPG','KIM','REG','FRT','ESS',
-  'UDR','NNN','VICI','GLPI','STAG','EXR','CUBE','ELS','MAA','CPT','AMH',
-  'MRNA','BNTX','ILMN','GEHC','INCY','ALNY','EXAS','GH','PODD',
-  'AXON','GDDY','TRMB','PAYC','VEEV','HUBS','SMAR','GTLB','DDOG',
-  // ── NASDAQ / high-growth / popular ───────────────────────────────────────
-  'COIN','MELI','ZM','DOCU','OKTA','CRWD','ZS','NET','SNOW','MDB',
-  'TEAM','SHOP','ABNB','LYFT','UBER','DASH','RBLX','U','PLTR','BILL',
-  'S','WIX','ZI','APPF','PCTY','TOST','FRSH','BRZE','CFLT','AFRM',
-  'UPST','SOFI','HOOD','COUR','DUOL','BMBL','IONQ','PATH','AI','SMCI',
-  'MARA','RIOT','BITF','HUT','CLSK','IREN','BTBT','MSTR',
-  'GME','AMC','BB','SPCE','LCID','RIVN','NIO','LI','XPEV','NKLA',
-  'BLNK','CHPT','EVGO','SNAP','PINS','SPOT','SQ','HOOD',
-  // ── FTSE 100 (.L suffix = London Stock Exchange) ────────────────────────
-  'AZN.L','HSBA.L','SHEL.L','ULVR.L','BP.L','RIO.L','GSK.L','DGE.L',
-  'LSEG.L','NG.L','VOD.L','BT-A.L','BARC.L','LLOY.L','NWG.L','STAN.L',
-  'PRU.L','AV.L','LGEN.L','IMB.L','BATS.L','RR.L','BA.L','REL.L',
-  'EXPN.L','HLMA.L','CRH.L','AAL.L','ANTO.L','GLEN.L','BHP.L','FRES.L',
-  'MNG.L','ABDN.L','SSE.L','SVT.L','UU.L','CNA.L','JD.L','NEXT.L',
-  'MKS.L','SBRY.L','TSCO.L','ABF.L','WPP.L','ITV.L','RMV.L','AUTO.L',
-  'IHG.L','MNDI.L','PSN.L','TW.L','BDEV.L','BKG.L','LAND.L','SGRO.L',
-  'BLND.L','CRDA.L','RKT.L','AHT.L','SDR.L','WTB.L','SN.L','PHNX.L',
-  'OCDO.L','KGF.L','DPLM.L','III.L','CPG.L','BRBY.L','CCH.L','ITRK.L',
-  'HMSO.L','HL.L','IAG.L','EZJ.L','IMI.L','WEIR.L','SMT.L','ENT.L',
-  'TUI.L','OSB.L','SPX.L','WDS.L','FCIT.L','ADM.L','AGK.L','SKG.L',
-  'HWDN.L','MNDI.L','SMDS.L','RS1.L','DARK.L','UTG.L','TATE.L','SGRO.L',
-  // ── Major ETFs ────────────────────────────────────────────────────────────
-  'SPY','VOO','IVV','QQQ','VTI','VEA','VWO','EFA','EEM','GLD',
-  'SLV','GDX','GDXJ','TLT','IEF','SHY','HYG','JNK','LQD','AGG',
-  'BND','BNDX','VIG','VYM','DVY','NOBL','DGRO','SCHD','JEPI','JEPQ',
-  'DIVO','SDY','VNQ','XLRE','XLK','XLF','XLV','XLE','XLY','XLP',
-  'XLI','XLB','XLU','XLC','IWM','IWB','IWF','IWD','MDY','RSP',
-  'SPLG','SCHX','SCHF','SCHB','SCHA','VB','VO','VV','VXUS','VT',
-  'ACWI','QUAL','MTUM','USMV','VLUE','VHT','IBB','XBI','ARKG','ARKK',
-  'ARKW','ARKF','ARKQ','BOTZ','ROBO','IGV','SKYY','CLOU','HACK','LIT',
-  'COPX','SIL','IAU','GLDM','CPER','SIVR','UNG','USO','UCO','BNO',
-  'TQQQ','SQQQ','UPRO','SPXU','UDOW','SDOW','TNA','TZA','SPXL','SPXS',
-  'SOXL','SOXS','TECL','TECS','FXI','MCHI','KWEB','ASHR','EWZ','EWT',
-  'EWY','EWJ','EWH','EWA','EWC','EWG','EWU','EWI','EWQ','EWP',
-  'EWN','EWL','EWD','EWO','EWK','EPHE','EWM','TUR','EWW','EPU',
-  'EZA','ECH','ARGT','GXG','FM','VGT','IYW','SOXX','FTEC','IGM',
-  'FINX','IPAY','KBWB','KRE','KBE','MUB','VTEB','GOVT','VGIT','VGLT',
-  'VGSH','VTIP','SCHP','TIP','VNQI','IEMG','SCHE','DEM','IEFA','IDEV',
-]);
-// ═══════════════════════════════════════════════════════════
-//  TICKER NAMES  — ticker → { n: company name, e: exchange label }
-//  Used for the autocomplete search dropdown on the setup screen
-// ═══════════════════════════════════════════════════════════
-const TICKER_NAMES = {
-  // ── US Large-Cap Tech ────────────────────────────────────
-  'AAPL':  {n:'Apple Inc.',                       e:'NASDAQ'},
-  'MSFT':  {n:'Microsoft Corp.',                  e:'NASDAQ'},
-  'NVDA':  {n:'NVIDIA Corp.',                     e:'NASDAQ'},
-  'AMZN':  {n:'Amazon.com Inc.',                  e:'NASDAQ'},
-  'GOOGL': {n:'Alphabet Inc. (Class A)',           e:'NASDAQ'},
-  'GOOG':  {n:'Alphabet Inc. (Class C)',           e:'NASDAQ'},
-  'META':  {n:'Meta Platforms Inc.',               e:'NASDAQ'},
-  'TSLA':  {n:'Tesla Inc.',                        e:'NASDAQ'},
-  'AVGO':  {n:'Broadcom Inc.',                     e:'NASDAQ'},
-  'ORCL':  {n:'Oracle Corp.',                      e:'NYSE'},
-  'CSCO':  {n:'Cisco Systems Inc.',                e:'NASDAQ'},
-  'ADBE':  {n:'Adobe Inc.',                        e:'NASDAQ'},
-  'CRM':   {n:'Salesforce Inc.',                   e:'NYSE'},
-  'AMD':   {n:'Advanced Micro Devices',            e:'NASDAQ'},
-  'INTC':  {n:'Intel Corp.',                       e:'NASDAQ'},
-  'QCOM':  {n:'Qualcomm Inc.',                     e:'NASDAQ'},
-  'TXN':   {n:'Texas Instruments Inc.',            e:'NASDAQ'},
-  'AMAT':  {n:'Applied Materials Inc.',            e:'NASDAQ'},
-  'LRCX':  {n:'Lam Research Corp.',               e:'NASDAQ'},
-  'KLAC':  {n:'KLA Corp.',                         e:'NASDAQ'},
-  'MU':    {n:'Micron Technology Inc.',            e:'NASDAQ'},
-  'NXPI':  {n:'NXP Semiconductors NV',             e:'NASDAQ'},
-  'INTU':  {n:'Intuit Inc.',                       e:'NASDAQ'},
-  'SNOW':  {n:'Snowflake Inc.',                    e:'NYSE'},
-  'NOW':   {n:'ServiceNow Inc.',                   e:'NYSE'},
-  'CRWD':  {n:'CrowdStrike Holdings',              e:'NASDAQ'},
-  'FTNT':  {n:'Fortinet Inc.',                     e:'NASDAQ'},
-  'PANW':  {n:'Palo Alto Networks',                e:'NASDAQ'},
-  'ZS':    {n:'Zscaler Inc.',                      e:'NASDAQ'},
-  'NET':   {n:'Cloudflare Inc.',                   e:'NYSE'},
-  'DDOG':  {n:'Datadog Inc.',                      e:'NASDAQ'},
-  'MDB':   {n:'MongoDB Inc.',                      e:'NASDAQ'},
-  'TEAM':  {n:'Atlassian Corp.',                   e:'NASDAQ'},
-  'OKTA':  {n:'Okta Inc.',                         e:'NASDAQ'},
-  'DOCU':  {n:'DocuSign Inc.',                     e:'NASDAQ'},
-  'ZM':    {n:'Zoom Video Communications',         e:'NASDAQ'},
-  'VEEV':  {n:'Veeva Systems Inc.',                e:'NYSE'},
-  'HUBS':  {n:'HubSpot Inc.',                      e:'NYSE'},
-  'PLTR':  {n:'Palantir Technologies',             e:'NYSE'},
-  'PATH':  {n:'UiPath Inc.',                       e:'NYSE'},
-  'AI':    {n:'C3.ai Inc.',                        e:'NYSE'},
-  'SMCI':  {n:'Super Micro Computer',              e:'NASDAQ'},
-  // ── US Finance ───────────────────────────────────────────
-  'JPM':   {n:'JPMorgan Chase & Co.',              e:'NYSE'},
-  'BAC':   {n:'Bank of America Corp.',             e:'NYSE'},
-  'WFC':   {n:'Wells Fargo & Co.',                 e:'NYSE'},
-  'GS':    {n:'Goldman Sachs Group',               e:'NYSE'},
-  'MS':    {n:'Morgan Stanley',                    e:'NYSE'},
-  'C':     {n:'Citigroup Inc.',                    e:'NYSE'},
-  'BLK':   {n:'BlackRock Inc.',                    e:'NYSE'},
-  'SCHW':  {n:'Charles Schwab Corp.',              e:'NYSE'},
-  'AXP':   {n:'American Express Co.',              e:'NYSE'},
-  'V':     {n:'Visa Inc.',                         e:'NYSE'},
-  'MA':    {n:'Mastercard Inc.',                   e:'NYSE'},
-  'PYPL':  {n:'PayPal Holdings Inc.',              e:'NASDAQ'},
-  'SQ':    {n:'Block Inc. (Square)',               e:'NYSE'},
-  'HOOD':  {n:'Robinhood Markets',                 e:'NASDAQ'},
-  'COIN':  {n:'Coinbase Global Inc.',              e:'NASDAQ'},
-  'MSTR':  {n:'MicroStrategy Inc.',                e:'NASDAQ'},
-  'SOFI':  {n:'SoFi Technologies Inc.',            e:'NASDAQ'},
-  'AFRM':  {n:'Affirm Holdings Inc.',              e:'NASDAQ'},
-  'UPST':  {n:'Upstart Holdings Inc.',             e:'NASDAQ'},
-  'SPGI':  {n:'S&P Global Inc.',                   e:'NYSE'},
-  'MCO':   {n:'Moody\'s Corp.',                    e:'NYSE'},
-  'CME':   {n:'CME Group Inc.',                    e:'NASDAQ'},
-  'CBOE':  {n:'Cboe Global Markets',               e:'NASDAQ'},
-  'PRU':   {n:'Prudential Financial',              e:'NYSE'},
-  'MET':   {n:'MetLife Inc.',                      e:'NYSE'},
-  'AFL':   {n:'Aflac Inc.',                        e:'NYSE'},
-  'ALL':   {n:'Allstate Corp.',                    e:'NYSE'},
-  'TRV':   {n:'Travelers Companies',               e:'NYSE'},
-  'BRK-B': {n:'Berkshire Hathaway (Class B)',      e:'NYSE'},
-  // ── US Healthcare ────────────────────────────────────────
-  'JNJ':   {n:'Johnson & Johnson',                 e:'NYSE'},
-  'UNH':   {n:'UnitedHealth Group Inc.',           e:'NYSE'},
-  'LLY':   {n:'Eli Lilly and Co.',                 e:'NYSE'},
-  'PFE':   {n:'Pfizer Inc.',                       e:'NYSE'},
-  'ABBV':  {n:'AbbVie Inc.',                       e:'NYSE'},
-  'MRK':   {n:'Merck & Co. Inc.',                  e:'NYSE'},
-  'BMY':   {n:'Bristol-Myers Squibb',              e:'NYSE'},
-  'AMGN':  {n:'Amgen Inc.',                        e:'NASDAQ'},
-  'GILD':  {n:'Gilead Sciences Inc.',              e:'NASDAQ'},
-  'BIIB':  {n:'Biogen Inc.',                       e:'NASDAQ'},
-  'REGN':  {n:'Regeneron Pharmaceuticals',         e:'NASDAQ'},
-  'VRTX':  {n:'Vertex Pharmaceuticals',            e:'NASDAQ'},
-  'MRNA':  {n:'Moderna Inc.',                      e:'NASDAQ'},
-  'BNTX':  {n:'BioNTech SE',                       e:'NASDAQ'},
-  'ILMN':  {n:'Illumina Inc.',                     e:'NASDAQ'},
-  'TMO':   {n:'Thermo Fisher Scientific',          e:'NYSE'},
-  'DHR':   {n:'Danaher Corp.',                     e:'NYSE'},
-  'ABT':   {n:'Abbott Laboratories',              e:'NYSE'},
-  'MDT':   {n:'Medtronic plc',                     e:'NYSE'},
-  'ISRG':  {n:'Intuitive Surgical Inc.',           e:'NASDAQ'},
-  'BSX':   {n:'Boston Scientific Corp.',           e:'NYSE'},
-  'EW':    {n:'Edwards Lifesciences',              e:'NYSE'},
-  'SYK':   {n:'Stryker Corp.',                     e:'NYSE'},
-  'ZTS':   {n:'Zoetis Inc.',                       e:'NYSE'},
-  'HCA':   {n:'HCA Healthcare Inc.',               e:'NYSE'},
-  'HUM':   {n:'Humana Inc.',                       e:'NYSE'},
-  'ELV':   {n:'Elevance Health Inc.',              e:'NYSE'},
-  'CNC':   {n:'Centene Corp.',                     e:'NYSE'},
-  // ── US Consumer / Retail ─────────────────────────────────
-  'WMT':   {n:'Walmart Inc.',                      e:'NYSE'},
-  'TGT':   {n:'Target Corp.',                      e:'NYSE'},
-  'COST':  {n:'Costco Wholesale Corp.',            e:'NASDAQ'},
-  'HD':    {n:'Home Depot Inc.',                   e:'NYSE'},
-  'LOW':   {n:'Lowe\'s Companies Inc.',            e:'NYSE'},
-  'MCD':   {n:'McDonald\'s Corp.',                 e:'NYSE'},
-  'SBUX':  {n:'Starbucks Corp.',                   e:'NASDAQ'},
-  'NKE':   {n:'Nike Inc.',                         e:'NYSE'},
-  'LULU':  {n:'Lululemon Athletica Inc.',          e:'NASDAQ'},
-  'TJX':   {n:'TJX Companies Inc.',                e:'NYSE'},
-  'ROST':  {n:'Ross Stores Inc.',                  e:'NASDAQ'},
-  'DG':    {n:'Dollar General Corp.',              e:'NYSE'},
-  'KO':    {n:'Coca-Cola Co.',                     e:'NYSE'},
-  'PEP':   {n:'PepsiCo Inc.',                      e:'NASDAQ'},
-  'PM':    {n:'Philip Morris International',       e:'NYSE'},
-  'MO':    {n:'Altria Group Inc.',                 e:'NYSE'},
-  'MDLZ':  {n:'Mondelez International',            e:'NASDAQ'},
-  'PG':    {n:'Procter & Gamble Co.',              e:'NYSE'},
-  'CL':    {n:'Colgate-Palmolive Co.',             e:'NYSE'},
-  'KMB':   {n:'Kimberly-Clark Corp.',              e:'NYSE'},
-  'EL':    {n:'Estée Lauder Companies',            e:'NYSE'},
-  'ULTA':  {n:'Ulta Beauty Inc.',                  e:'NASDAQ'},
-  'ETSY':  {n:'Etsy Inc.',                         e:'NASDAQ'},
-  'EBAY':  {n:'eBay Inc.',                         e:'NASDAQ'},
-  'CHWY':  {n:'Chewy Inc.',                        e:'NYSE'},
-  'SHOP':  {n:'Shopify Inc.',                      e:'NYSE'},
-  'BBY':   {n:'Best Buy Co. Inc.',                 e:'NYSE'},
-  'ANF':   {n:'Abercrombie & Fitch Co.',           e:'NYSE'},
-  'GPS':   {n:'Gap Inc.',                          e:'NYSE'},
-  'AZO':   {n:'AutoZone Inc.',                     e:'NYSE'},
-  'ORLY':  {n:'O\'Reilly Automotive Inc.',         e:'NASDAQ'},
-  'POOL':  {n:'Pool Corp.',                        e:'NASDAQ'},
-  'RH':    {n:'RH (Restoration Hardware)',         e:'NYSE'},
-  'WSM':   {n:'Williams-Sonoma Inc.',              e:'NYSE'},
-  'DRI':   {n:'Darden Restaurants Inc.',           e:'NYSE'},
-  'YUM':   {n:'Yum! Brands Inc.',                  e:'NYSE'},
-  'CMG':   {n:'Chipotle Mexican Grill',            e:'NYSE'},
-  // ── US Energy ────────────────────────────────────────────
-  'XOM':   {n:'Exxon Mobil Corp.',                 e:'NYSE'},
-  'CVX':   {n:'Chevron Corp.',                     e:'NYSE'},
-  'COP':   {n:'ConocoPhillips',                    e:'NYSE'},
-  'SLB':   {n:'SLB (Schlumberger)',                e:'NYSE'},
-  'HAL':   {n:'Halliburton Co.',                   e:'NYSE'},
-  'OXY':   {n:'Occidental Petroleum Corp.',        e:'NYSE'},
-  'DVN':   {n:'Devon Energy Corp.',                e:'NYSE'},
-  'FANG':  {n:'Diamondback Energy Inc.',           e:'NASDAQ'},
-  'HES':   {n:'Hess Corp.',                        e:'NYSE'},
-  'BKR':   {n:'Baker Hughes Co.',                  e:'NASDAQ'},
-  'PSX':   {n:'Phillips 66',                       e:'NYSE'},
-  'MPC':   {n:'Marathon Petroleum Corp.',          e:'NYSE'},
-  'VLO':   {n:'Valero Energy Corp.',               e:'NYSE'},
-  'NEE':   {n:'NextEra Energy Inc.',               e:'NYSE'},
-  'SO':    {n:'Southern Co.',                      e:'NYSE'},
-  'DUK':   {n:'Duke Energy Corp.',                 e:'NYSE'},
-  'AEP':   {n:'American Electric Power',           e:'NASDAQ'},
-  'SRE':   {n:'Sempra',                            e:'NYSE'},
-  'EXC':   {n:'Exelon Corp.',                      e:'NASDAQ'},
-  'ENPH':  {n:'Enphase Energy Inc.',               e:'NASDAQ'},
-  'FSLR':  {n:'First Solar Inc.',                  e:'NASDAQ'},
-  // ── US Industrials ───────────────────────────────────────
-  'BA':    {n:'Boeing Co.',                        e:'NYSE'},
-  'CAT':   {n:'Caterpillar Inc.',                  e:'NYSE'},
-  'DE':    {n:'John Deere & Co.',                  e:'NYSE'},
-  'GE':    {n:'GE Aerospace',                      e:'NYSE'},
-  'HON':   {n:'Honeywell International',           e:'NASDAQ'},
-  'MMM':   {n:'3M Co.',                            e:'NYSE'},
-  'RTX':   {n:'RTX Corp.',                         e:'NYSE'},
-  'LMT':   {n:'Lockheed Martin Corp.',             e:'NYSE'},
-  'GD':    {n:'General Dynamics Corp.',            e:'NYSE'},
-  'NOC':   {n:'Northrop Grumman Corp.',            e:'NYSE'},
-  'UPS':   {n:'United Parcel Service',             e:'NYSE'},
-  'FDX':   {n:'FedEx Corp.',                       e:'NYSE'},
-  'DAL':   {n:'Delta Air Lines Inc.',              e:'NYSE'},
-  'UAL':   {n:'United Airlines Holdings',          e:'NASDAQ'},
-  'AAL':   {n:'American Airlines Group',           e:'NASDAQ'},
-  'LUV':   {n:'Southwest Airlines Co.',            e:'NYSE'},
-  'ALK':   {n:'Alaska Air Group Inc.',             e:'NYSE'},
-  'CSX':   {n:'CSX Corp.',                         e:'NASDAQ'},
-  'UNP':   {n:'Union Pacific Corp.',               e:'NYSE'},
-  'NSC':   {n:'Norfolk Southern Corp.',            e:'NYSE'},
-  'WM':    {n:'Waste Management Inc.',             e:'NYSE'},
-  'ITW':   {n:'Illinois Tool Works Inc.',          e:'NYSE'},
-  'EMR':   {n:'Emerson Electric Co.',              e:'NYSE'},
-  'ETN':   {n:'Eaton Corp. plc',                   e:'NYSE'},
-  'PH':    {n:'Parker Hannifin Corp.',             e:'NYSE'},
-  // ── Media / Telecom / Entertainment ─────────────────────
-  'DIS':   {n:'Walt Disney Co.',                   e:'NYSE'},
-  'NFLX':  {n:'Netflix Inc.',                      e:'NASDAQ'},
-  'SPOT':  {n:'Spotify Technology SA',             e:'NYSE'},
-  'SNAP':  {n:'Snap Inc.',                         e:'NYSE'},
-  'PINS':  {n:'Pinterest Inc.',                    e:'NYSE'},
-  'RBLX':  {n:'Roblox Corp.',                      e:'NYSE'},
-  'U':     {n:'Unity Software Inc.',               e:'NYSE'},
-  'TTWO':  {n:'Take-Two Interactive Software',     e:'NASDAQ'},
-  'EA':    {n:'Electronic Arts Inc.',              e:'NASDAQ'},
-  'CMCSA': {n:'Comcast Corp.',                     e:'NASDAQ'},
-  'T':     {n:'AT&T Inc.',                         e:'NYSE'},
-  'VZ':    {n:'Verizon Communications',            e:'NYSE'},
-  'TMUS':  {n:'T-Mobile US Inc.',                  e:'NASDAQ'},
-  'NDAQ':  {n:'Nasdaq Inc.',                       e:'NASDAQ'},
-  // ── EV / Mobility ────────────────────────────────────────
-  'RIVN':  {n:'Rivian Automotive Inc.',            e:'NASDAQ'},
-  'LCID':  {n:'Lucid Group Inc.',                  e:'NASDAQ'},
-  'NIO':   {n:'NIO Inc.',                          e:'NYSE'},
-  'LI':    {n:'Li Auto Inc.',                      e:'NASDAQ'},
-  'XPEV':  {n:'XPeng Inc.',                        e:'NYSE'},
-  'UBER':  {n:'Uber Technologies Inc.',            e:'NYSE'},
-  'LYFT':  {n:'Lyft Inc.',                         e:'NASDAQ'},
-  'DASH':  {n:'DoorDash Inc.',                     e:'NYSE'},
-  'BLNK':  {n:'Blink Charging Co.',               e:'NASDAQ'},
-  'CHPT':  {n:'ChargePoint Holdings',              e:'NYSE'},
-  'EVGO':  {n:'EVgo Inc.',                         e:'NASDAQ'},
-  // ── Crypto / Speculative ─────────────────────────────────
-  'MARA':  {n:'MARA Holdings (Bitcoin Mining)',    e:'NASDAQ'},
-  'RIOT':  {n:'Riot Platforms (Bitcoin Mining)',   e:'NASDAQ'},
-  'COIN':  {n:'Coinbase Global Inc.',              e:'NASDAQ'},
-  'MSTR':  {n:'MicroStrategy (Bitcoin Treasury)',  e:'NASDAQ'},
-  'GME':   {n:'GameStop Corp.',                    e:'NYSE'},
-  'AMC':   {n:'AMC Entertainment Holdings',       e:'NYSE'},
-  'BB':    {n:'BlackBerry Ltd.',                   e:'NYSE'},
-  // ── FTSE 100 (London Stock Exchange) ─────────────────────
-  'AZN.L':  {n:'AstraZeneca plc',                 e:'LSE'},
-  'HSBA.L': {n:'HSBC Holdings plc',               e:'LSE'},
-  'SHEL.L': {n:'Shell plc',                       e:'LSE'},
-  'ULVR.L': {n:'Unilever plc',                    e:'LSE'},
-  'BP.L':   {n:'BP plc',                          e:'LSE'},
-  'RIO.L':  {n:'Rio Tinto plc',                   e:'LSE'},
-  'GSK.L':  {n:'GSK plc',                         e:'LSE'},
-  'DGE.L':  {n:'Diageo plc',                      e:'LSE'},
-  'LSEG.L': {n:'London Stock Exchange Group',     e:'LSE'},
-  'NG.L':   {n:'National Grid plc',               e:'LSE'},
-  'VOD.L':  {n:'Vodafone Group plc',              e:'LSE'},
-  'BT-A.L': {n:'BT Group plc',                    e:'LSE'},
-  'BARC.L': {n:'Barclays plc',                    e:'LSE'},
-  'LLOY.L': {n:'Lloyds Banking Group',            e:'LSE'},
-  'NWG.L':  {n:'NatWest Group plc',               e:'LSE'},
-  'STAN.L': {n:'Standard Chartered plc',          e:'LSE'},
-  'PRU.L':  {n:'Prudential plc',                  e:'LSE'},
-  'AV.L':   {n:'Aviva plc',                       e:'LSE'},
-  'LGEN.L': {n:'Legal & General Group',           e:'LSE'},
-  'IMB.L':  {n:'Imperial Brands plc',             e:'LSE'},
-  'BATS.L': {n:'British American Tobacco',        e:'LSE'},
-  'RR.L':   {n:'Rolls-Royce Holdings',            e:'LSE'},
-  'BA.L':   {n:'BAE Systems plc',                 e:'LSE'},
-  'REL.L':  {n:'RELX plc',                        e:'LSE'},
-  'EXPN.L': {n:'Experian plc',                    e:'LSE'},
-  'HLMA.L': {n:'Halma plc',                       e:'LSE'},
-  'CRH.L':  {n:'CRH plc',                         e:'LSE'},
-  'AAL.L':  {n:'Anglo American plc',              e:'LSE'},
-  'ANTO.L': {n:'Antofagasta plc',                 e:'LSE'},
-  'GLEN.L': {n:'Glencore plc',                    e:'LSE'},
-  'BHP.L':  {n:'BHP Group plc',                   e:'LSE'},
-  'FRES.L': {n:'Fresnillo plc',                   e:'LSE'},
-  'MNG.L':  {n:'M&G plc',                         e:'LSE'},
-  'SSE.L':  {n:'SSE plc',                         e:'LSE'},
-  'SVT.L':  {n:'Severn Trent plc',                e:'LSE'},
-  'UU.L':   {n:'United Utilities Group',          e:'LSE'},
-  'JD.L':   {n:'JD Sports Fashion plc',           e:'LSE'},
-  'NEXT.L': {n:'Next plc',                        e:'LSE'},
-  'MKS.L':  {n:'Marks & Spencer Group',           e:'LSE'},
-  'SBRY.L': {n:'J Sainsbury plc',                 e:'LSE'},
-  'TSCO.L': {n:'Tesco plc',                       e:'LSE'},
-  'ABF.L':  {n:'Associated British Foods',        e:'LSE'},
-  'WPP.L':  {n:'WPP plc',                         e:'LSE'},
-  'IHG.L':  {n:'InterContinental Hotels Group',   e:'LSE'},
-  'PSN.L':  {n:'Persimmon plc',                   e:'LSE'},
-  'TW.L':   {n:'Taylor Wimpey plc',               e:'LSE'},
-  'BDEV.L': {n:'Barratt Developments plc',        e:'LSE'},
-  'BKG.L':  {n:'Berkeley Group Holdings',         e:'LSE'},
-  'SGRO.L': {n:'Segro plc',                       e:'LSE'},
-  'OCDO.L': {n:'Ocado Group plc',                 e:'LSE'},
-  'KGF.L':  {n:'Kingfisher plc',                  e:'LSE'},
-  'BRBY.L': {n:'Burberry Group plc',              e:'LSE'},
-  'IAG.L':  {n:'International Airlines Group',    e:'LSE'},
-  'EZJ.L':  {n:'easyJet plc',                     e:'LSE'},
-  'SMT.L':  {n:'Scottish Mortgage Investment Trust', e:'LSE'},
-  'HL.L':   {n:'Hargreaves Lansdown plc',         e:'LSE'},
-  'ABDN.L': {n:'abrdn plc',                       e:'LSE'},
-  'CNA.L':  {n:'Centrica plc',                    e:'LSE'},
-  'IMI.L':  {n:'IMI plc',                         e:'LSE'},
-  'WEIR.L': {n:'Weir Group plc',                  e:'LSE'},
-  // ── Major ETFs ───────────────────────────────────────────
-  'SPY':   {n:'SPDR S&P 500 ETF',                 e:'ETF'},
-  'VOO':   {n:'Vanguard S&P 500 ETF',             e:'ETF'},
-  'IVV':   {n:'iShares Core S&P 500 ETF',         e:'ETF'},
-  'QQQ':   {n:'Invesco QQQ Trust (NASDAQ-100)',   e:'ETF'},
-  'VTI':   {n:'Vanguard Total Stock Market ETF',  e:'ETF'},
-  'VEA':   {n:'Vanguard FTSE Developed Markets',  e:'ETF'},
-  'VWO':   {n:'Vanguard FTSE Emerging Markets',   e:'ETF'},
-  'EFA':   {n:'iShares MSCI EAFE ETF',            e:'ETF'},
-  'EEM':   {n:'iShares MSCI Emerging Markets',    e:'ETF'},
-  'GLD':   {n:'SPDR Gold Shares',                 e:'ETF'},
-  'SLV':   {n:'iShares Silver Trust',             e:'ETF'},
-  'IAU':   {n:'iShares Gold Trust',               e:'ETF'},
-  'TLT':   {n:'iShares 20+ Year Treasury Bond',   e:'ETF'},
-  'IEF':   {n:'iShares 7-10 Year Treasury ETF',   e:'ETF'},
-  'HYG':   {n:'iShares iBoxx High Yield Corp.',   e:'ETF'},
-  'AGG':   {n:'iShares Core US Aggregate Bond',   e:'ETF'},
-  'BND':   {n:'Vanguard Total Bond Market ETF',   e:'ETF'},
-  'IWM':   {n:'iShares Russell 2000 ETF',         e:'ETF'},
-  'SCHD':  {n:'Schwab US Dividend Equity ETF',    e:'ETF'},
-  'JEPI':  {n:'JPMorgan Equity Premium Income',   e:'ETF'},
-  'JEPQ':  {n:'JPMorgan NASDAQ Equity Premium',   e:'ETF'},
-  'VNQ':   {n:'Vanguard Real Estate ETF',         e:'ETF'},
-  'XLK':   {n:'Technology Select Sector SPDR',    e:'ETF'},
-  'XLF':   {n:'Financial Select Sector SPDR',     e:'ETF'},
-  'XLV':   {n:'Health Care Select Sector SPDR',   e:'ETF'},
-  'XLE':   {n:'Energy Select Sector SPDR',        e:'ETF'},
-  'XLY':   {n:'Consumer Discretionary SPDR',      e:'ETF'},
-  'XLP':   {n:'Consumer Staples Select SPDR',     e:'ETF'},
-  'XLI':   {n:'Industrial Select Sector SPDR',    e:'ETF'},
-  'XLB':   {n:'Materials Select Sector SPDR',     e:'ETF'},
-  'XLU':   {n:'Utilities Select Sector SPDR',     e:'ETF'},
-  'XLC':   {n:'Communication Services SPDR',      e:'ETF'},
-  'TQQQ':  {n:'ProShares UltraPro QQQ (3x Long)', e:'ETF'},
-  'SQQQ':  {n:'ProShares UltraPro Short QQQ (3x)',e:'ETF'},
-  'UPRO':  {n:'ProShares UltraPro S&P500 (3x)',   e:'ETF'},
-  'SPXU':  {n:'ProShares UltraPro Short S&P500',  e:'ETF'},
-  'ARKK':  {n:'ARK Innovation ETF',               e:'ETF'},
-  'ARKG':  {n:'ARK Genomic Revolution ETF',       e:'ETF'},
-  'ARKW':  {n:'ARK Next Generation Internet ETF', e:'ETF'},
-  'ARKF':  {n:'ARK Fintech Innovation ETF',       e:'ETF'},
-  'SOXL':  {n:'Direxion Semiconductors Bull 3x',  e:'ETF'},
-  'SOXS':  {n:'Direxion Semiconductors Bear 3x',  e:'ETF'},
-  'IBB':   {n:'iShares Biotechnology ETF',        e:'ETF'},
-  'XBI':   {n:'SPDR S&P Biotech ETF',             e:'ETF'},
-  'FXI':   {n:'iShares China Large-Cap ETF',      e:'ETF'},
-  'MCHI':  {n:'iShares MSCI China ETF',           e:'ETF'},
-  'KWEB':  {n:'KraneShares China Internet ETF',   e:'ETF'},
-  'EWZ':   {n:'iShares MSCI Brazil ETF',          e:'ETF'},
-  'EWJ':   {n:'iShares MSCI Japan ETF',           e:'ETF'},
-  'EWY':   {n:'iShares MSCI South Korea ETF',     e:'ETF'},
-  'EWU':   {n:'iShares MSCI United Kingdom ETF',  e:'ETF'},
-  'EWG':   {n:'iShares MSCI Germany ETF',         e:'ETF'},
-  'EWT':   {n:'iShares MSCI Taiwan ETF',          e:'ETF'},
-  'VGT':   {n:'Vanguard Information Technology ETF', e:'ETF'},
-  'SOXX':  {n:'iShares Semiconductor ETF',        e:'ETF'},
-  'BOTZ':  {n:'Global X Robotics & AI ETF',       e:'ETF'},
+const CATEGORY_MAP = {
+  'electric cars':        ['TSLA','RIVN','NIO','LCID','XPEV'],
+  'ev':                   ['TSLA','RIVN','NIO','LCID','XPEV'],
+  'electric vehicles':    ['TSLA','RIVN','NIO','LCID','XPEV'],
+  'ai':                   ['NVDA','MSFT','GOOGL','META','AMD','PLTR','ORCL'],
+  'artificial intelligence': ['NVDA','MSFT','GOOGL','META','AMD','PLTR'],
+  'defence':              ['LMT','RTX','NOC','GD','BA','BA.L'],
+  'defense':              ['LMT','RTX','NOC','GD','BA'],
+  'military':             ['LMT','RTX','NOC','GD','BA'],
+  'oil':                  ['XOM','CVX','BP.L','SHEL.L','COP','OXY'],
+  'energy':               ['XOM','CVX','BP.L','SHEL.L','NEE','ENPH'],
+  'petroleum':            ['XOM','CVX','BP.L','SHEL.L','COP'],
+  'banks':                ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L'],
+  'banking':              ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L'],
+  'finance':              ['JPM','BAC','GS','V','MA','PYPL'],
+  'tech':                 ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
+  'technology':           ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
+  'pharma':               ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L'],
+  'pharmaceutical':       ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L'],
+  'healthcare':           ['JNJ','UNH','ABT','MDT','AZN.L','GSK.L'],
+  'crypto':               ['COIN','MSTR','RIOT','MARA'],
+  'bitcoin':              ['COIN','MSTR','RIOT','MARA'],
+  'blockchain':           ['COIN','MSTR','RIOT','MARA'],
+  'retail':               ['AMZN','WMT','TGT','COST'],
+  'shopping':             ['AMZN','WMT','TGT','COST'],
+  'streaming':            ['NFLX','DIS','SPOT','WBD'],
+  'media':                ['NFLX','DIS','PARA','WBD'],
+  'entertainment':        ['NFLX','DIS','SPOT','EA'],
+  'space':                ['BA','LMT','NOC'],
+  'aerospace':            ['BA','LMT','NOC','RTX'],
+  'food':                 ['MCD','SBUX','YUM','CMG'],
+  'restaurants':          ['MCD','SBUX','YUM','CMG'],
+  'social media':         ['META','SNAP','PINS','RDDT'],
+  'gaming':               ['EA','TTWO','RBLX'],
+  'video games':          ['EA','TTWO','RBLX','ATVI'],
+  'mining':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM'],
+  'metals':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM'],
+  'semiconductors':       ['NVDA','AMD','INTC','QCOM','AMAT'],
+  'chips':                ['NVDA','AMD','INTC','QCOM'],
+  'luxury':               ['CPRI','TPR','RL'],
+  'fashion':              ['CPRI','TPR','RL','PVH'],
+  'real estate':          ['PLD','AMT','SPG'],
+  'property':             ['PLD','AMT','SPG'],
+  'airlines':             ['DAL','UAL','AAL','LUV'],
+  'travel':               ['DAL','UAL','BKNG','ABNB'],
+  'fintech':              ['SQ','PYPL','COIN','SOFI'],
+  'payments':             ['V','MA','PYPL','SQ'],
+  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW'],
+  'software':             ['MSFT','ORCL','CRM','NOW','ADBE'],
+  'clean energy':         ['NEE','ENPH','SEDG','FSLR'],
+  'solar':                ['ENPH','SEDG','FSLR'],
+  'gold':                 ['GLD','GDX','NEM'],
+  'commodities':          ['GLD','SLV','USO','FCX'],
+  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','AAL.L'],
+  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L'],
+  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','AAL.L'],
+  'insurance':            ['AIG','MET','PRU','CB'],
+  'biotech':              ['AMGN','GILD','REGN','VRTX','MRNA'],
+  'drug':                 ['JNJ','PFE','MRK','ABBV','AMGN'],
 };
 
-// Build a flat search list: named tickers + remaining valid tickers (ticker-only)
-const SEARCH_LIST = (() => {
-  const list = [], seen = new Set();
-  for (const [sym, {n, e}] of Object.entries(TICKER_NAMES)) {
-    if (VALID_TICKERS.has(sym)) { list.push({sym, name:n, ex:e}); seen.add(sym); }
+// ── Live Yahoo Finance autocomplete search ─────────────────────────────────
+// Debounce timer per field
+const _searchTimers = {};
+
+function getCategoryMatches(query) {
+  const q = query.toLowerCase().trim();
+  for (const [keyword, tickers] of Object.entries(CATEGORY_MAP)) {
+    if (q === keyword || q.includes(keyword) || keyword.includes(q)) {
+      return { keyword, tickers };
+    }
   }
-  for (const sym of VALID_TICKERS) {
-    if (!seen.has(sym)) list.push({sym, name:sym, ex:''});
-  }
-  return list;
-})();
+  return null;
+}
+
+async function fetchTickerSearch(query) {
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(query),
+                            { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.results || [];
+  } catch { return []; }
+}
 
 const REFRESH_MS  = 5 * 60 * 1000;
 const PICK_IDS      = ['pick-0','pick-1','pick-2'];
@@ -1481,7 +1213,13 @@ async function init() {
   EP_PICK_IDS.forEach(id   => { tickerState[id] = {status:'idle',sym:'',name:''}; });
 
   if (USE_FIREBASE) {
-    // Firebase mode: try to load shared game from Firestore
+    // Track auth state in the background — does NOT block loading the game
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      updateUserBadge();
+    });
+
+    // Load the game immediately — no login required to view
     const loaded = await loadFromFirebase();
     if (loaded) {
       isDemoMode = false;
@@ -1489,7 +1227,7 @@ async function init() {
       showDash();
       updateJoinBtn();
     } else {
-      // No game exists yet — first visitor configures dates via pre-setup modal
+      // No game exists yet — admin configures via pre-setup modal
       hide('setup-screen'); hide('dashboard-screen');
       openPresetup();
     }
@@ -1505,6 +1243,35 @@ async function init() {
       showDash();
     }
   }
+}
+
+function updateUserBadge() {
+  const badge   = document.getElementById('user-badge');
+  const signBtn = document.getElementById('signin-topbar-btn');
+
+  if (currentUser) {
+    const nameEl   = document.getElementById('user-name');
+    const avatarEl = document.getElementById('user-avatar');
+    const emailEl  = document.getElementById('user-menu-email');
+    if (badge)   badge.style.display = 'flex';
+    if (signBtn) signBtn.style.display = 'none';
+    if (nameEl)  nameEl.textContent = currentUser.displayName || currentUser.email || 'You';
+    if (avatarEl && currentUser.photoURL) {
+      avatarEl.src = currentUser.photoURL;
+      avatarEl.style.display = 'block';
+    }
+    if (emailEl) emailEl.textContent = currentUser.email || '';
+  } else {
+    if (badge)   badge.style.display = 'none';
+    if (signBtn) signBtn.style.display = '';
+  }
+}
+
+// Gate any participatory action behind auth — shows sign-in modal if needed
+function requireAuth() {
+  if (currentUser) return true;
+  show('signin-screen');
+  return false;
 }
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -1530,104 +1297,75 @@ function loadDemoData() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  FUZZY SEARCH + AUTOCOMPLETE
+//  LIVE SEARCH + AUTOCOMPLETE (Yahoo Finance + category map)
 // ═══════════════════════════════════════════════════════════
-
-// Score a single ticker against one search token
-function fuzzyScore(query, sym, name, ex) {
-  if (!query) return 0;
-  const q = query.toLowerCase();
-  const s = sym.toLowerCase();
-  const n = name.toLowerCase();
-  const e = (ex||'').toLowerCase();
-  if (s === q) return 1000;                                     // exact ticker
-  if (s.startsWith(q)) return 900;                             // ticker prefix
-  const words = n.split(/[\s\-\.\(\)&,\/]+/).filter(Boolean);
-  if (words[0] && words[0].startsWith(q)) return 800;          // first word prefix
-  if (words.some(w => w.startsWith(q))) return 700;            // any word prefix
-  if (n.includes(q)) return 600;                               // substring in name
-  if (s.includes(q)) return 550;                               // substring in ticker
-  if (e.includes(q)) return 530;                               // matches exchange/type label
-  // Deletion-tolerant: try removing each char once (catches typos)
-  if (q.length >= 4) {
-    for (let i = 0; i < q.length; i++) {
-      const qmod = q.slice(0,i) + q.slice(i+1);
-      if (n.includes(qmod) || s.startsWith(qmod)) return 500;
-    }
-  }
-  // Ordered-chars fuzzy (catches "Appl"→"Apple", "vangrd"→"Vanguard")
-  let qi = 0;
-  for (let i = 0; i < n.length && qi < q.length; i++) {
-    if (n[i] === q[qi]) qi++;
-  }
-  if (qi === q.length && q.length >= 3) return 300 + q.length;
-  return 0;
-}
-
-function searchTickers(query) {
-  if (!query || !query.trim()) return [];
-  const tokens = query.trim().split(/\s+/).filter(Boolean);
-  const scored = [];
-
-  for (const item of SEARCH_LIST) {
-    let score;
-    if (tokens.length === 1) {
-      score = fuzzyScore(tokens[0], item.sym, item.name, item.ex);
-    } else {
-      // Multi-word: ALL tokens must match; overall score = min individual score
-      const scores = tokens.map(t => fuzzyScore(t, item.sym, item.name, item.ex));
-      if (scores.some(s => s === 0)) continue;
-      score = Math.min(...scores);
-    }
-    if (score > 0) scored.push({...item, score});
-  }
-  scored.sort((a,b) => b.score - a.score);
-  return scored.slice(0, 9);
-}
 
 let acActiveIdx = {};  // fieldId → highlighted dropdown index
 
 function onPickSearch(input) {
   const id  = input.id;
-  const raw = input.value;
-  const q   = raw.trim();
+  const q   = input.value.trim();
 
   if (!q) {
     applyTickerState(id,'idle','','');
     hideDropdown(id);
     updateAddBtn();
+    clearTimeout(_searchTimers[id]);
     return;
   }
 
-  // If user is editing a field that already has a confirmed ticker,
-  // treat any change as a new search (unless the value still matches)
+  // Already confirmed exact match — don't re-search unless text changed
   const currentSym = tickerState[id]?.sym;
   if (currentSym && q.toUpperCase() === currentSym && tickerState[id]?.status === 'valid') {
     hideDropdown(id);
     return;
   }
 
-  const results = searchTickers(q);
-  renderDropdown(id, results);
-  acActiveIdx[id] = -1;
+  applyTickerState(id, 'checking', q.toUpperCase(), '');
+  updateAddBtn();
 
-  // If the query is an exact ticker match, auto-confirm it silently
-  const exact = SEARCH_LIST.find(t => t.sym === q.toUpperCase());
-  if (exact) {
-    confirmSelection(id, exact.sym, exact.name, false);
+  // 1. Check category map first — instant results, no API needed
+  const catMatch = getCategoryMatches(q);
+  if (catMatch) {
+    const catResults = catMatch.tickers.map(sym => ({ sym, name: sym, ex: 'Category: ' + catMatch.keyword, isCategory: true }));
+    renderDropdown(id, catResults, catMatch.keyword);
+    acActiveIdx[id] = -1;
   } else {
-    applyTickerState(id,'checking',q.toUpperCase(),'');
-    updateAddBtn();
+    // Show loading state while waiting for API
+    renderDropdown(id, null); // null = show spinner
+    acActiveIdx[id] = -1;
   }
+
+  // 2. Debounce live API search (300ms)
+  clearTimeout(_searchTimers[id]);
+  _searchTimers[id] = setTimeout(async () => {
+    const results = await fetchTickerSearch(q);
+    // Only update if input value hasn't changed
+    if (input.value.trim() !== q) return;
+    if (results.length) {
+      const formatted = results.map(r => ({ sym: r.symbol, name: r.name, ex: r.exchange }));
+      // If first result is exact ticker match, auto-confirm silently
+      const exact = results.find(r => r.symbol.toUpperCase() === q.toUpperCase());
+      if (exact) {
+        confirmSelection(id, exact.symbol, exact.name, false);
+        hideDropdown(id);
+      } else {
+        renderDropdown(id, formatted);
+        acActiveIdx[id] = -1;
+      }
+    } else if (!catMatch) {
+      // No results from either source
+      renderDropdown(id, []);
+    }
+  }, 300);
 }
 
 function onPickFocus(input) {
-  // If field already has a confirmed ticker, show dropdown again so user can change it
   const id = input.id;
   const q = input.value.trim();
   if (!q) return;
-  const results = searchTickers(q);
-  if (results.length) renderDropdown(id, results);
+  // Re-run search to restore dropdown
+  onPickSearch(input);
 }
 
 function onPickKeydown(event, input) {
@@ -1668,15 +1406,25 @@ function acHover(id, idx) {
   if (dd) acHighlight(id, dd.querySelectorAll('.ac-item'));
 }
 
-function renderDropdown(id, results) {
+function renderDropdown(id, results, categoryLabel) {
   const dd = document.getElementById('dropdown-' + id);
   if (!dd) return;
+
+  // null = show loading spinner
+  if (results === null) {
+    dd.innerHTML = '<div class="ac-loading"><span style="animation:spin 0.8s linear infinite;display:inline-block">⟳</span> Searching…</div>';
+    dd.classList.add('open');
+    return;
+  }
   if (!results.length) {
     dd.innerHTML = '<div class="ac-empty">No matches — try typing the ticker symbol directly (e.g. AAPL)</div>';
     dd.classList.add('open');
     return;
   }
-  dd.innerHTML = results.map((r, i) =>
+  const labelHtml = categoryLabel
+    ? `<div class="ac-category-label">📂 ${esc(categoryLabel)}</div>`
+    : '';
+  dd.innerHTML = labelHtml + results.map((r, i) =>
     `<div class="ac-item" data-idx="${i}" data-sym="${esc(r.sym)}" data-name="${esc(r.name)}"
           onmousedown="confirmSelection('${id}','${esc(r.sym)}','${esc(r.name)}',true)"
           onmouseover="acHover('${id}',${i})">
@@ -1853,7 +1601,6 @@ async function startGame() {
   const end=new Date(startDate); end.setDate(end.getDate()+(weeks*7));
   S.players=submittedPlayers.map(p=>({...p}));
   S.startDate=startDate; S.endDate=end.toISOString().slice(0,10);
-  S.adminPwd=document.getElementById('admin-pwd').value;
   S.startPrices={}; isDemoMode=false;
   await save();
   if (USE_FIREBASE) startRealtimeSync();
@@ -1872,7 +1619,6 @@ function closePresetupIfOutside(e) { if (e.target.id === 'presetup-overlay') clo
 async function submitPresetup() {
   const startDate = document.getElementById('ps-start-date').value;
   const weeks     = parseInt(document.getElementById('ps-game-weeks').value) || 12;
-  const pwd       = document.getElementById('ps-admin-pwd').value;
   const errEl     = document.getElementById('presetup-error');
 
   if (!startDate) {
@@ -1887,7 +1633,6 @@ async function submitPresetup() {
 
   S.startDate = startDate;
   S.endDate   = end.toISOString().slice(0, 10);
-  S.adminPwd  = pwd;
   S.players   = [];
   S.startPrices = {};
   isDemoMode = false;
@@ -1903,6 +1648,7 @@ async function submitPresetup() {
 //  JOIN MODAL (players self-submit picks once game is set up)
 // ═══════════════════════════════════════════════════════════
 function openJoin() {
+  if (!requireAuth()) return;
   // Only allow joining before start prices are locked
   if (Object.keys(S.startPrices).length > 0) {
     toast('⚡ Game already started — picks are locked.'); return;
@@ -1911,7 +1657,8 @@ function openJoin() {
     document.getElementById(id).value = '';
     applyTickerState(id, 'idle', '', '');
   });
-  document.getElementById('join-name').value = '';
+  // Pre-fill name from Google account
+  document.getElementById('join-name').value = currentUser?.displayName || '';
   const errEl = document.getElementById('join-error');
   if (errEl) errEl.classList.add('hidden');
   updateJoinBtn();
@@ -1967,8 +1714,12 @@ async function submitJoin() {
   const btn = document.getElementById('join-submit-btn');
   btn.disabled = true; btn.textContent = 'Joining…';
 
-  // Append to live players and save
-  S.players = [...(S.players||[]), {name, picks, names}];
+  // Append to live players and save (include uid/email for all-time tracking)
+  S.players = [...(S.players||[]), {
+    name, picks, names,
+    uid:   currentUser?.uid   || null,
+    email: currentUser?.email || null
+  }];
   await save();
 
   btn.textContent = 'Join Game';
@@ -2141,6 +1892,7 @@ function updateInlineJoinBtn() {
 }
 
 async function submitInlineJoin() {
+  if (!requireAuth()) return;
   const name   = document.getElementById('ij-name').value.trim();
   const errEl  = document.getElementById('inline-join-error');
   if (!name) { errEl.textContent = 'Please enter your name.'; errEl.classList.remove('hidden'); return; }
@@ -2178,12 +1930,8 @@ async function startGameManually() {
   if (!S.players || S.players.length === 0) {
     toast('⚡ Add at least one player before starting.'); return;
   }
-  // Password gate
-  if (S.adminPwd) {
-    const entered = prompt('Enter the admin password to start the game:');
-    if (entered === null) return; // cancelled
-    if (entered !== S.adminPwd) { toast('❌ Incorrect password.'); return; }
-  }
+  // Admin check
+  if (!isAdmin()) { toast('⛔ Only the admin can start the game.'); return; }
   if (!confirm(`Start the game now?\n\nThis will lock in today's prices as the starting point for all ${S.players.length} player(s). The leaderboard will become visible to everyone.`)) return;
 
   const startBtn = document.querySelector('#start-game-row .btn');
@@ -2309,12 +2057,13 @@ function updateProgress() {
 // ═══════════════════════════════════════════════════════════
 function switchDashTab(tab) {
   currentDashTab=tab;
-  ['standings','stocks','history'].forEach(t=>{
+  ['standings','stocks','history','alltime'].forEach(t=>{
     document.getElementById('dt-'+t).classList.toggle('hidden',t!==tab);
     document.getElementById('dt-btn-'+t).classList.toggle('active',t===tab);
   });
   if (tab==='history') initChart();
   if (tab==='stocks')  renderStockLeaderboard();
+  if (tab==='alltime') renderAllTimeLeaderboard();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2479,6 +2228,7 @@ function renderCards(sorted) {
     });
     const assets=sortedPicks.map(({sym,j})=>{
       const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
+      const d1=data?.change1d, dayLabel=d1!=null?`<span class="day-gain ${d1>=0?'green':'red'}">${d1>=0?'+':''}${d1.toFixed(2)}% today</span>`:'';
       const label=(p.names&&p.names[j])||data?.name||sym;
       return `<div class="asset-row">
         <div>
@@ -2487,7 +2237,10 @@ function renderCards(sorted) {
         </div>
         <div class="asset-right">
           <div class="asset-gain ${gainCls(g)}">${fmt(g)}</div>
-          <div class="asset-price muted">${cur?'$'+cur.toFixed(2):'—'}${start?' · was $'+start.toFixed(2):''}</div>
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+            ${dayLabel}
+            <div class="asset-price muted">${cur?'$'+cur.toFixed(2):'—'}</div>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -2520,8 +2273,8 @@ function renderStockLeaderboard() {
 
   S.players.forEach(p=>{
     p.picks.forEach(sym=>{
-      const name = nameMap[sym] || prices[sym]?.name || STOCK_DEFS[sym]?.name || sym;
-      all.push({sym, name, gain:gainPct(sym), cur:prices[sym]?.price, player:p.name});
+      const name = nameMap[sym] || prices[sym]?.name || sym;
+      all.push({sym, name, gain:gainPct(sym), day:prices[sym]?.change1d, cur:prices[sym]?.price, player:p.name});
     });
   });
   all.sort((a,b)=>(b.gain??-999)-(a.gain??-999));
@@ -2529,6 +2282,9 @@ function renderStockLeaderboard() {
 
   document.getElementById('stock-leaderboard').innerHTML=all.map((s,i)=>{
     const isPos=s.gain>=0, barW=(Math.abs(s.gain??0)/maxAbs)*46;
+    const dayHtml = s.day!=null
+      ? `<div class="slb-pct ${s.day>=0?'green':'red'}" style="font-size:11px">${s.day>=0?'+':''}${s.day.toFixed(2)}%</div>`
+      : `<div class="slb-pct muted">—</div>`;
     return `<div class="slb-row">
       <div class="slb-rank">${i+1}</div>
       <div class="slb-ticker ${isPos?'green':'red'}">${esc(s.sym)}</div>
@@ -2538,6 +2294,7 @@ function renderStockLeaderboard() {
         <div class="slb-bar ${isPos?'pos':'neg'}" style="width:${barW}%"></div>
       </div>
       <div class="slb-pct ${isPos?'green':'red'}">${fmt(s.gain)}</div>
+      ${dayHtml}
       <div class="slb-player">${esc(s.player)}</div>
     </div>`;
   }).join('');
@@ -3071,19 +2828,20 @@ function toggleDataset(idx) {
 
 
 // ═══════════════════════════════════════════════════════════
-//  ADMIN
+//  ADMIN — email whitelist auth
 // ═══════════════════════════════════════════════════════════
 function openAdmin() {
+  if (!isAdmin()) {
+    toast('⛔ Admin access is restricted to authorised accounts.');
+    return;
+  }
   show('admin-overlay');
-  if (!S.adminPwd||adminUnlocked) { hide('admin-auth'); show('admin-panel'); }
-  else { show('admin-auth'); hide('admin-panel'); document.getElementById('admin-pwd-check').value=''; }
+  hide('admin-auth');
+  show('admin-panel');
 }
 function closeAdmin() { hide('admin-overlay'); }
 function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin(); }
-function checkAdminPwd() {
-  if (document.getElementById('admin-pwd-check').value===S.adminPwd) { adminUnlocked=true; hide('admin-auth'); show('admin-panel'); }
-  else toast('❌ Incorrect password');
-}
+
 async function lockStartPrices() {
   if (!confirm('Overwrite start prices with today\'s current prices?')) return;
   try {
@@ -3092,14 +2850,131 @@ async function lockStartPrices() {
     prices=p; await save(); toast('✅ Start prices updated!'); closeAdmin(); renderDash();
   } catch(e) { toast('❌ Failed: '+e.message); }
 }
+
+async function endSeason() {
+  const seasonName = prompt('Name this season (e.g. "Season 1" or "Q1 2026"):');
+  if (!seasonName) return;
+  if (!confirm(`Archive "${seasonName}" and save final standings? The game state will be preserved — use Reset to start fresh.`)) return;
+  try {
+    // Build final standings
+    const finalStandings = S.players.map(p => ({
+      name:        p.name,
+      uid:         p.uid || null,
+      email:       p.email || null,
+      picks:       p.picks,
+      finalReturn: portfolioGain(p) ?? 0
+    })).sort((a,b) => b.finalReturn - a.finalReturn);
+
+    const seasonData = {
+      name:           seasonName,
+      startDate:      S.startDate || null,
+      endDate:        new Date().toISOString().slice(0,10),
+      archivedAt:     Date.now(),
+      finalStandings
+    };
+
+    if (USE_FIREBASE) {
+      // Save to seasons collection
+      const seasonId = seasonName.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+      await db.collection('seasons').doc(seasonId).set(seasonData);
+
+      // Update player all-time stats in players collection
+      for (const s of finalStandings) {
+        if (!s.uid) continue;
+        const ref = db.collection('players').doc(s.uid);
+        const snap = await ref.get();
+        const existing = snap.exists ? snap.data() : { seasons:0, wins:0, totalReturn:0, bestReturn:-Infinity };
+        const rank = finalStandings.indexOf(s);
+        await ref.set({
+          displayName:  s.name,
+          email:        s.email || null,
+          uid:          s.uid,
+          seasons:      (existing.seasons||0) + 1,
+          wins:         (existing.wins||0) + (rank===0 ? 1 : 0),
+          totalReturn:  (existing.totalReturn||0) + s.finalReturn,
+          bestReturn:   Math.max(existing.bestReturn ?? -Infinity, s.finalReturn),
+          bestSeason:   s.finalReturn >= (existing.bestReturn ?? -Infinity) ? seasonName : (existing.bestSeason || seasonName)
+        }, { merge: true });
+      }
+      toast('✅ Season archived!');
+    } else {
+      toast('⚠️ Firebase required to archive seasons.');
+    }
+    closeAdmin();
+  } catch(e) { toast('❌ Failed: '+e.message); console.error(e); }
+}
+
 async function resetEverything() {
-  if (!confirm('Delete ALL game data permanently?')) return;
+  if (!confirm('Delete ALL current game data permanently? (Archived seasons are kept.)')) return;
   if (USE_FIREBASE) {
     await db.collection('squaremile').doc('game').delete();
   } else {
     localStorage.removeItem(STORAGE_KEY);
   }
   location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ALL-TIME LEADERBOARD
+// ═══════════════════════════════════════════════════════════
+async function renderAllTimeLeaderboard() {
+  if (!USE_FIREBASE) return;
+  try {
+    // Load all-time player stats
+    const playersSnap = await db.collection('players').get();
+    const players = playersSnap.docs.map(d => d.data());
+
+    if (!players.length) {
+      document.getElementById('alltime-content').innerHTML =
+        '<div style="color:var(--muted);font-size:13px;padding:20px 0">No completed seasons yet.</div>';
+    } else {
+      players.sort((a,b) => (b.wins||0)-(a.wins||0) || (b.totalReturn||0)-(a.totalReturn||0));
+      const rows = players.map((p,i) => {
+        const avg = p.seasons ? ((p.totalReturn/p.seasons)*100).toFixed(1) : '—';
+        const best = p.bestReturn != null ? (p.bestReturn*100).toFixed(1)+'%' : '—';
+        return `<tr>
+          <td class="rank-col">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+          <td style="font-weight:600">${esc(p.displayName||p.email||'Unknown')}</td>
+          <td style="text-align:center">${p.seasons||0}</td>
+          <td style="text-align:center;font-weight:700;color:${(p.wins||0)>0?'#f6c90e':'var(--muted)'}">${p.wins||0}</td>
+          <td style="text-align:right;color:${(p.bestReturn||0)>=0?'#4ade80':'#f87171'}">${best}</td>
+          <td style="text-align:right;color:var(--muted)">${avg !== '—' ? avg+'%' : '—'}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('alltime-content').innerHTML = `
+        <table class="alltime-table">
+          <thead><tr>
+            <th>#</th><th>Player</th><th style="text-align:center">Seasons</th>
+            <th style="text-align:center">Wins</th><th style="text-align:right">Best Return</th>
+            <th style="text-align:right">Avg Return</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // Load season archive
+    const seasonsSnap = await db.collection('seasons').orderBy('archivedAt','desc').get();
+    const seasons = seasonsSnap.docs.map(d => d.data());
+    if (!seasons.length) {
+      document.getElementById('seasons-archive').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">No archived seasons yet.</div>';
+    } else {
+      document.getElementById('seasons-archive').innerHTML = seasons.map(s => {
+        const standings = (s.finalStandings||[]).map((p,i) =>
+          `<div class="season-standings-row">
+            <span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.'} ${esc(p.name)}</span>
+            <span class="${p.finalReturn>=0?'green':'red'}" style="font-weight:600">${p.finalReturn>=0?'+':''}${(p.finalReturn*100).toFixed(1)}%</span>
+          </div>`
+        ).join('');
+        return `<div class="season-card">
+          <div class="season-card-head">
+            <div class="season-card-title">${esc(s.name)}</div>
+            <div class="season-card-dates">${s.startDate||'?'} → ${s.endDate||'?'}</div>
+          </div>
+          ${standings}
+        </div>`;
+      }).join('');
+    }
+  } catch(e) { console.error('All-time leaderboard error:', e); }
 }
 
 // ═══════════════════════════════════════════════════════════
