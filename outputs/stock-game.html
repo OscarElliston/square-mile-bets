@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎰 Square Mile Bets</title>
+  <!-- Firebase SDK (compat mode — no build step needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080d1a;
+      --surface:  #0f1623;
+      --surface2: #151e2e;
+      --border:   #1c2840;
+      --border2:  #243252;
+      --text:     #dce6f5;
+      --muted:    #5a6e96;
+      --dim:      #3a4e72;
+      --accent:   #3b82f6;
+      --accent2:  #2563eb;
+      --green:    #10b981;
+      --green-bg: rgba(16,185,129,.08);
+      --red:      #ef4444;
+      --red-bg:   rgba(239,68,68,.07);
+      --amber:    #f59e0b;
+      --amber-bg: rgba(245,158,11,.07);
+      --radius:   12px;
+    }
+
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; min-height:100vh; line-height:1.5; }
+
+    .hidden { display:none !important; }
+    .green  { color:var(--green); }
+    .red    { color:var(--red); }
+    .amber  { color:var(--amber); }
+    .muted  { color:var(--muted); }
+    .divider { height:1px; background:var(--border); margin:22px 0; }
+
+    .btn { padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-primary  { background:var(--accent); color:#fff; }
+    .btn-primary:not(:disabled):hover { background:var(--accent2); }
+    .btn-secondary { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+    .btn-secondary:not(:disabled):hover { color:var(--text); border-color:var(--border2); }
+    .btn-danger { background:#2d0f0f; color:#fca5a5; border:1px solid #4b1111; }
+    .btn-danger:hover { background:#3d1515; }
+    .btn-full { width:100%; padding:13px; font-size:15px; }
+
+    .form-label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+    .form-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:14px; outline:none; transition:border-color .15s,background .15s; }
+    .form-input:focus { border-color:var(--accent); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .error-box { background:#1a0f2e; border:1px solid #3b1f6e; border-radius:8px; padding:11px 14px; font-size:13px; color:#c4b5fd; margin-bottom:14px; }
+
+    /* ── SETUP ── */
+    #setup-screen { padding:32px 16px 60px; display:flex; flex-direction:column; align-items:center; }
+    .setup-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; width:100%; max-width:600px; overflow:hidden; }
+    .setup-hero { background:linear-gradient(135deg,#0d2045,#0a0f1e); padding:36px 32px 28px; text-align:center; border-bottom:1px solid var(--border); }
+    .setup-hero .icon { font-size:48px; display:block; margin-bottom:10px; }
+    .setup-hero h1 { font-size:24px; font-weight:800; color:#fff; margin-bottom:6px; }
+    .setup-hero p  { color:var(--muted); font-size:14px; }
+    .setup-body { padding:26px 28px 30px; }
+    .setup-section-title { font-size:13px; font-weight:700; color:var(--text); }
+    .player-count-badge { font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; background:var(--surface2); border:1px solid var(--border); color:var(--muted); }
+    .player-count-badge.has { background:rgba(59,130,246,.15); border-color:rgba(59,130,246,.3); color:#93c5fd; }
+
+    /* Ticker inputs */
+    .picks-container { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+    .pick-field { display:flex; flex-direction:column; }
+    .pick-input-row { position:relative; }
+    .ticker-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 36px 10px 12px; color:var(--text); font-family:'SF Mono','Fira Code','Consolas',monospace; font-size:14px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; outline:none; transition:border-color .2s,background .2s; }
+    .ticker-input::placeholder { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-weight:400; letter-spacing:0; text-transform:none; color:var(--dim); }
+    .ticker-input:focus   { border-color:var(--accent); }
+    .ticker-input.valid   { border-color:var(--green); background:var(--green-bg); }
+    .ticker-input.invalid { border-color:var(--red);   background:var(--red-bg); }
+    .ticker-input.duplicate { border-color:var(--amber); background:var(--amber-bg); }
+    .ticker-input.checking  { border-color:rgba(96,165,250,.5); }
+    .ticker-input.unknown   { border-color:var(--dim); }
+    .pick-icon { position:absolute; right:11px; top:50%; transform:translateY(-50%); font-size:15px; pointer-events:none; transition:opacity .2s; }
+    @keyframes icon-spin { to { transform:translateY(-50%) rotate(360deg); } }
+    .pick-icon.spinning { animation:icon-spin .7s linear infinite; }
+    .pick-msg { font-size:11px; min-height:17px; margin-top:4px; padding-left:3px; color:var(--dim); transition:color .2s; }
+    .pick-msg.valid    { color:var(--green); }
+    .pick-msg.invalid  { color:var(--red); }
+    .pick-msg.duplicate { color:var(--amber); }
+    .add-btn-hint { font-size:11px; color:var(--dim); text-align:center; margin-top:8px; min-height:16px; }
+
+    /* Submitted players list */
+    .submitted-list { display:flex; flex-direction:column; gap:7px; }
+    .submitted-player { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; transition:border-color .15s; }
+    .submitted-player:hover { border-color:var(--border2); }
+    .sp-index { font-size:11px; font-weight:700; color:var(--dim); min-width:18px; }
+    .sp-name  { font-size:14px; font-weight:700; min-width:90px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sp-picks { display:flex; gap:5px; flex:1; flex-wrap:wrap; }
+    .sp-pick  { font-size:11px; font-weight:700; font-family:'SF Mono','Consolas',monospace; letter-spacing:.04em; padding:3px 8px; background:var(--bg); border:1px solid var(--border); border-radius:5px; color:var(--text); }
+    .sp-remove { background:none; border:none; color:var(--dim); cursor:pointer; font-size:17px; padding:2px 5px; border-radius:4px; margin-left:auto; flex-shrink:0; transition:color .15s; }
+    .sp-remove:hover { color:var(--red); }
+
+    /* ── DASHBOARD ── */
+    #dashboard-screen { min-height:100vh; }
+    .topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 22px; display:flex; align-items:center; justify-content:space-between; height:58px; position:sticky; top:0; z-index:10; }
+    .topbar-left  { display:flex; align-items:center; gap:11px; }
+    .topbar-right { display:flex; align-items:center; gap:9px; }
+    .topbar-title { font-size:16px; font-weight:800; }
+    .topbar-dates { font-size:11px; color:var(--muted); }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+    .live-dot.stale { background:var(--amber); animation:none; }
+    .live-dot.error { background:var(--red);   animation:none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .last-updated { font-size:12px; color:var(--muted); }
+
+    .main { max-width:1140px; margin:0 auto; padding:24px 18px; }
+
+    /* Demo notice */
+    .demo-banner { background:rgba(59,130,246,.09); border:1px solid rgba(59,130,246,.2); border-radius:9px; padding:10px 16px; font-size:13px; color:#93c5fd; margin-bottom:20px; text-align:center; }
+
+    /* Progress */
+    .progress-section { margin-bottom:22px; }
+    .progress-header  { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+    .progress-label   { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+    .progress-days    { font-size:12px; color:var(--muted); }
+    .progress-track   { height:5px; background:var(--surface2); border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+    .progress-fill    { height:100%; background:linear-gradient(90deg,var(--accent),#60a5fa); border-radius:10px; transition:width .5s ease; }
+
+    /* Dashboard tabs */
+    .dash-tabs { display:flex; gap:3px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:24px; width:fit-content; }
+    .dash-tab  { padding:8px 20px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; color:var(--muted); border:none; background:transparent; transition:all .15s; }
+    .dash-tab.active { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+    .dash-tab:not(.active):hover { color:var(--text); }
+
+    /* Section title */
+    .section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:13px; }
+
+    /* Leaderboard */
+    .lb-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:28px; }
+    .lb-row  { display:grid; grid-template-columns:52px 1fr auto; align-items:center; padding:14px 20px; border-bottom:1px solid var(--border); transition:background .1s; gap:12px; }
+    .lb-row:last-child { border-bottom:none; }
+    .lb-row:hover { background:var(--surface2); }
+    .lb-row.top-1 { background:linear-gradient(90deg,#1c1300,var(--surface)); }
+    .lb-row.top-2 { background:linear-gradient(90deg,#0f1520,var(--surface)); }
+    .lb-row.top-3 { background:linear-gradient(90deg,#150c00,var(--surface)); }
+    .lb-rank  { font-size:22px; text-align:center; }
+    .lb-name  { font-size:15px; font-weight:700; }
+    .lb-picks { font-size:12px; color:var(--muted); margin-top:2px; }
+    .lb-gain-wrap { text-align:right; }
+    .lb-gain  { font-size:22px; font-weight:800; }
+    .lb-value { font-size:11px; color:var(--muted); margin-top:1px; }
+    .lb-gain.waiting { font-size:14px; color:var(--dim); }
+
+    /* Portfolio cards */
+    .cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:13px; }
+    .player-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .card-head { display:flex; justify-content:space-between; align-items:center; padding:13px 17px; background:var(--surface2); border-bottom:1px solid var(--border); }
+    .card-name { font-size:15px; font-weight:700; }
+    .card-gain { font-size:17px; font-weight:800; }
+    .card-body { padding:0 17px; }
+    .asset-row { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); gap:10px; }
+    .asset-row:last-child { border-bottom:none; }
+    .asset-ticker     { font-size:14px; font-weight:700; letter-spacing:.04em; font-family:'SF Mono','Consolas',monospace; }
+    .asset-name-label { font-size:11px; color:var(--muted); margin-top:2px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .asset-right      { text-align:right; flex-shrink:0; }
+    .asset-gain  { font-size:14px; font-weight:700; }
+    .asset-price { font-size:11px; color:var(--muted); margin-top:2px; }
+
+    /* ── STOCK LEADERBOARD ── */
+    .slb-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .slb-head { display:grid; grid-template-columns:36px 60px 1fr 130px 72px 90px; gap:10px; padding:10px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+    .slb-head span { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); }
+    .slb-row  { display:grid; grid-template-columns:36px 60px 1fr 130px 72px 90px; gap:10px; align-items:center; padding:12px 20px; border-bottom:1px solid var(--border); transition:background .1s; }
+    .slb-row:last-child { border-bottom:none; }
+    .slb-row:hover { background:var(--surface2); }
+    .slb-rank   { font-size:12px; font-weight:700; color:var(--dim); }
+    .slb-ticker { font-family:'SF Mono','Consolas',monospace; font-size:13px; font-weight:800; letter-spacing:.04em; }
+    .slb-name   { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .slb-bar-wrap { position:relative; height:6px; background:var(--surface2); border-radius:3px; }
+    .slb-bar-mid  { position:absolute; left:50%; top:0; width:1px; height:100%; background:var(--border2); }
+    .slb-bar      { position:absolute; top:0; height:100%; border-radius:3px; }
+    .slb-bar.pos  { left:50%; background:var(--green); }
+    .slb-bar.neg  { right:50%; background:var(--red); }
+    .slb-pct    { font-size:13px; font-weight:700; text-align:right; }
+    .slb-player { font-size:12px; color:var(--muted); }
+
+    /* ── CHART ── */
+    .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px 20px 16px; }
+    .chart-wrap { position:relative; height:440px; }
+    .chart-legend-custom { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; opacity:1; transition:opacity .2s; }
+    .legend-item.faded { opacity:.3; }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+    /* Loading */
+    .loading-state { text-align:center; padding:70px 20px; }
+    .spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 14px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .loading-text { color:var(--muted); font-size:14px; }
+
+    /* Modal */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.76); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:430px; }
+    .modal-head { display:flex; justify-content:space-between; align-items:center; padding:17px 22px; border-bottom:1px solid var(--border); }
+    .modal-title { font-size:16px; font-weight:700; }
+    .modal-body  { padding:22px; }
+    .modal-section { margin-bottom:20px; }
+    .modal-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+    .modal-desc { font-size:13px; color:var(--muted); margin-bottom:10px; line-height:1.5; }
+
+    /* Chart tooltip */
+    #chart-tooltip { position:absolute; pointer-events:none; background:#0a0f1c; border:1px solid var(--border2); border-radius:9px; padding:10px 13px; min-width:175px; display:none; z-index:10; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+
+    /* Toast */
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(70px); background:var(--surface); border:1px solid var(--border2); border-radius:10px; padding:11px 20px; font-size:14px; font-weight:600; color:var(--text); z-index:200; transition:transform .25s ease; pointer-events:none; white-space:nowrap; }
+    #toast.show { transform:translateX(-50%) translateY(0); }
+
+    /* Responsive */
+    @media (max-width:700px) {
+      .slb-head, .slb-row { grid-template-columns:28px 52px 1fr 60px 64px; }
+      .slb-head span:nth-child(4),.slb-bar-wrap { display:none; }
+    }
+    @media (max-width:580px) {
+      .setup-body { padding:20px 18px 24px; }
+      .setup-hero { padding:26px 18px 22px; }
+      .topbar   { padding:0 12px; }
+      .main     { padding:14px 10px; }
+      .lb-row   { padding:11px 13px; }
+      .lb-gain  { font-size:18px; }
+      .cards-grid { grid-template-columns:1fr; }
+      .grid-2   { grid-template-columns:1fr; }
+      .dash-tabs { width:100%; }
+      .dash-tab  { flex:1; padding:8px 12px; font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-hero">
+      <span class="icon">📈</span>
+      <h1>Square Mile Bets</h1>
+      <p>Each player picks 3 assets — best portfolio wins after 3 months.<br>Enter your picks below, then pass it on.</p>
+    </div>
+    <div class="setup-body">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="setup-section-title">Add a Player</div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="form-label">Player Name</label>
+        <input class="form-input" id="player-name" placeholder="e.g. Oscar"
+               oninput="updateAddBtn()" onkeydown="if(event.key==='Enter') addPlayer()" />
+      </div>
+
+      <div class="picks-container">
+        <label class="form-label" style="margin-bottom:2px">3 Stock Picks (enter ticker symbols)</label>
+        <div class="pick-field">
+          <div class="pick-input-row">
+            <input type="text" class="ticker-input" id="pick-0" placeholder="Pick 1 — e.g. AAPL"
+                   oninput="onTickerInput(this)" autocomplete="off" spellcheck="false" maxlength="12" />
+            <span class="pick-icon" id="icon-pick-0"></span>
+          </div>
+          <div class="pick-msg" id="msg-pick-0"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row">
+            <input type="text" class="ticker-input" id="pick-1" placeholder="Pick 2 — e.g. MSFT"
+                   oninput="onTickerInput(this)" autocomplete="off" spellcheck="false" maxlength="12" />
+            <span class="pick-icon" id="icon-pick-1"></span>
+          </div>
+          <div class="pick-msg" id="msg-pick-1"></div>
+        </div>
+        <div class="pick-field">
+          <div class="pick-input-row">
+            <input type="text" class="ticker-input" id="pick-2" placeholder="Pick 3 — e.g. TSLA"
+                   oninput="onTickerInput(this)" autocomplete="off" spellcheck="false" maxlength="12" />
+            <span class="pick-icon" id="icon-pick-2"></span>
+          </div>
+          <div class="pick-msg" id="msg-pick-2"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="add-btn" disabled onclick="addPlayer()">Add Player</button>
+      <div class="add-btn-hint" id="add-hint">Enter a name and 3 valid tickers to add a player.</div>
+
+      <div id="submitted-section" class="hidden">
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="setup-section-title">Players Added</div>
+          <span class="player-count-badge has" id="player-count">0</span>
+        </div>
+        <div class="submitted-list" id="submitted-list"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div>
+          <label class="form-label">Game Start Date</label>
+          <input class="form-input" id="start-date" type="date" />
+        </div>
+        <div>
+          <label class="form-label">Game Length (weeks)</label>
+          <input class="form-input" id="game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Admin Password <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input class="form-input" id="admin-pwd" type="password" placeholder="Protects settings" />
+      </div>
+      <div id="setup-error" class="error-box hidden"></div>
+      <button class="btn btn-primary btn-full" id="start-btn" disabled onclick="startGame()">🚀 Start Game</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     DASHBOARD SCREEN
+══════════════════════════════════════ -->
+<div id="dashboard-screen" class="hidden">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <span style="font-size:22px">📈</span>
+      <div>
+        <div class="topbar-title">Square Mile Bets</div>
+        <div class="topbar-dates" id="game-dates"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-dot" id="live-dot"></div>
+      <span class="last-updated" id="last-updated">Loading…</span>
+      <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:7px 12px">↻ Refresh</button>
+      <button class="btn btn-secondary" onclick="openAdmin()" style="padding:7px 12px">⚙</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div id="demo-notice" class="demo-banner hidden">
+      🎮 Preview with example data — click <strong>⚙ → Reset</strong> to start your own game
+    </div>
+    <div id="firebase-notice" class="demo-banner hidden" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#6ee7b7;">
+      🔥 Live mode — connected to shared database. All players see the same data in real time.
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-header">
+        <span class="progress-label">Game Progress</span>
+        <span class="progress-days" id="progress-days"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="dash-tabs">
+      <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">🏆 Standings</button>
+      <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">📊 All Stocks</button>
+      <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">📈 History</button>
+    </div>
+
+    <!-- ── TAB: STANDINGS ── -->
+    <div id="dt-standings">
+      <div id="loading-state" class="loading-state">
+        <div class="spinner"></div>
+        <div class="loading-text">Fetching latest prices…</div>
+      </div>
+      <div id="error-state" class="hidden">
+        <div class="error-box" id="error-msg"></div>
+      </div>
+      <div id="dash-content" class="hidden">
+        <div class="section-title">Portfolio Leaderboard</div>
+        <div class="lb-card" id="leaderboard"></div>
+        <div class="section-title" style="margin-top:28px">Player Portfolios</div>
+        <div class="cards-grid" id="cards-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: STOCKS ── -->
+    <div id="dt-stocks" class="hidden">
+      <div class="section-title">All Picks Ranked by Gain</div>
+      <div class="slb-card">
+        <div class="slb-head">
+          <span>#</span><span>Ticker</span><span>Company</span>
+          <span>Performance</span><span style="text-align:right">Gain</span><span>Player</span>
+        </div>
+        <div id="stock-leaderboard"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: HISTORY ── -->
+    <div id="dt-history" class="hidden">
+      <div class="section-title">Portfolio Value Over Time (index: 1,000 = start)</div>
+      <div class="chart-card">
+        <div class="chart-wrap">
+          <canvas id="portfolio-chart" style="display:block;cursor:crosshair"></canvas>
+          <div id="chart-tooltip"></div>
+        </div>
+        <div class="chart-legend-custom" id="chart-legend"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     ADMIN MODAL
+══════════════════════════════════════ -->
+<div id="admin-overlay" class="overlay hidden" onclick="closeAdminIfOutside(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">⚙️ Settings</div>
+      <button class="btn btn-secondary" onclick="closeAdmin()" style="padding:6px 10px">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="admin-auth">
+        <div style="margin-bottom:12px">
+          <label class="form-label">Admin Password</label>
+          <input class="form-input" id="admin-pwd-check" type="password" placeholder="Enter password"
+                 onkeydown="if(event.key==='Enter') checkAdminPwd()" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="checkAdminPwd()">Unlock Settings</button>
+      </div>
+      <div id="admin-panel" class="hidden">
+        <div class="modal-section">
+          <div class="modal-section-title">Lock Start Prices</div>
+          <div class="modal-desc">Re-lock today's prices as the game baseline. Overwrites existing start prices.</div>
+          <button class="btn btn-primary" onclick="lockStartPrices()">🔒 Lock Current Prices</button>
+        </div>
+        <div class="divider" style="margin:16px 0"></div>
+        <div class="modal-section" style="margin-bottom:0">
+          <div class="modal-section-title">Danger Zone</div>
+          <button class="btn btn-danger" onclick="resetEverything()">🗑 Reset All Game Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const STORAGE_KEY = 'stockgame_v3';
+
+// ═══════════════════════════════════════════════════════════
+//  FIREBASE CONFIG  ← paste your Firebase project config here
+//  Get this from: Firebase Console → Project Settings → Your apps
+//  Leave as-is to run in local demo mode (no shared database)
+// ═══════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDov2xSPmu-1Jz6SsdW5ZuUiVPCTxlrkUo",
+  authDomain:        "square-mile-bets.firebaseapp.com",
+  projectId:         "square-mile-bets",
+  storageBucket:     "square-mile-bets.firebasestorage.app",
+  messagingSenderId: "768948529412",
+  appId:             "1:768948529412:web:a22789c56e8627747d0851",
+  measurementId:     "G-LDX3H0910C"
+};
+const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined';
+let db = null;
+if (USE_FIREBASE) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+}
+
+const YAHOO_URL = 'https://query1.finance.yahoo.com/v7/finance/quote?lang=en-US&symbols=';
+
+// Price fetching — Vercel serverless function first, CORS proxies as fallback
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.org/?',
+];
+async function fetchWithProxy(url) {
+  // Primary: our own Vercel /api/quote (same domain, no CORS issues)
+  try {
+    const symbols = url.split('symbols=')[1];
+    const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`,
+                            {signal: AbortSignal.timeout(8000)});
+    if (res.ok) return res;
+  } catch { /* fall through */ }
+  // Fallback: public CORS proxies
+  for (const proxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(url), {signal: AbortSignal.timeout(8000)});
+      if (res.ok) return res;
+    } catch { /* try next */ }
+  }
+  throw new Error('All proxies failed');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  VALID TICKERS — static list, instant validation, no API needed
+//  Covers S&P 500, NASDAQ, FTSE 100 (.L suffix), and major ETFs
+// ═══════════════════════════════════════════════════════════
+const VALID_TICKERS = new Set([
+  // ── S&P 500 ──────────────────────────────────────────────────────────────
+  'AAPL','MSFT','NVDA','AMZN','GOOGL','GOOG','META','BRK-B','LLY','AVGO',
+  'JPM','XOM','TSLA','UNH','V','JNJ','MA','PG','HD','COST',
+  'MRK','ABBV','CVX','CRM','BAC','NFLX','AMD','WFC','KO','PEP',
+  'TMO','CSCO','ORCL','ABT','ADBE','ACN','TXN','MCD','PM','DHR',
+  'DIS','CAT','AMGN','GE','IBM','INTU','GS','RTX','QCOM','NOW',
+  'ISRG','SPGI','BLK','BKNG','SYK','PLD','AXP','TJX','GILD','LMT',
+  'MDT','SCHW','MMC','CB','T','C','BSX','MDLZ','NOC','REGN',
+  'MU','DE','LOW','AMAT','PGR','AON','VRTX','HCA','SHW','ELV',
+  'SBUX','CL','MO','BMY','ETN','CI','LRCX','ZTS','CME','APH',
+  'MSI','MMM','GD','ADI','SO','USB','NSC','HLT','PH','EW',
+  'AIG','KLAC','MCO','MAR','EMR','WM','ADP','MPC','APD','TDG',
+  'ITW','FICO','MCHP','PSX','MNST','ORLY','LULU','SRE','SNPS','CDNS',
+  'PCAR','CTAS','D','WMB','OXY','ROP','PYPL','TRV','HUM','BDX',
+  'FTNT','F','GM','TEL','NKE','URI','NXPI','DUK','COF','OTIS',
+  'CARR','NEM','WELL','EXC','GIS','TRGP','WEC','PAYX','CBRE','FAST',
+  'KMB','ECL','ED','VRSK','PPG','STZ','DG','TFC','HIG','RSG',
+  'KEYS','IDXX','ROK','PEG','ES','WST','ANSS','BR','ROST','HPE',
+  'ODFL','PCG','SBAC','AME','BKR','EQT','MTD','SNA','GLW','FSLR',
+  'GRMN','HPQ','CDW','VLO','BIIB','EFX','ENPH','FTV','MTB','NTAP',
+  'GPN','AWK','MOH','AVB','EQR','WTW','CTSH','FANG','LIN','BALL',
+  'IR','WY','MKC','INVH','SUI','LYV','APTV','STLD','HES','FDS',
+  'IQV','CBOE','DRI','TROW','TTWO','DVN','XYL','ARE','IT','NVR',
+  'JBHT','CLX','NUE','RMD','MLM','EXPD','SYY','APA','DECK','AKAM',
+  'ROL','NDAQ','TT','IPG','HBAN','RF','FITB','EG','CCI','EQIX',
+  'AMT','PSA','SWK','BAX','PPL','LKQ','JCI','SAIC','LDOS','VTRS',
+  'IP','SWKS','ZBRA','PTC','WRB','CINF','AEE','OKE','CSGP','PNR',
+  'AXON','GDDY','GPC','LUV','DAL','UAL','AAL','ALK','JBLU','ULTA',
+  'EL','BBWI','TPR','PVH','RL','VFC','ANF','URBN','GPS','AN',
+  'KMX','POOL','RH','WSM','ETSY','EBAY','CHWY','BBY','ALGN','HOLX',
+  'PRGO','WAT','A','PODD','PFE','CNC','TGT','AAP','AZO',
+  'PRU','MET','AFL','ALL','L','GL','AIZ','RE','RNR','ACGL',
+  'AJG','BRO','ERIE','WEX','BK','STT','NTRS','KEY','CFG','ALLY',
+  'SYF','DFS','ZION','CMA','FHN','IBOC','FFIN','FCX','VMC',
+  'MOS','CF','IFF','ALB','EMN','HUN','CC','OLN','FMC','RS',
+  'BA','LHX','TDG','HII','UPS','FDX','CHRW','XPO','SAIA',
+  'CSX','UNP','NSC','WAB','ROK','AME','HUBB','ALLE','GNRC',
+  'NEE','DUK','SO','AEP','SRE','XEL','WEC','DTE','FE','ETR',
+  'EIX','CMS','NI','LNT','EVRG','AES','CNP','PNW','AWK',
+  'EQR','AVB','BXP','VTR','O','SPG','KIM','REG','FRT','ESS',
+  'UDR','NNN','VICI','GLPI','STAG','EXR','CUBE','ELS','MAA','CPT','AMH',
+  'MRNA','BNTX','ILMN','GEHC','INCY','ALNY','EXAS','GH','PODD',
+  'AXON','GDDY','TRMB','PAYC','VEEV','HUBS','SMAR','GTLB','DDOG',
+  // ── NASDAQ / high-growth / popular ───────────────────────────────────────
+  'COIN','MELI','ZM','DOCU','OKTA','CRWD','ZS','NET','SNOW','MDB',
+  'TEAM','SHOP','ABNB','LYFT','UBER','DASH','RBLX','U','PLTR','BILL',
+  'S','WIX','ZI','APPF','PCTY','TOST','FRSH','BRZE','CFLT','AFRM',
+  'UPST','SOFI','HOOD','COUR','DUOL','BMBL','IONQ','PATH','AI','SMCI',
+  'MARA','RIOT','BITF','HUT','CLSK','IREN','BTBT','MSTR',
+  'GME','AMC','BB','SPCE','LCID','RIVN','NIO','LI','XPEV','NKLA',
+  'BLNK','CHPT','EVGO','SNAP','PINS','SPOT','SQ','HOOD',
+  // ── FTSE 100 (.L suffix = London Stock Exchange on Yahoo Finance) ─────────
+  'AZN.L','HSBA.L','SHEL.L','ULVR.L','BP.L','RIO.L','GSK.L','DGE.L',
+  'LSEG.L','NG.L','VOD.L','BT-A.L','BARC.L','LLOY.L','NWG.L','STAN.L',
+  'PRU.L','AV.L','LGEN.L','IMB.L','BATS.L','RR.L','BA.L','REL.L',
+  'EXPN.L','HLMA.L','CRH.L','AAL.L','ANTO.L','GLEN.L','BHP.L','FRES.L',
+  'MNG.L','ABDN.L','SSE.L','SVT.L','UU.L','CNA.L','JD.L','NEXT.L',
+  'MKS.L','SBRY.L','TSCO.L','ABF.L','WPP.L','ITV.L','RMV.L','AUTO.L',
+  'IHG.L','MNDI.L','PSN.L','TW.L','BDEV.L','BKG.L','LAND.L','SGRO.L',
+  'BLND.L','CRDA.L','RKT.L','AHT.L','SDR.L','WTB.L','SN.L','PHNX.L',
+  'OCDO.L','KGF.L','DPLM.L','III.L','CPG.L','BRBY.L','CCH.L','ITRK.L',
+  'HMSO.L','HL.L','IAG.L','EZJ.L','IMI.L','WEIR.L','SMT.L','ENT.L',
+  'TUI.L','OSB.L','SPX.L','WDS.L','FCIT.L','ADM.L','AGK.L','SKG.L',
+  'HWDN.L','MNDI.L','SMDS.L','RS1.L','DARK.L','UTG.L','TATE.L','SGRO.L',
+  // ── Major ETFs ────────────────────────────────────────────────────────────
+  'SPY','VOO','IVV','QQQ','VTI','VEA','VWO','EFA','EEM','GLD',
+  'SLV','GDX','GDXJ','TLT','IEF','SHY','HYG','JNK','LQD','AGG',
+  'BND','BNDX','VIG','VYM','DVY','NOBL','DGRO','SCHD','JEPI','JEPQ',
+  'DIVO','SDY','VNQ','XLRE','XLK','XLF','XLV','XLE','XLY','XLP',
+  'XLI','XLB','XLU','XLC','IWM','IWB','IWF','IWD','MDY','RSP',
+  'SPLG','SCHX','SCHF','SCHB','SCHA','VB','VO','VV','VXUS','VT',
+  'ACWI','QUAL','MTUM','USMV','VLUE','VHT','IBB','XBI','ARKG','ARKK',
+  'ARKW','ARKF','ARKQ','BOTZ','ROBO','IGV','SKYY','CLOU','HACK','LIT',
+  'COPX','SIL','IAU','GLDM','CPER','SIVR','UNG','USO','UCO','BNO',
+  'TQQQ','SQQQ','UPRO','SPXU','UDOW','SDOW','TNA','TZA','SPXL','SPXS',
+  'SOXL','SOXS','TECL','TECS','FXI','MCHI','KWEB','ASHR','EWZ','EWT',
+  'EWY','EWJ','EWH','EWA','EWC','EWG','EWU','EWI','EWQ','EWP',
+  'EWN','EWL','EWD','EWO','EWK','EPHE','EWM','TUR','EWW','EPU',
+  'EZA','ECH','ARGT','GXG','FM','VGT','IYW','SOXX','FTEC','IGM',
+  'FINX','IPAY','KBWB','KRE','KBE','MUB','VTEB','GOVT','VGIT','VGLT',
+  'VGSH','VTIP','SCHP','TIP','VNQI','IEMG','SCHE','DEM','IEFA','IDEV',
+]);
+const REFRESH_MS  = 5 * 60 * 1000;
+const PICK_IDS    = ['pick-0','pick-1','pick-2'];
+
+// ═══════════════════════════════════════════════════════════
+//  DEMO DATA DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+const DEMO_START = '2026-01-17';
+const DEMO_END   = '2026-04-17';
+
+const DEMO_PLAYERS = [
+  {name:'Oscar',   picks:['AAPL','NVDA','TSLA']},
+  {name:'Alice',   picks:['MSFT','AMZN','META']},
+  {name:'Bob',     picks:['GOOGL','NFLX','SPOT']},
+  {name:'Charlie', picks:['TSM','AMD','INTC']},
+  {name:'Diana',   picks:['JPM','GS','V']},
+  {name:'Eve',     picks:['BRK-B','WMT','COST']},
+  {name:'Frank',   picks:['PLTR','RBLX','COIN']},
+  {name:'Grace',   picks:['XOM','CVX','NEE']},
+  {name:'Henry',   picks:['SPY','QQQ','IWM']},
+  {name:'Isla',    picks:['PYPL','SQ','SOFI']},
+];
+
+const STOCK_DEFS = {
+  AAPL:  {name:'Apple Inc.',              start:228,  gain:0.12,  vol:0.018},
+  NVDA:  {name:'NVIDIA Corp.',            start:820,  gain:0.28,  vol:0.030},
+  TSLA:  {name:'Tesla Inc.',              start:355,  gain:-0.08, vol:0.035},
+  MSFT:  {name:'Microsoft Corp.',         start:418,  gain:0.15,  vol:0.016},
+  AMZN:  {name:'Amazon.com Inc.',         start:224,  gain:0.10,  vol:0.020},
+  META:  {name:'Meta Platforms Inc.',     start:595,  gain:0.22,  vol:0.025},
+  GOOGL: {name:'Alphabet Inc.',           start:192,  gain:0.18,  vol:0.018},
+  NFLX:  {name:'Netflix Inc.',            start:905,  gain:0.05,  vol:0.022},
+  SPOT:  {name:'Spotify Technology SA',   start:475,  gain:-0.03, vol:0.025},
+  TSM:   {name:'Taiwan Semiconductor',    start:182,  gain:0.25,  vol:0.022},
+  AMD:   {name:'Advanced Micro Devices',  start:133,  gain:-0.15, vol:0.030},
+  INTC:  {name:'Intel Corp.',             start:24,   gain:-0.20, vol:0.028},
+  JPM:   {name:'JPMorgan Chase & Co.',    start:248,  gain:0.08,  vol:0.014},
+  GS:    {name:'Goldman Sachs Group',     start:572,  gain:0.12,  vol:0.016},
+  V:     {name:'Visa Inc.',               start:298,  gain:0.06,  vol:0.012},
+  'BRK-B':{name:'Berkshire Hathaway B',  start:485,  gain:0.04,  vol:0.010},
+  WMT:   {name:'Walmart Inc.',            start:94,   gain:0.02,  vol:0.012},
+  COST:  {name:'Costco Wholesale Corp.',  start:958,  gain:0.07,  vol:0.014},
+  PLTR:  {name:'Palantir Technologies',   start:88,   gain:0.45,  vol:0.040},
+  RBLX:  {name:'Roblox Corp.',            start:52,   gain:-0.25, vol:0.040},
+  COIN:  {name:'Coinbase Global Inc.',    start:318,  gain:0.35,  vol:0.045},
+  XOM:   {name:'Exxon Mobil Corp.',       start:114,  gain:-0.05, vol:0.015},
+  CVX:   {name:'Chevron Corp.',           start:158,  gain:-0.07, vol:0.014},
+  NEE:   {name:'NextEra Energy Inc.',     start:79,   gain:-0.03, vol:0.014},
+  SPY:   {name:'SPDR S&P 500 ETF',       start:582,  gain:0.10,  vol:0.012},
+  QQQ:   {name:'Invesco QQQ Trust',      start:508,  gain:0.18,  vol:0.016},
+  IWM:   {name:'iShares Russell 2000',   start:218,  gain:0.05,  vol:0.016},
+  PYPL:  {name:'PayPal Holdings Inc.',   start:76,   gain:-0.18, vol:0.025},
+  SQ:    {name:'Block Inc.',             start:67,   gain:-0.12, vol:0.030},
+  SOFI:  {name:'SoFi Technologies Inc.', start:15,   gain:0.08,  vol:0.040},
+};
+
+const PLAYER_COLORS = [
+  '#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa',
+  '#38bdf8','#fb923c','#f472b6','#a3e635','#818cf8',
+];
+
+// ═══════════════════════════════════════════════════════════
+//  PRICE SIMULATION
+// ═══════════════════════════════════════════════════════════
+function seededRNG(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(1664525,s)+1013904223)>>>0; return s/4294967296; };
+}
+
+function symSeed(sym) {
+  return sym.split('').reduce((a,c,i) => a + c.charCodeAt(0)*(i+7)*31, 17);
+}
+
+function generatePath(sym, nDays) {
+  const {start, gain, vol} = STOCK_DEFS[sym];
+  const rng      = seededRNG(symSeed(sym));
+  const logDrift = Math.log(1 + gain) / nDays;
+  const path     = [start];
+  for (let i = 1; i < nDays; i++) {
+    const u1 = Math.max(1e-10, rng());
+    const u2 = rng();
+    const z  = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+    path.push(path[i-1] * Math.exp(logDrift + vol*z));
+  }
+  path.push(start * (1 + gain)); // exact endpoint
+  return path;
+}
+
+function tradingDays(startStr, endStr) {
+  const days=[], d=new Date(startStr), end=new Date(endStr);
+  while (d <= end) {
+    const dow=d.getDay();
+    if (dow>=1&&dow<=5) days.push(d.toISOString().slice(0,10));
+    d.setDate(d.getDate()+1);
+  }
+  return days;
+}
+
+// Pre-compute all history
+const TRADING_DAYS  = tradingDays(DEMO_START, '2026-03-17');
+const PRICE_HISTORY = {};
+Object.keys(STOCK_DEFS).forEach(sym => { PRICE_HISTORY[sym] = generatePath(sym, TRADING_DAYS.length); });
+
+function portfolioIndexHistory(player) {
+  return TRADING_DAYS.map((_,day) => {
+    const sum = player.picks.reduce((a,sym)=>a+(PRICE_HISTORY[sym][day]/PRICE_HISTORY[sym][0]),0);
+    return parseFloat((1000 * sum / player.picks.length).toFixed(2));
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+let S = {
+  players:[], startPrices:{}, startDate:'', endDate:'', adminPwd:'',
+};
+let prices        = {};
+let isDemoMode    = false;
+let adminUnlocked = false;
+let refreshTimer  = null;
+let myChart = null;
+let currentDashTab = 'standings';
+
+// Setup state
+let submittedPlayers = [];
+let tickerState  = {};
+let tickerCache  = {};
+let tickerTimers = {};
+
+// ═══════════════════════════════════════════════════════════
+//  STORAGE
+// ═══════════════════════════════════════════════════════════
+
+// Save game state — Firestore if configured, localStorage otherwise
+async function save() {
+  if (USE_FIREBASE) {
+    await db.collection('squaremile').doc('game').set(S);
+  } else {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  }
+}
+
+// Local localStorage load (used when Firebase not configured)
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+    if (d) S = {...S,...d};
+    return !!d && S.players.length > 0;
+  } catch { return false; }
+}
+
+// Firebase load (async, used when Firebase is configured)
+async function loadFromFirebase() {
+  try {
+    const doc = await db.collection('squaremile').doc('game').get();
+    if (!doc.exists || !doc.data().players?.length) return false;
+    S = {...S, ...doc.data()};
+    return true;
+  } catch(e) { console.error('Firebase load error:', e); return false; }
+}
+
+// Real-time listener — pushes updates to all connected browsers instantly
+function startRealtimeSync() {
+  if (!USE_FIREBASE) return;
+  db.collection('squaremile').doc('game').onSnapshot(snapshot => {
+    if (!snapshot.exists) return;
+    const incoming = snapshot.data();
+    const changed =
+      JSON.stringify(incoming.players)     !== JSON.stringify(S.players) ||
+      JSON.stringify(incoming.startPrices) !== JSON.stringify(S.startPrices);
+    if (changed) {
+      S = {...S, ...incoming};
+      renderDash();
+      if (currentDashTab === 'stocks')   renderStockLeaderboard();
+      if (currentDashTab === 'history')  { myChart = null; initChart(); }
+      toast('🔄 Dashboard synced!');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  document.getElementById('start-date').value = todayStr();
+  PICK_IDS.forEach(id => { tickerState[id] = {status:'idle',sym:'',name:''}; });
+
+  if (USE_FIREBASE) {
+    // Firebase mode: try to load shared game from Firestore
+    const loaded = await loadFromFirebase();
+    if (loaded) {
+      isDemoMode = false;
+      showDash();
+      startRealtimeSync();
+    } else {
+      // No game exists yet on Firebase — show setup screen
+      show('setup-screen'); hide('dashboard-screen');
+    }
+  } else {
+    // Local mode: fall back to localStorage, then demo data
+    if (load()) {
+      isDemoMode = false;
+      showDash();
+    } else {
+      loadDemoData();
+      isDemoMode = true;
+      showDash();
+    }
+  }
+}
+
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function loadDemoData() {
+  const lastDay = TRADING_DAYS.length - 1;
+  const prevDay = lastDay - 1;
+
+  Object.keys(STOCK_DEFS).forEach(sym => {
+    const path = PRICE_HISTORY[sym];
+    prices[sym] = {
+      price:    parseFloat(path[lastDay].toFixed(2)),
+      name:     STOCK_DEFS[sym].name,
+      change1d: (path[lastDay]/path[prevDay]-1)*100,
+    };
+    S.startPrices[sym] = path[0];
+  });
+
+  S.players   = DEMO_PLAYERS.map(p => ({...p, names:p.picks.map(sym=>STOCK_DEFS[sym].name)}));
+  S.startDate = DEMO_START;
+  S.endDate   = DEMO_END;
+  S.adminPwd  = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TICKER VALIDATION (for real game setup)
+// ═══════════════════════════════════════════════════════════
+function onTickerInput(input) {
+  const id=input.id, raw=input.value.trim().toUpperCase();
+  if (input.value!==raw) input.value=raw;
+  clearTimeout(tickerTimers[id]);
+  if (!raw) { applyTickerState(id,'idle','',''); updateAddBtn(); return; }
+  applyTickerState(id,'checking',raw,'');
+  updateAddBtn();
+  tickerTimers[id] = setTimeout(()=>validateTicker(id,raw), 150);
+}
+
+function validateTicker(id, sym) {
+  const input = document.getElementById(id);
+  if (!input || input.value.trim().toUpperCase()!==sym) return;
+  if (tickerCache[sym]!==undefined) { applyCacheResult(id,sym); return; }
+  tickerCache[sym] = VALID_TICKERS.has(sym)
+    ? {valid:true,  name:sym}
+    : {valid:false, name:''};
+  applyCacheResult(id,sym);
+}
+
+function applyCacheResult(id, sym) {
+  const c = tickerCache[sym];
+  if (!c) return;
+  if (c.valid===false) { applyTickerState(id,'invalid',sym,'Ticker not recognised'); updateAddBtn(); return; }
+  const selfDupe = PICK_IDS.some(pid=>pid!==id&&document.getElementById(pid)?.value.trim().toUpperCase()===sym);
+  if (selfDupe) { applyTickerState(id,'duplicate',sym,`⚡ You already entered ${sym}`); updateAddBtn(); return; }
+  const owner = getTickerOwner(sym);
+  if (owner) { applyTickerState(id,'duplicate',sym,`⚡ Already picked by ${owner}`); updateAddBtn(); return; }
+  applyTickerState(id, c.valid===null?'unknown':'valid', sym, c.valid===null?'Could not verify — will be accepted':`✓ ${c.name}`);
+  updateAddBtn();
+}
+
+function applyTickerState(id, status, sym, msg) {
+  tickerState[id] = {status,sym,name:msg};
+  const input=document.getElementById(id), iconEl=document.getElementById('icon-'+id), msgEl=document.getElementById('msg-'+id);
+  if (!input) return;
+  input.classList.remove('valid','invalid','duplicate','checking','unknown');
+  iconEl.classList.remove('spinning');
+  msgEl.className='pick-msg';
+  const map = {
+    idle:     ['','',''],
+    checking: ['checking','↻','spinning'],
+    valid:    ['valid','✓',''],
+    invalid:  ['invalid','✗',''],
+    duplicate:['duplicate','!',''],
+    unknown:  ['unknown','?',''],
+  };
+  const [cls,icon,spin] = map[status]||map.idle;
+  if (cls) input.classList.add(cls);
+  iconEl.textContent=icon;
+  iconEl.style.color = status==='valid'?'var(--green)':status==='invalid'?'var(--red)':status==='duplicate'?'var(--amber)':'var(--dim)';
+  if (spin) iconEl.classList.add(spin);
+  if (status==='valid'||status==='invalid'||status==='duplicate'||status==='unknown') msgEl.classList.add(status);
+  msgEl.textContent=msg;
+}
+
+function getTickerOwner(sym) {
+  for (const p of submittedPlayers) if (p.picks.includes(sym)) return p.name;
+  return null;
+}
+
+function recheckCurrentInputs() {
+  PICK_IDS.forEach(id=>{
+    const sym=tickerState[id]?.sym;
+    if (sym && !['idle','checking'].includes(tickerState[id].status)) applyCacheResult(id,sym);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SETUP FLOW
+// ═══════════════════════════════════════════════════════════
+function updateAddBtn() {
+  const name=document.getElementById('player-name').value.trim(), hint=document.getElementById('add-hint'), btn=document.getElementById('add-btn');
+  if (!name) { btn.disabled=true; hint.textContent='Enter a player name first.'; return; }
+  const states=PICK_IDS.map(id=>tickerState[id]?.status||'idle');
+  if (states.some(s=>s==='checking'))   { btn.disabled=true; hint.textContent='Checking tickers…'; return; }
+  if (states.some(s=>s==='invalid'||s==='duplicate')) { btn.disabled=true; hint.textContent='Fix the errors above before adding.'; return; }
+  const filled=PICK_IDS.filter(id=>document.getElementById(id).value.trim()).length;
+  if (filled<3) { btn.disabled=true; hint.textContent=`Need all 3 picks — ${3-filled} more to go.`; return; }
+  if (!states.every(s=>s==='valid'||s==='unknown')) { btn.disabled=true; hint.textContent='Waiting for ticker validation…'; return; }
+  btn.disabled=false; hint.textContent='All good — ready to add!';
+}
+
+function addPlayer() {
+  const name=document.getElementById('player-name').value.trim();
+  if (!name) return;
+  const picks=[], names=[];
+  for (const id of PICK_IDS) {
+    const sym=document.getElementById(id).value.trim().toUpperCase();
+    if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name||sym); }
+  }
+  if (picks.length<3) return;
+  if (submittedPlayers.some(p=>p.name.toLowerCase()===name.toLowerCase())) { toast('⚡ "'+name+'" already exists.'); return; }
+  submittedPlayers.push({name,picks,names});
+  renderSubmittedPlayers();
+  document.getElementById('player-name').value='';
+  PICK_IDS.forEach(id=>{ document.getElementById(id).value=''; applyTickerState(id,'idle','',''); });
+  updateAddBtn();
+  document.getElementById('start-btn').disabled = submittedPlayers.length<1;
+  toast(`✅ ${name} added!`);
+  document.getElementById('player-name').focus();
+}
+
+function removePlayer(idx) {
+  const name=submittedPlayers[idx]?.name;
+  submittedPlayers.splice(idx,1);
+  renderSubmittedPlayers();
+  recheckCurrentInputs();
+  updateAddBtn();
+  document.getElementById('start-btn').disabled=submittedPlayers.length<1;
+  if (name) toast(`Removed ${name}`);
+}
+
+function renderSubmittedPlayers() {
+  const section=document.getElementById('submitted-section'), list=document.getElementById('submitted-list'), countEl=document.getElementById('player-count');
+  if (!submittedPlayers.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  countEl.textContent=submittedPlayers.length+' / 10';
+  list.innerHTML=submittedPlayers.map((p,i)=>`
+    <div class="submitted-player">
+      <span class="sp-index">${i+1}</span>
+      <span class="sp-name">${esc(p.name)}</span>
+      <div class="sp-picks">${p.picks.map((s,j)=>`<span class="sp-pick" title="${esc(p.names[j]||s)}">${esc(s)}</span>`).join('')}</div>
+      <button class="sp-remove" onclick="removePlayer(${i})">×</button>
+    </div>`).join('');
+}
+
+async function startGame() {
+  const startDate=document.getElementById('start-date').value;
+  if (!startDate) { showSetupError('Please choose a start date.'); return; }
+  if (!submittedPlayers.length) { showSetupError('Add at least one player first.'); return; }
+  document.getElementById('setup-error').classList.add('hidden');
+  const weeks=parseInt(document.getElementById('game-weeks').value)||12;
+  const end=new Date(startDate); end.setDate(end.getDate()+(weeks*7));
+  S.players=submittedPlayers.map(p=>({...p}));
+  S.startDate=startDate; S.endDate=end.toISOString().slice(0,10);
+  S.adminPwd=document.getElementById('admin-pwd').value;
+  S.startPrices={}; isDemoMode=false;
+  await save();
+  if (USE_FIREBASE) startRealtimeSync();
+  showDash();
+}
+
+function showSetupError(msg) { const e=document.getElementById('setup-error'); e.textContent=msg; e.classList.remove('hidden'); }
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function showDash() {
+  hide('setup-screen'); show('dashboard-screen');
+  if (isDemoMode) show('demo-notice'); else hide('demo-notice');
+  if (USE_FIREBASE && !isDemoMode) show('firebase-notice'); else hide('firebase-notice');
+  updateProgress();
+
+  if (isDemoMode) {
+    setDot('live');
+    document.getElementById('last-updated').textContent = 'Simulated data';
+    hide('loading-state'); hide('error-state');
+    renderDash(); show('dash-content');
+    renderStockLeaderboard();
+  } else {
+    refreshPrices();
+  }
+}
+
+function updateProgress() {
+  const start=new Date(S.startDate), end=new Date(S.endDate), now=new Date();
+  const total=(end-start)/864e5, elapsed=Math.max(0,(now-start)/864e5);
+  const pct=Math.min(100,(elapsed/total)*100), daysLeft=Math.max(0,Math.ceil((end-now)/864e5));
+  const fmt=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('game-dates').textContent=fmt(start)+' → '+fmt(end);
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('progress-days').textContent=daysLeft>0?`Day ${Math.round(elapsed)} of ${Math.round(total)} · ${daysLeft} days left`:'Game over!';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════
+function switchDashTab(tab) {
+  currentDashTab=tab;
+  ['standings','stocks','history'].forEach(t=>{
+    document.getElementById('dt-'+t).classList.toggle('hidden',t!==tab);
+    document.getElementById('dt-btn-'+t).classList.toggle('active',t===tab);
+  });
+  if (tab==='history') initChart();
+  if (tab==='stocks')  renderStockLeaderboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PRICE FETCHING (real game)
+// ═══════════════════════════════════════════════════════════
+function allSymbols() { return [...new Set(S.players.flatMap(p=>p.picks))]; }
+
+async function fetchYahooPrices(symbols) {
+  const res = await fetchWithProxy(YAHOO_URL+symbols.join(','));
+  if (!res.ok) throw new Error('HTTP '+res.status);
+  const data=await res.json(), out={};
+  (data.quoteResponse?.result||[]).forEach(q=>{
+    out[q.symbol]={price:q.regularMarketPrice,name:q.shortName||q.longName||q.symbol,change1d:q.regularMarketChangePercent};
+  });
+  return out;
+}
+
+async function refreshPrices() {
+  if (isDemoMode) return;
+  if (refreshTimer) clearTimeout(refreshTimer);
+  setDot('stale'); show('loading-state'); hide('dash-content'); hide('error-state');
+  const syms=allSymbols();
+  if (!syms.length) { hide('loading-state'); return; }
+  try {
+    prices=await fetchYahooPrices(syms);
+    if (!Object.keys(S.startPrices).length) {
+      syms.forEach(s=>{ if(prices[s]) S.startPrices[s]=prices[s].price; });
+      save(); toast('📌 Start prices locked!');
+    }
+    setDot('live');
+    document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+    hide('loading-state'); hide('error-state');
+    renderDash(); show('dash-content');
+    renderStockLeaderboard();
+  } catch(e) {
+    setDot('error');
+    document.getElementById('last-updated').textContent='Failed to update';
+    hide('loading-state');
+    document.getElementById('error-msg').textContent='⚠️ Could not fetch prices ('+e.message+'). Showing last known values.';
+    show('error-state');
+    if (Object.keys(S.startPrices).length>0) { renderDash(); show('dash-content'); renderStockLeaderboard(); }
+  }
+  refreshTimer=setTimeout(refreshPrices,REFRESH_MS);
+}
+
+function setDot(state) {
+  const d=document.getElementById('live-dot');
+  d.className='live-dot'+(state!=='live'?' '+state:'');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+function gainPct(sym) {
+  const start=S.startPrices[sym], cur=prices[sym]?.price??start;
+  if (!start||!cur) return null;
+  return ((cur-start)/start)*100;
+}
+
+function portfolioGain(player) {
+  const gs=player.picks.map(gainPct).filter(g=>g!==null);
+  if (!gs.length) return null;
+  return gs.reduce((a,b)=>a+b,0)/gs.length;
+}
+
+function portfolioValue(player) {
+  // Portfolio index: 1000 = start value
+  const pg=portfolioGain(player);
+  if (pg===null) return null;
+  return 1000*(1+pg/100);
+}
+
+function fmt(g) {
+  if (g===null||g===undefined) return '–';
+  return (g>0?'+':'')+g.toFixed(2)+'%';
+}
+
+function gainCls(g) {
+  if (g===null||g===undefined) return '';
+  return g>0?'green':g<0?'red':'';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER — STANDINGS
+// ═══════════════════════════════════════════════════════════
+const MEDALS=['🥇','🥈','🥉'];
+
+function renderDash() {
+  const sorted=S.players.map(p=>({...p,pg:portfolioGain(p),pv:portfolioValue(p)}))
+    .sort((a,b)=>{ if(a.pg===null&&b.pg===null)return 0; if(a.pg===null)return 1; if(b.pg===null)return -1; return b.pg-a.pg; });
+  renderLeaderboard(sorted);
+  renderCards(sorted);
+}
+
+function renderLeaderboard(sorted) {
+  document.getElementById('leaderboard').innerHTML=sorted.map((p,i)=>{
+    const rankEl=i<3?`<span style="font-size:24px">${MEDALS[i]}</span>`:`<span style="font-size:14px;font-weight:700;color:var(--dim)">#${i+1}</span>`;
+    const gainEl=p.pg!==null
+      ?`<div class="lb-gain-wrap">
+          <div class="lb-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
+          <div class="lb-value muted">${p.pv!==null?'index: '+p.pv.toFixed(1):''}</div>
+        </div>`
+      :`<div class="lb-gain waiting">Waiting…</div>`;
+    const rowCls=i===0?'top-1':i===1?'top-2':i===2?'top-3':'';
+    return `<div class="lb-row ${rowCls}">
+      <div class="lb-rank">${rankEl}</div>
+      <div>
+        <div class="lb-name">${esc(p.name)}</div>
+        <div class="lb-picks muted">${p.picks.map(esc).join(' · ')}</div>
+      </div>
+      ${gainEl}
+    </div>`;
+  }).join('');
+}
+
+function renderCards(sorted) {
+  document.getElementById('cards-grid').innerHTML=sorted.map(p=>{
+    const assets=p.picks.map((sym,j)=>{
+      const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
+      const label=data?.name||(p.names&&p.names[j])||sym;
+      return `<div class="asset-row">
+        <div>
+          <div class="asset-ticker">${esc(sym)}</div>
+          <div class="asset-name-label muted">${esc(label)}</div>
+        </div>
+        <div class="asset-right">
+          <div class="asset-gain ${gainCls(g)}">${fmt(g)}</div>
+          <div class="asset-price muted">${cur?'$'+cur.toFixed(2):'—'}${start?' · was $'+start.toFixed(2):''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="player-card">
+      <div class="card-head">
+        <div class="card-name">${esc(p.name)}</div>
+        <div class="card-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
+      </div>
+      <div class="card-body">${assets}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER — STOCK LEADERBOARD
+// ═══════════════════════════════════════════════════════════
+function renderStockLeaderboard() {
+  const all=[];
+  S.players.forEach(p=>{
+    p.picks.forEach(sym=>{
+      all.push({sym, name:prices[sym]?.name||STOCK_DEFS[sym]?.name||sym, gain:gainPct(sym), cur:prices[sym]?.price, player:p.name});
+    });
+  });
+  all.sort((a,b)=>(b.gain??-999)-(a.gain??-999));
+  const maxAbs=Math.max(1,...all.map(s=>Math.abs(s.gain??0)));
+
+  document.getElementById('stock-leaderboard').innerHTML=all.map((s,i)=>{
+    const isPos=s.gain>=0, barW=(Math.abs(s.gain??0)/maxAbs)*46;
+    return `<div class="slb-row">
+      <div class="slb-rank">${i+1}</div>
+      <div class="slb-ticker ${isPos?'green':'red'}">${esc(s.sym)}</div>
+      <div class="slb-name">${esc(s.name)}</div>
+      <div class="slb-bar-wrap">
+        <div class="slb-bar-mid"></div>
+        <div class="slb-bar ${isPos?'pos':'neg'}" style="width:${barW}%"></div>
+      </div>
+      <div class="slb-pct ${isPos?'green':'red'}">${fmt(s.gain)}</div>
+      <div class="slb-player">${esc(s.player)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHART — SELF-CONTAINED CANVAS LINE CHART
+// ═══════════════════════════════════════════════════════════
+class LineChart {
+  constructor(canvasId) {
+    this.canvas  = document.getElementById(canvasId);
+    this.ctx     = this.canvas.getContext('2d');
+    this.labels  = [];
+    this.datasets= [];
+    this.hidden  = new Set();
+    this.hovered = null;
+    this._bindEvents();
+    window.addEventListener('resize', ()=>this._resize());
+  }
+
+  setData(labels, datasets) {
+    this.labels  = labels;
+    this.datasets= datasets;
+    this._resize(); // also calls draw
+  }
+
+  _resize() {
+    const w = this.canvas.parentElement.clientWidth || 800;
+    this.canvas.width  = w;
+    this.canvas.height = Math.min(460, Math.max(300, Math.round(w * 0.46)));
+    this.draw();
+  }
+
+  _m()  { return {t:24, r:24, b:48, l:58}; }
+  _p()  { const m=this._m(),W=this.canvas.width,H=this.canvas.height; return {x:m.l,y:m.t,w:W-m.l-m.r,h:H-m.t-m.b}; }
+
+  _yRange() {
+    const vis = this.datasets.filter((_,i)=>!this.hidden.has(i)).flatMap(d=>d.data);
+    if (!vis.length) return {mn:880,mx:1120};
+    const mn=Math.min(...vis), mx=Math.max(...vis), pad=Math.max((mx-mn)*0.14,25);
+    return {mn:Math.floor((mn-pad)/10)*10, mx:Math.ceil((mx+pad)/10)*10};
+  }
+
+  _xS(i,p) { return p.x + (i/Math.max(this.labels.length-1,1))*p.w; }
+  _yS(v,p,r){ return p.y + p.h - ((v-r.mn)/(r.mx-r.mn))*p.h; }
+
+  draw() {
+    const ctx=this.ctx, p=this._p(), r=this._yRange();
+    ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+    ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+
+    // Y grid + labels
+    const yStep = Math.ceil((r.mx-r.mn)/7/10)*10||10;
+    for (let v=r.mn; v<=r.mx+1; v+=yStep) {
+      const y=this._yS(v,p,r);
+      ctx.strokeStyle='#1c2840'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(p.x,y); ctx.lineTo(p.x+p.w,y); ctx.stroke();
+      ctx.fillStyle='#5a6e96'; ctx.textAlign='right';
+      ctx.fillText(v.toFixed(0), p.x-7, y+4);
+    }
+
+    // X grid + labels
+    const xStep=Math.max(1,Math.ceil(this.labels.length/9));
+    for (let i=0; i<this.labels.length; i+=xStep) {
+      const x=this._xS(i,p);
+      ctx.strokeStyle='#1c2840'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
+      ctx.fillStyle='#5a6e96'; ctx.textAlign='center';
+      ctx.fillText(this.labels[i], x, p.y+p.h+18);
+    }
+
+    // Baseline 1000
+    const y0=this._yS(1000,p,r);
+    if (y0>=p.y&&y0<=p.y+p.h) {
+      ctx.setLineDash([5,4]); ctx.strokeStyle='#3a4e72'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(p.x,y0); ctx.lineTo(p.x+p.w,y0); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#3a4e72'; ctx.textAlign='left'; ctx.font='10px sans-serif';
+      ctx.fillText('start', p.x+5, y0-5);
+    }
+
+    // Dataset lines
+    ctx.lineJoin='round'; ctx.lineCap='round';
+    this.datasets.forEach((ds,i)=>{
+      if (this.hidden.has(i)) return;
+      ctx.beginPath(); ctx.strokeStyle=ds.color; ctx.lineWidth=2;
+      ds.data.forEach((v,j)=>{ const x=this._xS(j,p),y=this._yS(v,p,r); j?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.stroke();
+    });
+
+    // Hover crosshair + dots
+    if (this.hovered!==null) {
+      const x=this._xS(this.hovered,p);
+      ctx.setLineDash([3,3]); ctx.strokeStyle='#5a6e96'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
+      ctx.setLineDash([]);
+      this.datasets.forEach((ds,i)=>{
+        if (this.hidden.has(i)) return;
+        const v=ds.data[this.hovered];
+        ctx.beginPath(); ctx.fillStyle=ds.color;
+        ctx.arc(this._xS(this.hovered,p), this._yS(v,p,r), 4.5, 0, Math.PI*2);
+        ctx.fill();
+        // White ring
+        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1.5;
+        ctx.arc(this._xS(this.hovered,p), this._yS(v,p,r), 4.5, 0, Math.PI*2);
+        ctx.stroke();
+      });
+    }
+  }
+
+  _bindEvents() {
+    this.canvas.addEventListener('mousemove', e=>{
+      const rect=this.canvas.getBoundingClientRect(), p=this._p();
+      const mx=(e.clientX-rect.left)*(this.canvas.width/rect.width);
+      const fi=(mx-p.x)/p.w*(this.labels.length-1);
+      this.hovered=Math.max(0,Math.min(this.labels.length-1,Math.round(fi)));
+      this.draw(); this._showTip(e,this.hovered);
+    });
+    this.canvas.addEventListener('mouseleave', ()=>{
+      this.hovered=null; this.draw();
+      const t=document.getElementById('chart-tooltip'); if(t)t.style.display='none';
+    });
+  }
+
+  _showTip(e,idx) {
+    const tip=document.getElementById('chart-tooltip'); if(!tip)return;
+    const sorted=[...this.datasets
+      .map((ds,i)=>({name:ds.label,v:ds.data[idx],color:ds.color,i}))
+      .filter(d=>!this.hidden.has(d.i))]
+      .sort((a,b)=>b.v-a.v);
+    tip.innerHTML=`
+      <div style="font-size:11px;color:#5a6e96;font-weight:600;margin-bottom:8px">${this.labels[idx]}</div>
+      ${sorted.map(d=>`
+        <div style="display:flex;align-items:center;gap:7px;padding:2px 0">
+          <div style="width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0"></div>
+          <span style="font-size:12px;color:#9ca3af;flex:1;white-space:nowrap">${d.name}</span>
+          <span style="font-size:12px;font-weight:700;color:${d.v>=1000?'#10b981':'#ef4444'}">${d.v.toFixed(1)}</span>
+        </div>`).join('')}`;
+    tip.style.display='block';
+    const rect=this.canvas.getBoundingClientRect();
+    let lft=e.clientX-rect.left+16, top=Math.max(4,e.clientY-rect.top-24);
+    if (lft+185>rect.width) lft=e.clientX-rect.left-200;
+    tip.style.left=lft+'px'; tip.style.top=top+'px';
+  }
+
+  toggle(idx) {
+    this.hidden.has(idx)?this.hidden.delete(idx):this.hidden.add(idx);
+    this.draw();
+  }
+}
+
+function initChart() {
+  if (myChart) return;
+  const playerList = isDemoMode ? DEMO_PLAYERS : S.players;
+  const labels = TRADING_DAYS.map(d=>{
+    const dt=new Date(d);
+    return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  });
+  const datasets = playerList.map((p,i)=>({
+    label: p.name,
+    data:  portfolioIndexHistory(p),
+    color: PLAYER_COLORS[i%PLAYER_COLORS.length],
+  }));
+  myChart = new LineChart('portfolio-chart');
+  myChart.setData(labels, datasets);
+  buildChartLegend(playerList);
+}
+
+function buildChartLegend(playerList) {
+  document.getElementById('chart-legend').innerHTML=playerList.map((p,i)=>`
+    <div class="legend-item" id="li-${i}" onclick="toggleDataset(${i})">
+      <div class="legend-dot" style="background:${PLAYER_COLORS[i%PLAYER_COLORS.length]}"></div>
+      <span>${esc(p.name)}</span>
+    </div>`).join('');
+}
+
+function toggleDataset(idx) {
+  if (!myChart) return;
+  myChart.toggle(idx);
+  document.getElementById('li-'+idx)?.classList.toggle('faded', myChart.hidden.has(idx));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ADMIN
+// ═══════════════════════════════════════════════════════════
+function openAdmin() {
+  show('admin-overlay');
+  if (!S.adminPwd||adminUnlocked) { hide('admin-auth'); show('admin-panel'); }
+  else { show('admin-auth'); hide('admin-panel'); document.getElementById('admin-pwd-check').value=''; }
+}
+function closeAdmin() { hide('admin-overlay'); }
+function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin(); }
+function checkAdminPwd() {
+  if (document.getElementById('admin-pwd-check').value===S.adminPwd) { adminUnlocked=true; hide('admin-auth'); show('admin-panel'); }
+  else toast('❌ Incorrect password');
+}
+async function lockStartPrices() {
+  if (!confirm('Overwrite start prices with today\'s current prices?')) return;
+  try {
+    const p=await fetchYahooPrices(allSymbols());
+    allSymbols().forEach(s=>{ if(p[s]) S.startPrices[s]=p[s].price; });
+    prices=p; await save(); toast('✅ Start prices updated!'); closeAdmin(); renderDash();
+  } catch(e) { toast('❌ Failed: '+e.message); }
+}
+async function resetEverything() {
+  if (!confirm('Delete ALL game data permanently?')) return;
+  if (USE_FIREBASE) {
+    await db.collection('squaremile').doc('game').delete();
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TOAST / UTILS
+// ═══════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function esc(s) { const d=document.createElement('div'); d.textContent=s||'–'; return d.innerHTML; }
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
