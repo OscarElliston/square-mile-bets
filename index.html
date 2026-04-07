@@ -1028,24 +1028,7 @@
     </div>
     <div class="modal-body">
       <div id="admin-auth" class="hidden"></div>
-      <div id="admin-panel">
-        <div class="modal-section">
-          <div class="modal-section-title">Lock Start Prices</div>
-          <div class="modal-desc">Set today's market prices as the baseline for all players. Do this once when the game begins — or again if you need to reset the starting point.</div>
-          <button class="btn btn-primary" onclick="lockStartPrices()">🔒 Lock Current Prices</button>
-        </div>
-        <div class="divider" style="margin:16px 0"></div>
-        <div class="modal-section">
-          <div class="modal-section-title">End Season</div>
-          <div class="modal-desc">Archive final standings to the Medal Table and update all-time records. Game data is preserved — use Reset separately to start fresh.</div>
-          <button class="btn btn-secondary" onclick="endSeason()">🏁 End & Archive Season</button>
-        </div>
-        <div class="divider" style="margin:16px 0"></div>
-        <div class="modal-section" style="margin-bottom:0">
-          <div class="modal-section-title">Danger Zone</div>
-          <button class="btn btn-danger" onclick="resetEverything()">🗑 Reset All Game Data</button>
-        </div>
-      </div>
+      <div id="admin-panel"></div>
     </div>
   </div>
 </div>
@@ -1136,65 +1119,129 @@ async function fetchPrices(symbols) {
 //  before the live Yahoo autocomplete results arrive.
 // ═══════════════════════════════════════════════════════════
 const CATEGORY_MAP = {
-  'electric cars':        ['TSLA','RIVN','NIO','LCID','XPEV'],
-  'ev':                   ['TSLA','RIVN','NIO','LCID','XPEV'],
-  'electric vehicles':    ['TSLA','RIVN','NIO','LCID','XPEV'],
-  'ai':                   ['NVDA','MSFT','GOOGL','META','AMD','PLTR','ORCL'],
-  'artificial intelligence': ['NVDA','MSFT','GOOGL','META','AMD','PLTR'],
-  'defence':              ['LMT','RTX','NOC','GD','BA','BA.L'],
-  'defense':              ['LMT','RTX','NOC','GD','BA'],
-  'military':             ['LMT','RTX','NOC','GD','BA'],
-  'oil':                  ['XOM','CVX','BP.L','SHEL.L','COP','OXY'],
-  'energy':               ['XOM','CVX','BP.L','SHEL.L','NEE','ENPH'],
-  'petroleum':            ['XOM','CVX','BP.L','SHEL.L','COP'],
-  'banks':                ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L'],
-  'banking':              ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L'],
-  'finance':              ['JPM','BAC','GS','V','MA','PYPL'],
-  'tech':                 ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
-  'technology':           ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
-  'pharma':               ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L'],
-  'pharmaceutical':       ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L'],
-  'healthcare':           ['JNJ','UNH','ABT','MDT','AZN.L','GSK.L'],
-  'crypto':               ['COIN','MSTR','RIOT','MARA'],
-  'bitcoin':              ['COIN','MSTR','RIOT','MARA'],
-  'blockchain':           ['COIN','MSTR','RIOT','MARA'],
-  'retail':               ['AMZN','WMT','TGT','COST'],
-  'shopping':             ['AMZN','WMT','TGT','COST'],
-  'streaming':            ['NFLX','DIS','SPOT','WBD'],
-  'media':                ['NFLX','DIS','PARA','WBD'],
-  'entertainment':        ['NFLX','DIS','SPOT','EA'],
-  'space':                ['BA','LMT','NOC'],
-  'aerospace':            ['BA','LMT','NOC','RTX'],
-  'food':                 ['MCD','SBUX','YUM','CMG'],
-  'restaurants':          ['MCD','SBUX','YUM','CMG'],
+  // ── Defence & Aerospace ───────────────────────────────────
+  'defense':              ['LMT','RTX','NOC','GD','BA','HII','L3HIT'],
+  'defence':              ['LMT','RTX','NOC','GD','BA','BA.L','QINETIQ.L'],
+  'military':             ['LMT','RTX','NOC','GD','BA','BA.L'],
+  'aerospace':            ['BA','LMT','NOC','RTX','RKLB','HWM'],
+  'space':                ['RKLB','LMT','NOC','BA','SPCE'],
+
+  // ── Energy & Oil ──────────────────────────────────────────
+  'oil':                  ['XOM','CVX','BP.L','SHEL.L','COP','OXY','TTE','HES'],
+  'energy':               ['XOM','CVX','BP.L','SHEL.L','NEE','ENPH','SSE.L','CNA.L'],
+  'petroleum':            ['XOM','CVX','BP.L','SHEL.L','COP','OXY','TTE'],
+  'clean energy':         ['NEE','ENPH','SEDG','FSLR','PLUG','BEP','RUN'],
+  'solar':                ['ENPH','SEDG','FSLR','CSIQ','SPWR','RUN'],
+  'renewables':           ['NEE','ENPH','SEDG','FSLR','BEP','SSE.L','REN'],
+
+  // ── Banks & Finance ───────────────────────────────────────
+  'banks':                ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L','LLOY.L','NWG.L','STAN.L'],
+  'banking':              ['JPM','BAC','GS','WFC','C','HSBA.L','BARC.L','LLOY.L','NWG.L'],
+  'finance':              ['JPM','BAC','GS','V','MA','PYPL','BLK','MS'],
+  'investment banks':     ['GS','MS','JPM','BAC','C','BARC.L','HSBA.L'],
+  'wealth management':    ['BLK','SCHW','MS','GS','STT','ABDN.L','IGGG.L'],
+  'private equity':       ['BX','APO','KKR','CG','ARES','EQT.ST'],
+  'asset management':     ['BLK','SCHW','STT','BEN','IVZ','ABDN.L'],
+  'insurance':            ['AIG','MET','PRU','CB','TRV','LGEN.L','AV.L','PHNX.L'],
+  'fintech':              ['SQ','PYPL','COIN','SOFI','WISE.L','NU','AFRM'],
+  'payments':             ['V','MA','PYPL','SQ','WISE.L','GPN','FI'],
+
+  // ── Technology ────────────────────────────────────────────
+  'tech':                 ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL','CRM'],
+  'technology':           ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL'],
+  'big tech':             ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
+  'software':             ['MSFT','ORCL','CRM','NOW','ADBE','SAP','WDAY'],
+  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW','NOW','MDB'],
+  'semiconductors':       ['NVDA','AMD','INTC','QCOM','AMAT','TSM','ASML','ARM','MRVL'],
+  'chips':                ['NVDA','AMD','INTC','QCOM','TSM','ARM','AMAT'],
+  'artificial intelligence': ['NVDA','MSFT','GOOGL','META','PLTR','ARM','CRM','AMZN'],
+  'ai':                   ['NVDA','MSFT','GOOGL','META','PLTR','ARM','CRM'],
+  'cybersecurity':        ['CRWD','PANW','ZS','FTNT','S','OKTA','CYBR'],
+  'cyber':                ['CRWD','PANW','ZS','FTNT','S','OKTA'],
+
+  // ── Healthcare & Life Sciences ────────────────────────────
+  'pharma':               ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L','NVS','LLY'],
+  'pharmaceutical':       ['JNJ','PFE','MRK','ABBV','AZN.L','GSK.L','NVS','LLY'],
+  'healthcare':           ['JNJ','UNH','ABT','MDT','AZN.L','GSK.L','CVS','HCA'],
+  'biotech':              ['AMGN','GILD','REGN','VRTX','MRNA','BNTX','BIIB'],
+  'drug':                 ['JNJ','PFE','MRK','ABBV','AMGN','LLY','BNTX'],
+  'medtech':              ['MDT','ABT','SYK','ISRG','BSX','EW','ZBH'],
+  'weight loss':          ['LLY','NVO','AMGN'],
+
+  // ── Consumer & Retail ─────────────────────────────────────
+  'retail':               ['AMZN','WMT','TGT','COST','TSCO.L','MKS.L','SBRY.L'],
+  'shopping':             ['AMZN','WMT','TGT','COST','TSCO.L','SBRY.L'],
+  'ecommerce':            ['AMZN','SHOP','ETSY','JD','MELI','SE'],
+  'consumer staples':     ['PG','KO','PEP','ULVR.L','RECK.L','DGE.L'],
+  'food':                 ['MCD','SBUX','YUM','CMG','DPZ','WING','QSR'],
+  'restaurants':          ['MCD','SBUX','YUM','CMG','DPZ','WING'],
+  'grocery':              ['WMT','COST','KR','TSCO.L','SBRY.L','MKS.L'],
+  'tobacco':              ['BTI','MO','PM','BATS.L','IMB.L'],
+  'drinks':               ['KO','PEP','DEO','BUD','SAB.L','ABEV'],
+  'alcohol':              ['DEO','BUD','STZ','MO','SAB.L','ABEV'],
+
+  // ── Media, Streaming & Entertainment ─────────────────────
+  'streaming':            ['NFLX','DIS','SPOT','WBD','ROKU','PARA'],
+  'media':                ['NFLX','DIS','PARA','WBD','NYT','NWSA'],
+  'entertainment':        ['NFLX','DIS','SPOT','EA','TTWO','RBLX'],
   'social media':         ['META','SNAP','PINS','RDDT'],
-  'gaming':               ['EA','TTWO','RBLX'],
-  'video games':          ['EA','TTWO','RBLX','ATVI'],
-  'mining':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM'],
-  'metals':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM'],
-  'semiconductors':       ['NVDA','AMD','INTC','QCOM','AMAT'],
-  'chips':                ['NVDA','AMD','INTC','QCOM'],
-  'luxury':               ['CPRI','TPR','RL'],
-  'fashion':              ['CPRI','TPR','RL','PVH'],
-  'real estate':          ['PLD','AMT','SPG'],
-  'property':             ['PLD','AMT','SPG'],
-  'airlines':             ['DAL','UAL','AAL','LUV'],
-  'travel':               ['DAL','UAL','BKNG','ABNB'],
-  'fintech':              ['SQ','PYPL','COIN','SOFI'],
-  'payments':             ['V','MA','PYPL','SQ'],
-  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW'],
-  'software':             ['MSFT','ORCL','CRM','NOW','ADBE'],
-  'clean energy':         ['NEE','ENPH','SEDG','FSLR'],
-  'solar':                ['ENPH','SEDG','FSLR'],
-  'gold':                 ['GLD','GDX','NEM'],
-  'commodities':          ['GLD','SLV','USO','FCX'],
-  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','AAL.L'],
-  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L'],
-  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','AAL.L'],
-  'insurance':            ['AIG','MET','PRU','CB'],
-  'biotech':              ['AMGN','GILD','REGN','VRTX','MRNA'],
-  'drug':                 ['JNJ','PFE','MRK','ABBV','AMGN'],
+  'gaming':               ['EA','TTWO','RBLX','NTDOY','SONY','MSFT'],
+  'video games':          ['EA','TTWO','RBLX','NTDOY','SONY'],
+  'music':                ['SPOT','SIRI','LYV','WMG'],
+
+  // ── Transport & Travel ────────────────────────────────────
+  'airlines':             ['DAL','UAL','AAL','LUV','IAG.L','EZJ.L','RYA.L'],
+  'travel':               ['DAL','UAL','BKNG','ABNB','IAG.L','EZJ.L','EXPE'],
+  'logistics':            ['UPS','FDX','XPO','GXO','DPDHL.DE'],
+  'shipping':             ['ZIM','DAC','MATX','GSL'],
+
+  // ── Autos & EVs ──────────────────────────────────────────
+  'electric vehicles':    ['TSLA','RIVN','NIO','LCID','GM','F','STLA'],
+  'ev':                   ['TSLA','RIVN','NIO','LCID','GM','F'],
+  'cars':                 ['TSLA','GM','F','TM','STLA','HMC','RACE'],
+  'autos':                ['TSLA','GM','F','TM','STLA','HMC'],
+
+  // ── Crypto & Digital Assets ───────────────────────────────
+  'crypto':               ['COIN','MSTR','RIOT','MARA','HOOD','BTBT'],
+  'bitcoin':              ['COIN','MSTR','RIOT','MARA','BTBT'],
+  'blockchain':           ['COIN','MSTR','RIOT','MARA'],
+
+  // ── Real Estate & Property ────────────────────────────────
+  'real estate':          ['PLD','AMT','SPG','SEGRO.L','BLND.L','LAND.L'],
+  'property':             ['PLD','AMT','SPG','SEGRO.L','BLND.L','LAND.L'],
+  'reits':                ['PLD','AMT','SPG','O','VICI','SEGRO.L'],
+
+  // ── Mining & Commodities ──────────────────────────────────
+  'mining':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM','BHP','FRES.L'],
+  'metals':               ['RIO.L','AAL.L','GLEN.L','FCX','NEM','BHP','VALE'],
+  'gold':                 ['GLD','GDX','NEM','AEM','GOLD','WPM'],
+  'commodities':          ['GLD','SLV','USO','FCX','GLEN.L','BHP'],
+  'steel':                ['NUE','STLD','CLF','MT','BS.L'],
+  'copper':               ['FCX','GLEN.L','SCCO','HBM','AAL.L'],
+
+  // ── Luxury & Fashion ─────────────────────────────────────
+  'luxury':               ['CPRI','TPR','RL','BRBY.L','BIRK','EL'],
+  'fashion':              ['CPRI','TPR','RL','PVH','BRBY.L','TIF'],
+
+  // ── UK-Listed Stocks ─────────────────────────────────────
+  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','BT.L'],
+  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','DGE.L'],
+  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','NWG.L'],
+  'uk banks':             ['HSBA.L','BARC.L','LLOY.L','NWG.L','STAN.L'],
+  'ftse 100':             ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','GLEN.L'],
+
+  // ── Telecoms & Utilities ──────────────────────────────────
+  'telecom':              ['T','VZ','VOD.L','BT.L','TMUS','AMX'],
+  'telecommunications':   ['T','VZ','VOD.L','BT.L','TMUS','AMX'],
+  'utilities':            ['NEE','DUK','SO','AES','SSE.L','NG.L'],
+  'infrastructure':       ['UNP','CSX','AMT','PLD','SEGRO.L','CRH.L'],
+  'construction':         ['CRH.L','VMC','MLM','SUM','URI','CAT'],
+
+  // ── Industrials ───────────────────────────────────────────
+  'industrials':          ['HON','GE','MMM','CAT','DE','ETN','EMR'],
+  'machinery':            ['CAT','DE','ETN','ROK','PH','IR'],
 };
+
 
 // ── Live Yahoo Finance autocomplete search ─────────────────────────────────
 // Debounce timer per field
@@ -2590,8 +2637,28 @@ function gainPct(sym) {
 //   shares = player.startShares[sym] (fractional shares bought at game start)
 //   price  = current price in native currency converted to GBP via live FX rate
 function stockValueGBP(player, sym) {
-  const shares = player.startShares?.[sym];
-  if (!shares) return null;
+  let shares = player.startShares?.[sym];
+
+  // Fallback for games set up before the startShares system was introduced.
+  // Compute fractional share count on-the-fly from the locked startPrices.
+  if (!shares) {
+    const startRaw = S.startPrices?.[sym];
+    if (!startRaw) return null;
+    const j      = player.picks.indexOf(sym);
+    const alloc  = player.allocations?.[j] ?? 100;   // default £100 equal-weight
+    const cur    = S.currencies?.[sym] || prices[sym]?.currency || 'USD';
+    let startGBP;
+    if      (cur === 'GBP') startGBP = startRaw;
+    else if (cur === 'GBp') startGBP = startRaw / 100;
+    else {
+      const fxKey  = 'GBP' + cur + '=X';
+      const fxRate = prices[fxKey]?.price;
+      startGBP = fxRate ? startRaw / fxRate : startRaw; // treat as GBP if no FX
+    }
+    if (!startGBP) return null;
+    shares = alloc / startGBP;
+  }
+
   const raw = prices[sym]?.price;
   const cur = prices[sym]?.currency || S.currencies?.[sym] || 'USD';
   const gbp = rawToGBP(raw, cur);
@@ -3579,12 +3646,73 @@ function openAdmin() {
     toast('⛔ Admin access is restricted to authorised accounts.');
     return;
   }
+  renderAdminPanel();
   show('admin-overlay');
   hide('admin-auth');
   show('admin-panel');
 }
 function closeAdmin() { hide('admin-overlay'); }
 function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin(); }
+
+function renderAdminPanel() {
+  const panel       = document.getElementById('admin-panel');
+  const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
+  const gameOver    = isGameOver();
+  const inSeason    = pricesLocked && !gameOver;
+  const notStarted  = !pricesLocked && !gameOver;
+
+  let html = '';
+
+  // ── Lock prices ─────────────────────────────────────────
+  // Only show manual lock button before the game has started
+  if (notStarted) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">🔒 Lock Start Prices</div>
+        <div class="modal-desc">Prices are locked automatically when you click <strong>Start Game</strong>. You can also lock them manually here if needed.</div>
+        <button class="btn btn-primary" onclick="lockStartPrices()">Lock Current Prices</button>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
+  // ── In-season actions ────────────────────────────────────
+  if (inSeason) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">⏱ End Season Early</div>
+        <div class="modal-desc">Stop the season now and use current prices as the final standings.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-primary" onclick="endSeason()">🏁 End Now &amp; Archive</button>
+          <button class="btn btn-secondary" onclick="endSeasonNoArchive()">🗑 End Now &amp; Don't Archive</button>
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
+  // ── Post-season actions ──────────────────────────────────
+  if (gameOver) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">🏆 Season Complete</div>
+        <div class="modal-desc">Save the final standings to the Medal Table, or discard this season without recording the results.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-primary" onclick="endSeason()">📦 Archive</button>
+          <button class="btn btn-secondary" onclick="deleteSeasonNoArchive()">🗑 Delete &amp; Don't Archive</button>
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
+  // ── Danger zone (always visible) ─────────────────────────
+  html += `
+    <div class="modal-section" style="margin-bottom:0">
+      <div class="modal-section-title">⚠️ Danger Zone</div>
+      <div class="modal-desc">Permanently wipe all current game data. Archived seasons are kept.</div>
+      <button class="btn btn-danger" onclick="resetEverything()">🗑 Reset All Game Data</button>
+    </div>`;
+
+  panel.innerHTML = html;
+}
 
 async function lockStartPrices() {
   if (!confirm('Overwrite start prices with today\'s current prices?\n\nThis will recalculate each player\'s share count based on their allocations and the new prices.')) return;
@@ -3689,6 +3817,30 @@ async function endSeason() {
     }
     closeAdmin();
   } catch(e) { toast('❌ Failed: '+e.message); console.error(e); }
+}
+
+async function endSeasonNoArchive() {
+  if (!confirm('End the season now without archiving?\n\nFinal standings will NOT be saved to the Medal Table. This cannot be undone.')) return;
+  try {
+    S.endDate = new Date().toISOString().slice(0,10);
+    await save();
+    toast('Season ended. Standings not archived.');
+    closeAdmin();
+    renderDash();
+  } catch(e) { toast('❌ Failed: ' + e.message); }
+}
+
+async function deleteSeasonNoArchive() {
+  if (!confirm('Delete this season\'s data without archiving?\n\nFinal standings will NOT be saved to the Medal Table. This cannot be undone.')) return;
+  try {
+    if (USE_FIREBASE) {
+      await db.collection('squaremile').doc('game').delete();
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    closeAdmin();
+    location.reload();
+  } catch(e) { toast('❌ Failed: ' + e.message); }
 }
 
 async function resetEverything() {
