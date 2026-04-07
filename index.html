@@ -411,18 +411,39 @@
     </div>
     <div class="setup-body">
 
-      <div class="grid-2" style="margin-bottom:14px">
-        <div>
-          <label class="form-label">Game Start Date</label>
-          <input class="form-input" id="start-date" type="date" />
+      <!-- Admin-only date config — hidden for non-admins -->
+      <div id="setup-date-admin" style="display:none">
+        <div class="grid-2" style="margin-bottom:14px">
+          <div>
+            <label class="form-label">Game Start Date</label>
+            <input class="form-input" id="start-date" type="date" />
+          </div>
+          <div>
+            <label class="form-label">End Date</label>
+            <input class="form-input" id="end-date" type="date" />
+          </div>
         </div>
-        <div>
-          <label class="form-label">Game Length (weeks)</label>
-          <input class="form-input" id="game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
-        </div>
+      </div>
+      <!-- Read-only date display for non-admins -->
+      <div id="setup-date-readonly" style="display:none;margin-bottom:14px;padding:10px 14px;background:var(--surface2,#1a1f2e);border-radius:4px;font-size:12px;color:var(--muted)">
+        <span style="font-family:var(--mono);font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;font-size:10px;display:block;margin-bottom:4px">Game Period</span>
+        <span id="setup-date-display">—</span>
       </div>
       <div class="divider"></div>
 
+      <!-- Sign-in prompt shown to unauthenticated visitors -->
+      <div id="setup-signin-prompt" style="display:none;text-align:center;padding:24px 0 8px">
+        <div style="font-size:28px;margin-bottom:10px">🔐</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Sign in to join the game</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">Use your Google account to submit your picks and track your performance.</div>
+        <button class="btn btn-primary" onclick="signInWithGoogle()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Sign in with Google
+        </button>
+      </div>
+
+      <!-- Add Player form — only shown when signed in -->
+      <div id="setup-add-player-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div class="setup-section-title">Add a Player</div>
       </div>
@@ -518,6 +539,8 @@
         </div>
         <div class="submitted-list" id="submitted-list"></div>
       </div>
+
+      </div><!-- end #setup-add-player-section -->
 
       <div class="divider"></div>
       <div id="setup-error" class="error-box hidden"></div>
@@ -824,8 +847,8 @@
           <input class="form-input" id="ps-start-date" type="date" />
         </div>
         <div>
-          <label class="form-label">Game Length (weeks)</label>
-          <input class="form-input" id="ps-game-weeks" type="number" min="1" max="52" value="12" placeholder="e.g. 12" />
+          <label class="form-label">End Date</label>
+          <input class="form-input" id="ps-end-date" type="date" />
         </div>
       </div>
       <button class="btn btn-primary btn-full" onclick="submitPresetup()">Create Game →</button>
@@ -844,11 +867,33 @@
     </div>
     <div class="modal-body">
       <div id="join-error" class="error-box hidden"></div>
-      <div style="margin-bottom:14px">
-        <label class="form-label">Your Name</label>
-        <input class="form-input" id="join-name" placeholder="e.g. Sarah"
-               oninput="updateJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('join-pick-0')?.focus()" />
+
+      <!-- Signed-in identity badge — shown when authenticated -->
+      <div id="join-identity" style="display:none;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2,#1a1f2e);border-radius:4px;margin-bottom:14px">
+        <img id="join-avatar" src="" style="width:34px;height:34px;border-radius:50%;display:none" />
+        <div style="flex:1;min-width:0">
+          <div id="join-display-name" style="font-size:13px;font-weight:700;color:var(--text)"></div>
+          <div id="join-display-email" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        </div>
+        <button class="btn btn-secondary" onclick="signOutAndCloseJoin()" style="font-size:11px;padding:4px 9px;text-transform:none;letter-spacing:0">Switch account</button>
       </div>
+
+      <!-- Sign-in prompt — shown when not authenticated -->
+      <div id="join-signin-prompt" style="display:none;text-align:center;padding:16px 0 20px">
+        <div style="font-size:26px;margin-bottom:8px">👤</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Sign in to join</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">Your name is taken from your Google account.</div>
+        <button class="btn btn-primary" onclick="signInWithGoogle()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Sign in with Google
+        </button>
+      </div>
+
+      <!-- Hidden name input — value synced from Google account -->
+      <input type="hidden" id="join-name" />
+
+      <!-- Picks form — only shown when signed in -->
+      <div id="join-picks-form" style="display:none">
       <div class="picks-container">
         <label class="form-label" style="margin-bottom:4px">Your 3 Stock Picks</label>
         <div class="pick-field">
@@ -924,6 +969,7 @@
 
       <button class="btn btn-primary btn-full" id="join-submit-btn" disabled onclick="submitJoin()">Join Game</button>
       <div class="add-btn-hint" id="join-hint">Enter your name and 3 valid picks to join.</div>
+      </div><!-- end #join-picks-form -->
     </div>
   </div>
 </div>
@@ -1623,6 +1669,23 @@ function updateUserBadge() {
   const admin = isAdmin();
   if (adminBtn)  adminBtn.style.display = admin ? '' : 'none';
   if (startRow)  startRow.style.display = admin ? '' : 'none';
+
+  // Setup screen: admin sees editable date fields; non-admins see read-only display
+  const dateAdmin    = document.getElementById('setup-date-admin');
+  const dateReadonly = document.getElementById('setup-date-readonly');
+  const dateDisplay  = document.getElementById('setup-date-display');
+  if (dateAdmin)    dateAdmin.style.display    = admin ? '' : 'none';
+  if (dateReadonly) dateReadonly.style.display = (!admin && (S.startDate || S.endDate)) ? '' : 'none';
+  if (dateDisplay && S.startDate && S.endDate) {
+    const fmt = d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    dateDisplay.textContent = `${fmt(S.startDate)} → ${fmt(S.endDate)}`;
+  }
+
+  // Setup screen: hide "Add Player" form if not signed in, show sign-in prompt instead
+  const addPlayerSection  = document.getElementById('setup-add-player-section');
+  const setupSigninPrompt = document.getElementById('setup-signin-prompt');
+  if (addPlayerSection)  addPlayerSection.style.display  = currentUser ? '' : 'none';
+  if (setupSigninPrompt) setupSigninPrompt.style.display = currentUser ? 'none' : '';
 }
 
 // Gate any participatory action behind auth — shows sign-in modal if needed
@@ -1982,14 +2045,15 @@ function renderSubmittedPlayers() {
 }
 
 async function startGame() {
-  const startDate=document.getElementById('start-date').value;
+  const startDate = document.getElementById('start-date').value;
+  const endDate   = document.getElementById('end-date').value;
   if (!startDate) { showSetupError('Please choose a start date.'); return; }
+  if (!endDate)   { showSetupError('Please choose an end date.'); return; }
+  if (endDate <= startDate) { showSetupError('End date must be after start date.'); return; }
   if (!submittedPlayers.length) { showSetupError('Add at least one player first.'); return; }
   document.getElementById('setup-error').classList.add('hidden');
-  const weeks=parseInt(document.getElementById('game-weeks').value)||12;
-  const end=new Date(startDate); end.setDate(end.getDate()+(weeks*7));
   S.players=submittedPlayers.map(p=>({...p}));
-  S.startDate=startDate; S.endDate=end.toISOString().slice(0,10);
+  S.startDate=startDate; S.endDate=endDate;
   S.startPrices={}; isDemoMode=false;
   await save();
   if (USE_FIREBASE) startRealtimeSync();
@@ -2007,21 +2071,25 @@ function closePresetupIfOutside(e) { if (e.target.id === 'presetup-overlay') clo
 
 async function submitPresetup() {
   const startDate = document.getElementById('ps-start-date').value;
-  const weeks     = parseInt(document.getElementById('ps-game-weeks').value) || 12;
+  const endDate   = document.getElementById('ps-end-date').value;
   const errEl     = document.getElementById('presetup-error');
 
   if (!startDate) {
     errEl.textContent = 'Please choose a start date.';
-    errEl.classList.remove('hidden');
-    return;
+    errEl.classList.remove('hidden'); return;
+  }
+  if (!endDate) {
+    errEl.textContent = 'Please choose an end date.';
+    errEl.classList.remove('hidden'); return;
+  }
+  if (endDate <= startDate) {
+    errEl.textContent = 'End date must be after start date.';
+    errEl.classList.remove('hidden'); return;
   }
   errEl.classList.add('hidden');
 
-  const end = new Date(startDate);
-  end.setDate(end.getDate() + weeks * 7);
-
   S.startDate = startDate;
-  S.endDate   = end.toISOString().slice(0, 10);
+  S.endDate   = endDate;
   S.players   = [];
   S.startPrices = {};
   isDemoMode = false;
@@ -2037,21 +2105,53 @@ async function submitPresetup() {
 //  JOIN MODAL (players self-submit picks once game is set up)
 // ═══════════════════════════════════════════════════════════
 function openJoin() {
-  if (!requireAuth()) return;
   // Only allow joining before start prices are locked
-  if (Object.keys(S.startPrices).length > 0) {
+  if (Object.keys(S.startPrices||{}).length > 0) {
     toast('⚡ Game already started — picks are locked.'); return;
   }
+
   JOIN_PICK_IDS.forEach(id => {
     document.getElementById(id).value = '';
     applyTickerState(id, 'idle', '', '');
   });
-  // Pre-fill name from Google account
-  document.getElementById('join-name').value = currentUser?.displayName || '';
   const errEl = document.getElementById('join-error');
   if (errEl) errEl.classList.add('hidden');
+
+  // Render identity state
+  const identityEl  = document.getElementById('join-identity');
+  const signinEl    = document.getElementById('join-signin-prompt');
+  const picksFormEl = document.getElementById('join-picks-form');
+  const nameInput   = document.getElementById('join-name');
+  const avatarEl    = document.getElementById('join-avatar');
+  const nameEl      = document.getElementById('join-display-name');
+  const emailEl     = document.getElementById('join-display-email');
+
+  if (currentUser) {
+    // Signed in — show identity badge, show picks form
+    if (nameInput)   nameInput.value = currentUser.displayName || currentUser.email || '';
+    if (nameEl)      nameEl.textContent  = currentUser.displayName || currentUser.email || '';
+    if (emailEl)     emailEl.textContent = currentUser.email || '';
+    if (avatarEl && currentUser.photoURL) {
+      avatarEl.src = currentUser.photoURL;
+      avatarEl.style.display = 'block';
+    }
+    if (identityEl)  identityEl.style.display  = 'flex';
+    if (signinEl)    signinEl.style.display    = 'none';
+    if (picksFormEl) picksFormEl.style.display = '';
+  } else {
+    // Not signed in — show sign-in prompt, hide picks form
+    if (identityEl)  identityEl.style.display  = 'none';
+    if (signinEl)    signinEl.style.display    = '';
+    if (picksFormEl) picksFormEl.style.display = 'none';
+  }
+
   updateJoinBtn();
   show('join-overlay');
+}
+
+function signOutAndCloseJoin() {
+  closeJoin();
+  if (auth) auth.signOut();
 }
 
 function closeJoin() { hide('join-overlay'); }
@@ -3663,6 +3763,25 @@ function renderAdminPanel() {
 
   let html = '';
 
+  // ── Game Dates (always editable by admin) ────────────────
+  html += `
+    <div class="modal-section">
+      <div class="modal-section-title">📅 Game Dates</div>
+      <div class="modal-desc">Set or update the start and end dates for the current season.</div>
+      <div class="grid-2" style="margin:10px 0 12px">
+        <div>
+          <label class="form-label">Start Date</label>
+          <input class="form-input" id="admin-start-date" type="date" value="${S.startDate||''}" />
+        </div>
+        <div>
+          <label class="form-label">End Date</label>
+          <input class="form-input" id="admin-end-date" type="date" value="${S.endDate||''}" />
+        </div>
+      </div>
+      <button class="btn btn-secondary" onclick="saveGameDates()">Save Dates</button>
+    </div>
+    <div class="divider" style="margin:16px 0"></div>`;
+
   // ── Lock prices ─────────────────────────────────────────
   // Only show manual lock button before the game has started
   if (notStarted) {
@@ -3712,6 +3831,19 @@ function renderAdminPanel() {
     </div>`;
 
   panel.innerHTML = html;
+}
+
+async function saveGameDates() {
+  const startDate = document.getElementById('admin-start-date')?.value;
+  const endDate   = document.getElementById('admin-end-date')?.value;
+  if (!startDate || !endDate) { toast('⚠️ Please fill in both dates.'); return; }
+  if (endDate <= startDate)   { toast('⚠️ End date must be after start date.'); return; }
+  S.startDate = startDate;
+  S.endDate   = endDate;
+  await save();
+  toast('✅ Dates updated.');
+  closeAdmin();
+  renderDash();
 }
 
 async function lockStartPrices() {
