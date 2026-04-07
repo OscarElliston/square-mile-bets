@@ -357,6 +357,24 @@
 
     /* ── Breakdown chart header ── */
     .chart-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+
+    /* ── Allocation stepper ── */
+    .alloc-section { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+    .alloc-section-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px; font-family:var(--mono); }
+    .alloc-section-hint  { font-size:11px; color:var(--dim); margin-bottom:12px; font-family:var(--mono); }
+    .alloc-row { display:flex; align-items:center; gap:10px; padding:5px 0; }
+    .alloc-ticker-lbl { font-size:12px; font-weight:700; color:var(--accent); font-family:var(--mono); min-width:58px; flex-shrink:0; }
+    .alloc-name-lbl { font-size:11px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .alloc-stepper { display:flex; align-items:center; gap:7px; flex-shrink:0; }
+    .alloc-btn { width:26px; height:26px; border-radius:var(--radius); background:var(--surface2); border:1px solid var(--border2); color:var(--text); font-size:17px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; line-height:1; padding:0; font-family:var(--mono); }
+    .alloc-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+    .alloc-btn:disabled { opacity:.28; cursor:not-allowed; }
+    .alloc-amount { font-size:13px; font-weight:700; font-family:var(--mono); min-width:44px; text-align:center; }
+    .alloc-total-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); font-size:12px; font-family:var(--mono); }
+    .alloc-total-lbl { color:var(--muted); }
+    .alloc-total-val { font-weight:800; }
+    .alloc-total-val.valid   { color:var(--green); }
+    .alloc-total-val.invalid { color:var(--amber); }
   </style>
 </head>
 <body>
@@ -449,6 +467,43 @@
             <div class="ac-dropdown" id="dropdown-pick-2"></div>
           </div>
           <div class="pick-msg" id="msg-pick-2"></div>
+        </div>
+      </div>
+
+      <!-- Allocation stepper — setup form -->
+      <div class="alloc-section" id="alloc-section-pick">
+        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-0">Pick 1</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-1">Pick 2</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-2">Pick 3</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
+          <span class="alloc-total-val valid" id="alloc-total-pick">£300 ✓</span>
         </div>
       </div>
 
@@ -593,6 +648,43 @@
           <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
         </div>
       </div>
+
+      <!-- Allocation stepper — inline join panel -->
+      <div class="alloc-section" id="alloc-section-ij">
+        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0">Pick 1</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
+            </div>
+          </div>
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1">Pick 2</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
+            </div>
+          </div>
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2">Pick 3</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-2" onclick="adjustAlloc('ij',2,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-2">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-2" onclick="adjustAlloc('ij',2,10)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
+          <span class="alloc-total-val valid" id="alloc-total-ij">£300 ✓</span>
+        </div>
+      </div>
+
       <!-- Players section -->
       <div id="ij-players-section" class="ij-players-section" style="display:none">
         <div class="ij-players-header">
@@ -654,7 +746,7 @@
     <!-- ── TAB: HISTORY ── -->
     <div id="dt-history" class="hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:13px">
-        <div class="section-title" style="margin-bottom:0">Portfolio Value Over Time (index: 1,000 = start)</div>
+        <div class="section-title" style="margin-bottom:0">Portfolio Value Over Time (£)</div>
         <div style="display:flex;align-items:center;gap:6px">
           <span id="chart-zoom-hint" style="font-size:11px;color:var(--dim);margin-right:4px">scroll or use buttons to zoom · drag to pan</span>
           <button id="chart-zoom-in" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom in (tighten value scale)" onclick="if(myChart)myChart._zoom(0.65)">+</button>
@@ -679,6 +771,21 @@
         </div>
         <canvas id="breakdown-chart" style="display:block;width:100%"></canvas>
         <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
+      </div>
+
+      <!-- ── SMB FUND vs BENCHMARKS ── -->
+      <div style="margin:28px 0 0"></div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Square Mile Bets Fund vs Benchmarks</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">combined fund (avg of all portfolios) · indexed to 100 at game start</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="fund-chart" style="display:block;cursor:crosshair"></canvas>
+        </div>
+        <div class="chart-legend-custom" id="fund-legend"></div>
       </div>
     </div>
 
@@ -778,6 +885,43 @@
           <div class="pick-msg" id="msg-join-pick-2"></div>
         </div>
       </div>
+      <!-- Allocation stepper — join modal -->
+      <div class="alloc-section" id="alloc-section-join">
+        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-join-0">Pick 1</span>
+          <span class="alloc-name-lbl" id="alloc-name-join-0"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-join-0" onclick="adjustAlloc('join',0,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-join-0">£100</span>
+            <button class="alloc-btn" id="alloc-plus-join-0" onclick="adjustAlloc('join',0,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-join-1">Pick 2</span>
+          <span class="alloc-name-lbl" id="alloc-name-join-1"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-join-1" onclick="adjustAlloc('join',1,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-join-1">£100</span>
+            <button class="alloc-btn" id="alloc-plus-join-1" onclick="adjustAlloc('join',1,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-join-2">Pick 3</span>
+          <span class="alloc-name-lbl" id="alloc-name-join-2"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-join-2" onclick="adjustAlloc('join',2,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-join-2">£100</span>
+            <button class="alloc-btn" id="alloc-plus-join-2" onclick="adjustAlloc('join',2,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
+          <span class="alloc-total-val valid" id="alloc-total-join">£300 ✓</span>
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-full" id="join-submit-btn" disabled onclick="submitJoin()">Join Game</button>
       <div class="add-btn-hint" id="join-hint">Enter your name and 3 valid picks to join.</div>
     </div>
@@ -831,6 +975,43 @@
           <div class="pick-msg" id="msg-ep-pick-2"></div>
         </div>
       </div>
+      <!-- Allocation stepper — edit player modal -->
+      <div class="alloc-section" id="alloc-section-ep">
+        <div class="alloc-section-label">💷 Allocation</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300</div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-ep-0">Pick 1</span>
+          <span class="alloc-name-lbl" id="alloc-name-ep-0"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-ep-0" onclick="adjustAlloc('ep',0,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-ep-0">£100</span>
+            <button class="alloc-btn" id="alloc-plus-ep-0" onclick="adjustAlloc('ep',0,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-ep-1">Pick 2</span>
+          <span class="alloc-name-lbl" id="alloc-name-ep-1"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-ep-1" onclick="adjustAlloc('ep',1,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-ep-1">£100</span>
+            <button class="alloc-btn" id="alloc-plus-ep-1" onclick="adjustAlloc('ep',1,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-ep-2">Pick 3</span>
+          <span class="alloc-name-lbl" id="alloc-name-ep-2"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-ep-2" onclick="adjustAlloc('ep',2,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-ep-2">£100</span>
+            <button class="alloc-btn" id="alloc-plus-ep-2" onclick="adjustAlloc('ep',2,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
+          <span class="alloc-total-val valid" id="alloc-total-ep">£300 ✓</span>
+        </div>
+      </div>
+
       <button class="btn btn-primary btn-full" id="ep-submit-btn" style="margin-top:16px" onclick="submitEditPlayer()">Save Changes</button>
     </div>
   </div>
@@ -931,6 +1112,7 @@ document.addEventListener('click', e => {
 });
 
 // Price fetching — Vercel serverless function (Yahoo Finance)
+// Works for stocks, ETFs, and FX cross-rate pairs (e.g. GBPUSD=X)
 async function fetchPrices(symbols) {
   const res = await fetch('/api/quote?symbols=' + encodeURIComponent(symbols.join(',')),
                           { signal: AbortSignal.timeout(10000) });
@@ -941,7 +1123,8 @@ async function fetchPrices(symbols) {
     out[q.symbol] = {
       price:    q.regularMarketPrice,
       name:     q.shortName || q.symbol,
-      change1d: q.regularMarketChangePercent
+      change1d: q.regularMarketChangePercent,
+      currency: q.currency || 'USD',
     };
   });
   return out;
@@ -1043,6 +1226,84 @@ const JOIN_PICK_IDS = ['join-pick-0','join-pick-1','join-pick-2'];
 const IJ_PICK_IDS   = ['ij-pick-0','ij-pick-1','ij-pick-2'];
 const EP_PICK_IDS   = ['ep-pick-0','ep-pick-1','ep-pick-2'];
 
+// ── Allocation pot constants ─────────────────────────────────────────────────
+const ALLOC_TOTAL = 300;   // £ total pot per player
+const ALLOC_MIN   = 50;    // £ minimum per pick
+const ALLOC_MAX   = 150;   // £ maximum per pick
+const ALLOC_STEP  = 10;    // £ increment/decrement step
+
+// Allocation state for each form — reset to equal split on form open
+const allocState = {
+  pick: [100, 100, 100],
+  join: [100, 100, 100],
+  ij:   [100, 100, 100],
+  ep:   [100, 100, 100],
+};
+
+const ALLOC_PICK_MAP = {
+  pick: PICK_IDS,
+  join: JOIN_PICK_IDS,
+  ij:   IJ_PICK_IDS,
+  ep:   EP_PICK_IDS,
+};
+
+// ── Allocation helpers ───────────────────────────────────────────────────────
+function adjustAlloc(prefix, idx, delta) {
+  const state  = allocState[prefix];
+  const newVal = state[idx] + delta;
+  if (newVal < ALLOC_MIN || newVal > ALLOC_MAX) return;
+  state[idx] = newVal;
+  renderAllocUI(prefix);
+  if      (prefix === 'pick') updateAddBtn();
+  else if (prefix === 'join') updateJoinBtn();
+  else if (prefix === 'ij')   updateInlineJoinBtn();
+  else if (prefix === 'ep')   updateEditSubmitBtn();
+}
+
+function getAllocTotal(prefix) {
+  return allocState[prefix].reduce((a, b) => a + b, 0);
+}
+
+function isAllocValid(prefix) {
+  return getAllocTotal(prefix) === ALLOC_TOTAL;
+}
+
+function renderAllocUI(prefix) {
+  const state   = allocState[prefix];
+  const pickIds = ALLOC_PICK_MAP[prefix];
+
+  for (let i = 0; i < 3; i++) {
+    const val     = state[i];
+    const amtEl   = document.getElementById(`alloc-amt-${prefix}-${i}`);
+    const minusEl = document.getElementById(`alloc-minus-${prefix}-${i}`);
+    const plusEl  = document.getElementById(`alloc-plus-${prefix}-${i}`);
+    const tickEl  = document.getElementById(`alloc-tick-${prefix}-${i}`);
+    const nameEl  = document.getElementById(`alloc-name-${prefix}-${i}`);
+
+    if (amtEl)   amtEl.textContent = '£' + val;
+    if (minusEl) minusEl.disabled  = (val <= ALLOC_MIN);
+    if (plusEl)  plusEl.disabled   = (val >= ALLOC_MAX);
+
+    // Mirror the validated ticker symbol/name from the picker
+    const ts = tickerState[pickIds?.[i]];
+    if (tickEl) tickEl.textContent = (ts?.status === 'valid') ? ts.sym : `Pick ${i + 1}`;
+    if (nameEl) nameEl.textContent = (ts?.status === 'valid') ? (ts.name.replace(/^✓\s*/,'')) : '';
+  }
+
+  const totalEl = document.getElementById(`alloc-total-${prefix}`);
+  const total   = getAllocTotal(prefix);
+  if (totalEl) {
+    const ok = (total === ALLOC_TOTAL);
+    totalEl.textContent = `£${total} ${ok ? '✓' : `(need £${ALLOC_TOTAL})`}`;
+    totalEl.className   = 'alloc-total-val ' + (ok ? 'valid' : 'invalid');
+  }
+}
+
+function resetAllocState(prefix) {
+  allocState[prefix] = [100, 100, 100];
+  renderAllocUI(prefix);
+}
+
 // ═══════════════════════════════════════════════════════════
 //  DEMO DATA DEFINITIONS
 // ═══════════════════════════════════════════════════════════
@@ -1093,12 +1354,22 @@ const STOCK_DEFS = {
   PYPL:  {name:'PayPal Holdings Inc.',   start:76,   gain:-0.18, vol:0.025},
   SQ:    {name:'Block Inc.',             start:67,   gain:-0.12, vol:0.030},
   SOFI:  {name:'SoFi Technologies Inc.', start:15,   gain:0.08,  vol:0.040},
+  // Benchmark indices — used only for fund vs benchmark chart in demo mode
+  '^FTSE':{name:'FTSE 100',              start:8500, gain:0.04,  vol:0.008},
+  '^GSPC':{name:'S&P 500',              start:5800, gain:0.09,  vol:0.012},
 };
 
 const PLAYER_COLORS = [
   '#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa',
   '#38bdf8','#fb923c','#f472b6','#a3e635','#818cf8',
 ];
+
+// Benchmark tickers and their display metadata
+const BENCHMARK_TICKERS = ['^FTSE', '^GSPC'];
+const BENCHMARK_META = {
+  '^FTSE': { name: 'FTSE 100', color: '#06b6d4' },
+  '^GSPC': { name: 'S&P 500',  color: '#8b5cf6' },
+};
 
 // ═══════════════════════════════════════════════════════════
 //  PRICE SIMULATION
@@ -1142,9 +1413,10 @@ const TRADING_DAYS  = tradingDays(DEMO_START, '2026-03-17');
 const PRICE_HISTORY = {};
 Object.keys(STOCK_DEFS).forEach(sym => { PRICE_HISTORY[sym] = generatePath(sym, TRADING_DAYS.length); });
 
+// Legacy – kept for compatibility; no longer used directly (initChart uses £ values)
 function portfolioIndexHistory(player) {
-  return TRADING_DAYS.map((_,day) => {
-    const sum = player.picks.reduce((a,sym)=>a+(PRICE_HISTORY[sym][day]/PRICE_HISTORY[sym][0]),0);
+  return TRADING_DAYS.map((_, day) => {
+    const sum = player.picks.reduce((a, sym) => a + (PRICE_HISTORY[sym][day] / PRICE_HISTORY[sym][0]), 0);
     return parseFloat((1000 * sum / player.picks.length).toFixed(2));
   });
 }
@@ -1154,12 +1426,15 @@ function portfolioIndexHistory(player) {
 // ═══════════════════════════════════════════════════════════
 let S = {
   players:[], startPrices:{}, startDate:'', endDate:'', adminPwd:'',
+  currencies:{},   // { sym: 'USD'|'GBp'|'EUR'|... } — locked at game start
+  fxHistory:{},    // { date: { 'GBPUSD=X': rate, ... } } — daily FX snapshots
 };
 let prices        = {};
 let isDemoMode    = false;
 let adminUnlocked = false;
 let refreshTimer  = null;
-let myChart = null;
+let myChart     = null;
+let myFundChart = null;
 let currentDashTab = 'standings';
 
 // Setup state
@@ -1222,7 +1497,7 @@ function startRealtimeSync() {
       }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
-      if (currentDashTab === 'history')  { myChart = null; initChart(); }
+      if (currentDashTab === 'history')  { myChart = null; myFundChart = null; initChart(); initFundChart(); }
       updateJoinBtn();
       updateInlineJoinPanel();
       toast('🔄 Dashboard synced!');
@@ -1312,21 +1587,45 @@ function requireAuth() {
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
+const DEMO_GBP_USD = 1.27;   // simulated GBP/USD rate for demo mode
+
 function loadDemoData() {
   const lastDay = TRADING_DAYS.length - 1;
   const prevDay = lastDay - 1;
 
+  // All demo stocks are priced in USD
+  S.currencies = {};
   Object.keys(STOCK_DEFS).forEach(sym => {
     const path = PRICE_HISTORY[sym];
     prices[sym] = {
       price:    parseFloat(path[lastDay].toFixed(2)),
       name:     STOCK_DEFS[sym].name,
       change1d: (path[lastDay]/path[prevDay]-1)*100,
+      currency: 'USD',
     };
     S.startPrices[sym] = path[0];
+    S.currencies[sym]  = 'USD';
   });
 
-  S.players   = DEMO_PLAYERS.map(p => ({...p, names:p.picks.map(sym=>STOCK_DEFS[sym].name)}));
+  // Inject simulated FX rate so rawToGBP() works for USD stocks
+  prices['GBPUSD=X'] = { price: DEMO_GBP_USD, name: 'GBP/USD', currency: 'USD', change1d: 0 };
+
+  // Build demo players with equal £100/£100/£100 allocations and computed startShares
+  S.players = DEMO_PLAYERS.map(p => {
+    const allocations = [100, 100, 100];
+    const startShares = {};
+    p.picks.forEach((sym, j) => {
+      const startPriceGBP  = STOCK_DEFS[sym].start / DEMO_GBP_USD;
+      startShares[sym]     = allocations[j] / startPriceGBP;
+    });
+    return {
+      ...p,
+      names:       p.picks.map(sym => STOCK_DEFS[sym].name),
+      allocations,
+      startShares,
+    };
+  });
+
   S.startDate = DEMO_START;
   S.endDate   = DEMO_END;
   S.adminPwd  = '';
@@ -1379,7 +1678,11 @@ function onPickSearch(input) {
     // Only update if input value hasn't changed
     if (input.value.trim() !== q) return;
     if (results.length) {
-      const formatted = results.map(r => ({ sym: r.symbol, name: r.name, ex: r.exchange }));
+      const formatted = results.map(r => ({
+        sym: r.symbol,
+        name: r.name,
+        ex: r.exchange + (r.currency && r.currency !== 'USD' ? ' · ' + r.currency : ''),
+      }));
       // If first result is exact ticker match, auto-confirm silently
       const exact = results.find(r => r.symbol.toUpperCase() === q.toUpperCase());
       if (exact) {
@@ -1517,10 +1820,10 @@ function confirmSelection(id, sym, name, closeDropdown) {
     }
   }
 
-  if (isInline) updateInlineJoinBtn();
-  else if (isEdit) updateEditSubmitBtn();
-  else if (isJoin) updateJoinBtn();
-  else updateAddBtn();
+  if (isInline) { renderAllocUI('ij');   updateInlineJoinBtn(); }
+  else if (isEdit) { renderAllocUI('ep'); updateEditSubmitBtn(); }
+  else if (isJoin) { renderAllocUI('join'); updateJoinBtn(); }
+  else             { renderAllocUI('pick'); updateAddBtn(); }
 }
 
 function hideDropdown(id) {
@@ -1581,6 +1884,7 @@ function updateAddBtn() {
   const filled=PICK_IDS.filter(id=>document.getElementById(id).value.trim()).length;
   if (filled<3) { btn.disabled=true; hint.textContent=`Need all 3 picks — ${3-filled} more to go.`; return; }
   if (!states.every(s=>s==='valid'||s==='unknown')) { btn.disabled=true; hint.textContent='Waiting for ticker validation…'; return; }
+  if (!isAllocValid('pick')) { btn.disabled=true; hint.textContent=`Allocation must total £${ALLOC_TOTAL} (currently £${getAllocTotal('pick')}).`; return; }
   btn.disabled=false; hint.textContent='All good — ready to add!';
 }
 
@@ -1593,11 +1897,13 @@ function addPlayer() {
     if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name||sym); }
   }
   if (picks.length<3) return;
+  if (!isAllocValid('pick')) { toast('⚡ Allocation must total £300 before adding.'); return; }
   if (submittedPlayers.some(p=>p.name.toLowerCase()===name.toLowerCase())) { toast('⚡ "'+name+'" already exists.'); return; }
-  submittedPlayers.push({name,picks,names});
+  submittedPlayers.push({name, picks, names, allocations:[...allocState.pick]});
   renderSubmittedPlayers();
   document.getElementById('player-name').value='';
   PICK_IDS.forEach(id=>{ document.getElementById(id).value=''; applyTickerState(id,'idle','',''); });
+  resetAllocState('pick');
   updateAddBtn();
   document.getElementById('start-btn').disabled = submittedPlayers.length<1;
   toast(`✅ ${name} added!`);
@@ -1623,7 +1929,7 @@ function renderSubmittedPlayers() {
     <div class="submitted-player">
       <span class="sp-index">${i+1}</span>
       <span class="sp-name">${esc(p.name)}</span>
-      <div class="sp-picks">${p.picks.map((s,j)=>`<span class="sp-pick" title="${esc(p.names[j]||s)}">${esc(s)}</span>`).join('')}</div>
+      <div class="sp-picks">${p.picks.map((s,j)=>`<span class="sp-pick" title="${esc(p.names[j]||s)} · £${p.allocations?.[j]||100}">${esc(s)}<span style="opacity:.6;font-size:9px"> £${p.allocations?.[j]||100}</span></span>`).join('')}</div>
       <button class="sp-remove" onclick="removePlayer(${i})">×</button>
     </div>`).join('');
 }
@@ -1725,6 +2031,7 @@ function updateJoinBtn() {
   const filled = JOIN_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
   if (filled < 3) { btn.disabled = true; if (hint) hint.textContent = `Need all 3 picks — ${3 - filled} more to go.`; return; }
   if (!states.every(s => s === 'valid' || s === 'unknown'))    { btn.disabled = true; if (hint) hint.textContent = 'Waiting for ticker validation…'; return; }
+  if (!isAllocValid('join')) { btn.disabled = true; if (hint) hint.textContent = `Allocation must total £${ALLOC_TOTAL} (currently £${getAllocTotal('join')}).`; return; }
   btn.disabled = false; if (hint) hint.textContent = 'All good — ready to join!';
 }
 
@@ -1750,15 +2057,22 @@ async function submitJoin() {
   const btn = document.getElementById('join-submit-btn');
   btn.disabled = true; btn.textContent = 'Joining…';
 
+  if (!isAllocValid('join')) {
+    errEl.textContent = 'Your allocation must total £300 before joining.';
+    errEl.classList.remove('hidden'); return;
+  }
+
   // Append to live players and save (include uid/email for all-time tracking)
   S.players = [...(S.players||[]), {
     name, picks, names,
+    allocations: [...allocState.join],
     uid:   currentUser?.uid   || null,
     email: currentUser?.email || null
   }];
   await save();
 
   btn.textContent = 'Join Game';
+  resetAllocState('join');
   closeJoin();
   updateJoinBtn();
   toast(`✅ ${name} joined! Good luck!`);
@@ -1767,7 +2081,7 @@ async function submitJoin() {
   if (document.getElementById('dashboard-screen')?.style.display !== 'none') {
     renderDash();
     if (currentDashTab === 'stocks')  renderStockLeaderboard();
-    if (currentDashTab === 'history') { myChart = null; initChart(); }
+    if (currentDashTab === 'history') { myChart = null; myFundChart = null; initChart(); initFundChart(); }
   }
 }
 
@@ -1811,6 +2125,7 @@ function renderInlinePlayers() {
           <div class="ij-card-pick">
             <span class="ij-card-ticker">${esc(sym)}</span>
             <span class="ij-card-fullname">${esc(p.names?.[j] || sym)}</span>
+            ${p.allocations ? `<span style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-left:auto;flex-shrink:0">£${p.allocations[j]||100}</span>` : ''}
           </div>`).join('')}
       </div>
       ${!pricesLocked && _openMenuIdx === i ? `
@@ -1859,6 +2174,10 @@ function editPlayerAtIdx(idx) {
   document.getElementById('edit-player-title').textContent = `Edit picks — ${p.name}`;
   document.getElementById('edit-player-error').classList.add('hidden');
 
+  // Load existing allocations into stepper (or default to equal split)
+  allocState.ep = p.allocations ? [...p.allocations] : [100, 100, 100];
+  renderAllocUI('ep');
+
   EP_PICK_IDS.forEach((id, j) => {
     const sym  = p.picks[j] || '';
     const name = p.names?.[j] || sym;
@@ -1890,7 +2209,7 @@ function updateEditSubmitBtn() {
   const filled = EP_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
   const hasError = states.some(s => s === 'invalid' || s === 'duplicate');
   const checking = states.some(s => s === 'checking');
-  btn.disabled = hasError || checking || filled < 3;
+  btn.disabled = hasError || checking || filled < 3 || !isAllocValid('ep');
   btn.textContent = checking ? 'Checking…' : 'Save Changes';
 }
 
@@ -1904,8 +2223,9 @@ async function submitEditPlayer() {
     if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name || sym); }
   }
   if (picks.length < 3) { errEl.textContent = 'Please fill in all 3 picks.'; errEl.classList.remove('hidden'); return; }
+  if (!isAllocValid('ep')) { errEl.textContent = 'Allocation must total £300.'; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
-  S.players[idx] = { ...S.players[idx], picks, names };
+  S.players[idx] = { ...S.players[idx], picks, names, allocations: [...allocState.ep] };
   await save();
   closeEditPlayer();
   renderInlinePlayers();
@@ -1924,6 +2244,7 @@ function updateInlineJoinBtn() {
   const filled = IJ_PICK_IDS.filter(id => document.getElementById(id)?.value.trim()).length;
   if (filled < 3) { btn.disabled = true; if (hint) hint.textContent = `Need all 3 picks — ${3 - filled} more to go.`; return; }
   if (!states.every(s => s === 'valid' || s === 'unknown'))   { btn.disabled = true; if (hint) hint.textContent = 'Waiting for validation…'; return; }
+  if (!isAllocValid('ij')) { btn.disabled = true; if (hint) hint.textContent = `Allocation must total £${ALLOC_TOTAL} (currently £${getAllocTotal('ij')}).`; return; }
   btn.disabled = false; if (hint) hint.textContent = 'Ready to join!';
 }
 
@@ -1942,17 +2263,24 @@ async function submitInlineJoin() {
     if (sym) { picks.push(sym); names.push(tickerCache[sym]?.name || sym); }
   }
   if (picks.length < 3) { errEl.textContent = 'Please fill in all 3 picks.'; errEl.classList.remove('hidden'); return; }
+  if (!isAllocValid('ij')) { errEl.textContent = 'Allocation must total £300 before joining.'; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
 
   const btn = document.getElementById('ij-submit-btn');
   btn.disabled = true; btn.textContent = 'Joining…';
 
-  S.players = [...(S.players || []), {name, picks, names}];
+  S.players = [...(S.players || []), {
+    name, picks, names,
+    allocations: [...allocState.ij],
+    uid:   currentUser?.uid   || null,
+    email: currentUser?.email || null
+  }];
   await save();
 
   // Clear the form
   document.getElementById('ij-name').value = '';
   IJ_PICK_IDS.forEach(id => { document.getElementById(id).value = ''; applyTickerState(id, 'idle', '', ''); });
+  resetAllocState('ij');
   btn.disabled = false; btn.textContent = 'Add Player';
   updateInlineJoinBtn();
   renderInlinePlayers();
@@ -1976,9 +2304,44 @@ async function startGameManually() {
   try {
     const syms = allSymbols();
     if (!syms.length) { toast('⚡ No tickers to lock prices for.'); return; }
-    const p = await fetchPrices(syms);
+    // Fetch stock prices + benchmark indices together
+    const p = await fetchPrices([...syms, ...BENCHMARK_TICKERS]);
     syms.forEach(s => { if (p[s]) S.startPrices[s] = p[s].price; });
+    // Lock benchmark start prices so the fund chart can index from day 0
+    BENCHMARK_TICKERS.forEach(b => { if (p[b]) S.startPrices[b] = p[b].price; });
+
+    // Store currency per ticker (needed for GBP conversion throughout the season)
+    S.currencies = {};
+    syms.forEach(s => { if (p[s]?.currency) S.currencies[s] = p[s].currency; });
+
+    // Fetch live FX rates needed for start-price conversion
+    const fxSyms = getFXSymbols();
+    const fxData = fxSyms.length ? await fetchPrices(fxSyms) : {};
+    // Merge FX into live prices object
+    Object.assign(p, fxData);
     prices = p;
+
+    // Compute startShares for each player based on their allocations
+    // startShares[sym] = allocation / startPriceGBP (fractional shares bought)
+    S.players.forEach(player => {
+      player.startShares = {};
+      player.picks.forEach((sym, j) => {
+        const rawPrice = S.startPrices[sym];
+        if (!rawPrice) return;
+        const cur      = S.currencies[sym] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP')      priceGBP = rawPrice;
+        else if (cur === 'GBp') priceGBP = rawPrice / 100;
+        else {
+          const fxKey  = 'GBP' + cur + '=X';
+          const fxRate = fxData[fxKey]?.price;
+          priceGBP = fxRate ? rawPrice / fxRate : rawPrice; // fallback: treat as GBP
+        }
+        const alloc           = (player.allocations?.[j] ?? 100);
+        player.startShares[sym] = alloc / priceGBP;
+      });
+    });
+
     await save();
 
     // Hide pre-game section, reveal game content
@@ -2097,7 +2460,7 @@ function switchDashTab(tab) {
     document.getElementById('dt-'+t).classList.toggle('hidden',t!==tab);
     document.getElementById('dt-btn-'+t).classList.toggle('active',t===tab);
   });
-  if (tab==='history') initChart();
+  if (tab==='history') { initChart(); initFundChart(); }
   if (tab==='stocks')  renderStockLeaderboard();
   if (tab==='alltime') renderAllTimeLeaderboard();
 }
@@ -2112,19 +2475,31 @@ async function refreshPrices() {
   if (isDemoMode) return;
   if (refreshTimer) clearTimeout(refreshTimer);
   setDot('stale'); show('loading-state'); hide('dash-content'); hide('error-state');
-  const syms=allSymbols();
-  if (!syms.length) { hide('loading-state'); return; }
+  const stockSyms = allSymbols();
+  if (!stockSyms.length) { hide('loading-state'); return; }
   try {
-    prices=await fetchPrices(syms);
-    // Save daily price snapshot (once per calendar day, weekdays only) so the History chart builds up over time
-    const todayKey = new Date().toISOString().slice(0,10);
-    const todayDow = new Date().getUTCDay(); // 0=Sun, 6=Sat
+    // Fetch stock prices + FX cross-rate pairs (e.g. GBPUSD=X) in one batch
+    const allSyms = allSymbolsWithFX();
+    prices = await fetchPrices(allSyms);
+
+    // Save daily price + FX snapshot (once per calendar day, weekdays only)
+    const todayKey     = new Date().toISOString().slice(0,10);
+    const todayDow     = new Date().getUTCDay();
     const isTradingDay = todayDow !== 0 && todayDow !== 6;
     if (Object.keys(S.startPrices).length && isTradingDay) {
       if (!S.priceHistory) S.priceHistory = {};
+      if (!S.fxHistory)    S.fxHistory    = {};
       if (!S.priceHistory[todayKey]) {
         S.priceHistory[todayKey] = {};
-        syms.forEach(s=>{ if(prices[s]) S.priceHistory[todayKey][s]=prices[s].price; });
+        stockSyms.forEach(s => { if (prices[s]) S.priceHistory[todayKey][s] = prices[s].price; });
+        // Also snapshot benchmark index prices for the fund chart
+        BENCHMARK_TICKERS.forEach(b => { if (prices[b]) S.priceHistory[todayKey][b] = prices[b].price; });
+        // Snapshot FX rates too
+        const fxSyms = getFXSymbols();
+        if (fxSyms.length) {
+          S.fxHistory[todayKey] = {};
+          fxSyms.forEach(s => { if (prices[s]) S.fxHistory[todayKey][s] = prices[s].price; });
+        }
         save(); // fire-and-forget — persist to Firebase
       }
     }
@@ -2138,6 +2513,8 @@ async function refreshPrices() {
     hide('loading-state'); hide('error-state');
     renderDash(); show('dash-content');
     renderStockLeaderboard();
+    // Refresh fund chart if currently visible
+    if (currentDashTab === 'history') { myFundChart = null; initFundChart(); }
   } catch(e) {
     setDot('error');
     document.getElementById('last-updated').textContent='Failed to update';
@@ -2167,35 +2544,108 @@ function setDot(state) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  CALCULATIONS
+//  FX HELPERS
 // ═══════════════════════════════════════════════════════════
+
+// Build list of GBPXXX=X tickers needed for all non-GBP currencies in the game
+function getFXSymbols() {
+  if (!S.currencies) return [];
+  const curs = new Set(Object.values(S.currencies));
+  curs.delete('GBP'); curs.delete('GBp');
+  return [...curs].map(c => 'GBP' + c + '=X');
+}
+
+// All tickers to fetch prices for: stocks + FX cross-rates + benchmark indices
+function allSymbolsWithFX() {
+  return [...new Set([...allSymbols(), ...getFXSymbols(), ...BENCHMARK_TICKERS])];
+}
+
+// Convert a raw price in its native currency to GBP using the live prices object
+// GBp (British pence) → divide by 100
+// Other currencies → divide by GBP/XXX cross-rate from Yahoo (e.g. GBPUSD=X = USD per 1 GBP)
+function rawToGBP(rawPrice, currency) {
+  if (!rawPrice) return null;
+  currency = currency || 'USD';
+  if (currency === 'GBP') return rawPrice;
+  if (currency === 'GBp') return rawPrice / 100;   // pence → pounds
+  const fxKey  = 'GBP' + currency + '=X';
+  const fxRate = prices[fxKey]?.price;
+  if (!fxRate) return null;
+  return rawPrice / fxRate;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CALCULATIONS  (£-based, multi-currency)
+// ═══════════════════════════════════════════════════════════
+
+// Per-stock % gain from locked start price (used in All Stocks tab)
 function gainPct(sym) {
-  const start=S.startPrices[sym], cur=prices[sym]?.price??start;
-  if (!start||!cur) return null;
-  return ((cur-start)/start)*100;
+  const start = S.startPrices[sym];
+  const cur   = prices[sym]?.price;
+  if (!start || !cur) return null;
+  return ((cur - start) / start) * 100;
 }
 
-function portfolioGain(player) {
-  const gs=player.picks.map(gainPct).filter(g=>g!==null);
-  if (!gs.length) return null;
-  return gs.reduce((a,b)=>a+b,0)/gs.length;
+// Current GBP value of a player's position in one stock
+//   shares = player.startShares[sym] (fractional shares bought at game start)
+//   price  = current price in native currency converted to GBP via live FX rate
+function stockValueGBP(player, sym) {
+  const shares = player.startShares?.[sym];
+  if (!shares) return null;
+  const raw = prices[sym]?.price;
+  const cur = prices[sym]?.currency || S.currencies?.[sym] || 'USD';
+  const gbp = rawToGBP(raw, cur);
+  if (gbp === null) return null;
+  return shares * gbp;
 }
 
-function portfolioValue(player) {
-  // Portfolio index: 1000 = start value
-  const pg=portfolioGain(player);
-  if (pg===null) return null;
-  return 1000*(1+pg/100);
+// Total portfolio value in GBP across all 3 picks
+function portfolioValueGBP(player) {
+  const vals = player.picks.map(sym => stockValueGBP(player, sym));
+  if (vals.some(v => v === null)) return null;
+  return vals.reduce((a, b) => a + b, 0);
 }
 
-function fmt(g) {
-  if (g===null||g===undefined) return '–';
-  return (g>0?'+':'')+g.toFixed(2)+'%';
+// £ gain/loss on the £300 starting pot
+function portfolioGainGBP(player) {
+  const pv = portfolioValueGBP(player);
+  if (pv === null) return null;
+  return pv - ALLOC_TOTAL;
+}
+
+// % gain/loss on the £300 starting pot
+function portfolioGainPct(player) {
+  const pg = portfolioGainGBP(player);
+  if (pg === null) return null;
+  return (pg / ALLOC_TOTAL) * 100;
+}
+
+// Aliases used in legacy call sites
+function portfolioGain(player)  { return portfolioGainPct(player); }
+function portfolioValue(player) { return portfolioValueGBP(player); }
+
+// ── Formatters ───────────────────────────────────────────────────────────────
+
+function fmtGBP(val, showSign = false) {
+  if (val === null || val === undefined) return '–';
+  const abs = Math.abs(val);
+  const str = abs < 1000 ? abs.toFixed(2) : abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (showSign ? (val >= 0 ? '+' : '−') : '') + '£' + str;
+}
+
+function fmtPct(g) {
+  if (g === null || g === undefined) return '';
+  return (g > 0 ? '+' : '') + g.toFixed(1) + '%';
+}
+
+function fmt(g) {  // kept for All Stocks % display
+  if (g === null || g === undefined) return '–';
+  return (g > 0 ? '+' : '') + g.toFixed(2) + '%';
 }
 
 function gainCls(g) {
-  if (g===null||g===undefined) return '';
-  return g>0?'green':g<0?'red':'';
+  if (g === null || g === undefined) return '';
+  return g > 0 ? 'green' : g < 0 ? 'red' : '';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2215,12 +2665,15 @@ function renderWinnerBanner(sorted) {
   if (!el) return;
   if (!isGameOver() || isDemoMode || !sorted.length) { el.classList.add('hidden'); el.innerHTML=''; return; }
 
-  const winner = sorted[0];
-  const gainTxt = winner.pg !== null ? fmt(winner.pg) : '—';
+  const winner  = sorted[0];
+  const gainTxt = winner.pv !== null
+    ? `${fmtGBP(winner.pv)} &nbsp;<span style="color:var(--muted);font-size:14px">(${fmtGBP(winner.pg, true)} · ${fmtPct(winner.pct)})</span>`
+    : '—';
   const endFmt  = new Date(S.endDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
 
-  const podium = sorted.slice(1,3).map((p,i) =>
-    `<span>${MEDALS[i+1]} ${esc(p.name)}</span>${p.pg!==null?' <span style="color:var(--muted)">'+fmt(p.pg)+'</span>':''}`
+  const podium = sorted.slice(1, 3).map((p, i) =>
+    `<span>${MEDALS[i+1]} ${esc(p.name)}</span>${p.pv !== null
+      ? ` <span style="color:var(--muted)">${fmtGBP(p.pv)}</span>` : ''}`
   ).join('<span style="color:var(--dim);margin:0 10px">·</span>');
 
   const wasHidden = el.classList.contains('hidden');
@@ -2231,7 +2684,7 @@ function renderWinnerBanner(sorted) {
       <div class="winner-body">
         <div class="winner-label">🎉 Game Over · Final Result</div>
         <div class="winner-name">${esc(winner.name)} wins!</div>
-        <div class="winner-gain">${gainTxt} total return</div>
+        <div class="winner-gain">${gainTxt}</div>
         ${podium ? `<div class="winner-sub" style="margin-top:8px">${podium}</div>` : ''}
         <div class="winner-sub">Game ended ${endFmt} · standings frozen at final prices</div>
       </div>
@@ -2243,8 +2696,17 @@ function renderWinnerBanner(sorted) {
 }
 
 function renderDash() {
-  const sorted=S.players.map(p=>({...p,pg:portfolioGain(p),pv:portfolioValue(p)}))
-    .sort((a,b)=>{ if(a.pg===null&&b.pg===null)return 0; if(a.pg===null)return 1; if(b.pg===null)return -1; return b.pg-a.pg; });
+  const sorted = S.players.map(p => ({
+    ...p,
+    pv:  portfolioValueGBP(p),     // current £ value
+    pg:  portfolioGainGBP(p),      // £ gain/loss
+    pct: portfolioGainPct(p),      // % gain/loss
+  })).sort((a, b) => {
+    if (a.pv === null && b.pv === null) return 0;
+    if (a.pv === null) return 1;
+    if (b.pv === null) return -1;
+    return b.pv - a.pv;   // sort by highest portfolio value
+  });
   renderWinnerBanner(sorted);
   renderLeaderboard(sorted);
   renderCards(sorted);
@@ -2252,15 +2714,17 @@ function renderDash() {
 }
 
 function renderLeaderboard(sorted) {
-  document.getElementById('leaderboard').innerHTML=sorted.map((p,i)=>{
-    const rankEl=i<3?`<span style="font-size:24px">${MEDALS[i]}</span>`:`<span style="font-size:14px;font-weight:700;color:var(--dim)">#${i+1}</span>`;
-    const gainEl=p.pg!==null
-      ?`<div class="lb-gain-wrap">
-          <div class="lb-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
-          <div class="lb-value muted">${p.pv!==null?p.pv.toFixed(1):''}</div>
-        </div>`
-      :`<div class="lb-gain waiting">Waiting…</div>`;
-    const rowCls=i===0?'top-1':i===1?'top-2':i===2?'top-3':'';
+  document.getElementById('leaderboard').innerHTML = sorted.map((p, i) => {
+    const rankEl = i < 3
+      ? `<span style="font-size:24px">${MEDALS[i]}</span>`
+      : `<span style="font-size:14px;font-weight:700;color:var(--dim)">#${i+1}</span>`;
+    const gainEl = p.pv !== null
+      ? `<div class="lb-gain-wrap">
+           <div class="lb-gain ${gainCls(p.pg)}">${fmtGBP(p.pv)}</div>
+           <div class="lb-value ${gainCls(p.pg)}">${fmtGBP(p.pg, true)} &nbsp;<span style="color:var(--muted)">${fmtPct(p.pct)}</span></div>
+         </div>`
+      : `<div class="lb-gain waiting">Waiting…</div>`;
+    const rowCls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
     return `<div class="lb-row ${rowCls}">
       <div class="lb-rank">${rankEl}</div>
       <div>
@@ -2273,38 +2737,53 @@ function renderLeaderboard(sorted) {
 }
 
 function renderCards(sorted) {
-  document.getElementById('cards-grid').innerHTML=sorted.map((p,i)=>{
-    const sortedPicks=[...p.picks.map((sym,j)=>({sym,j}))].sort((a,b)=>{
-      const ga=gainPct(a.sym)??-Infinity, gb=gainPct(b.sym)??-Infinity; return gb-ga;
+  document.getElementById('cards-grid').innerHTML = sorted.map((p, i) => {
+    const sortedPicks = [...p.picks.map((sym, j) => ({sym, j}))].sort((a, b) => {
+      const va = stockValueGBP(p, a.sym) ?? -Infinity;
+      const vb = stockValueGBP(p, b.sym) ?? -Infinity;
+      return vb - va;
     });
-    const assets=sortedPicks.map(({sym,j})=>{
-      const g=gainPct(sym), data=prices[sym], cur=data?.price, start=S.startPrices[sym];
-      const d1=data?.change1d, dayLabel=d1!=null?`<span class="day-gain ${d1>=0?'green':'red'}">${d1>=0?'+':''}${d1.toFixed(2)}% today</span>`:'';
-      const label=(p.names&&p.names[j])||data?.name||sym;
+    const assets = sortedPicks.map(({sym, j}) => {
+      const svGBP  = stockValueGBP(p, sym);
+      const alloc  = p.allocations?.[j] ?? 100;
+      const gPct   = gainPct(sym);
+      const data   = prices[sym];
+      const d1     = data?.change1d;
+      const cur    = data?.currency || S.currencies?.[sym] || '';
+      const rawPx  = data?.price;
+      const dayLabel = d1 != null
+        ? `<span class="day-gain ${d1 >= 0 ? 'green' : 'red'}">${d1 >= 0 ? '+' : ''}${d1.toFixed(2)}% today</span>` : '';
+      const label  = (p.names && p.names[j]) || data?.name || sym;
+      const curBadge = cur && cur !== 'USD' ? `<span style="font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:1px 4px;font-family:var(--mono);margin-left:4px">${cur}</span>` : '';
+      // Price display — GBp (pence) shown in p, others use native symbol
+      const priceStr = rawPx != null
+        ? (cur === 'GBp' ? `${rawPx.toFixed(0)}p` : `${rawPx.toFixed(2)}`)
+        : '—';
       return `<div class="asset-row">
         <div>
           <div class="asset-name-label">${esc(label)}</div>
-          <div class="asset-ticker muted">${esc(sym)}</div>
+          <div class="asset-ticker muted">${esc(sym)}${curBadge}</div>
         </div>
         <div class="asset-right">
-          <div class="asset-gain ${gainCls(g)}">${fmt(g)}</div>
+          <div class="asset-gain ${gainCls(svGBP !== null ? svGBP - alloc : null)}">${svGBP !== null ? fmtGBP(svGBP) : '—'}</div>
           <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
             ${dayLabel}
-            <div class="asset-price muted">${cur?'$'+cur.toFixed(2):'—'}</div>
+            <div class="asset-price muted">${priceStr}</div>
           </div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px">${fmtGBP(svGBP !== null ? svGBP - alloc : null, true)} on £${alloc}</div>
         </div>
       </div>`;
     }).join('');
     const rankBadge = i < 3
       ? `<span class="card-rank-medal">${MEDALS[i]}</span>`
-      : `<span class="card-rank-num">${i+1}</span>`;
+      : `<span class="card-rank-num">${i + 1}</span>`;
     return `<div class="player-card">
       <div class="card-head">
         <div style="display:flex;align-items:center;gap:9px">
           ${rankBadge}
           <div class="card-name">${esc(p.name)}</div>
         </div>
-        <div class="card-gain ${gainCls(p.pg)}">${fmt(p.pg)}</div>
+        <div class="card-gain ${gainCls(p.pg)}">${p.pv !== null ? fmtGBP(p.pv) : '—'}</div>
       </div>
       <div class="card-body">${assets}</div>
     </div>`;
@@ -2457,8 +2936,9 @@ class LineChart {
     ctx.save();
     ctx.beginPath(); ctx.rect(p.x,p.y,p.w,p.h); ctx.clip();
 
-    // Baseline 1000
-    const y0=this._yS(1000,p,r);
+    // Baseline reference line (configurable via this.baseline; default 1000 for legacy portfolio chart)
+    const baselineVal = (this.baseline !== undefined) ? this.baseline : 1000;
+    const y0=this._yS(baselineVal,p,r);
     if (y0>=p.y&&y0<=p.y+p.h) {
       ctx.setLineDash([5,4]); ctx.strokeStyle='#3a4e72'; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p.x,y0); ctx.lineTo(p.x+p.w,y0); ctx.stroke();
@@ -2602,7 +3082,7 @@ class LineChart {
         <div style="display:flex;align-items:center;gap:7px;padding:2px 0">
           <div style="width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0"></div>
           <span style="font-size:12px;color:#9ca3af;flex:1;white-space:nowrap">${d.name}</span>
-          <span style="font-size:12px;font-weight:700;color:${d.v>=1000?'#10b981':'#ef4444'}">${d.v.toFixed(1)}</span>
+          <span style="font-size:12px;font-weight:700;color:${d.v>=ALLOC_TOTAL?'#10b981':'#ef4444'}">£${d.v.toFixed(2)}</span>
         </div>`).join('')}`;
     tip.style.display='block';
     const rect=this.canvas.getBoundingClientRect();
@@ -2629,12 +3109,13 @@ function renderStackedBarChart() {
   const canvas = document.getElementById('breakdown-chart');
   if (!canvas || !S.players?.length) return;
 
-  // Each stock is indexed to 100 at start. Current value = 100 * (1 + gainPct/100).
-  // Total portfolio = sum of stock values (max 300 if 3 stocks each at 100).
+  // Each segment = current GBP value of that stock position
+  // Total = portfolioValueGBP — reference line at £300 (starting pot)
   const playerData = S.players.map((p, pidx) => {
     const stocks = p.picks.map((sym, j) => {
-      const g = gainPct(sym);
-      return { sym, name: p.names?.[j] || sym, g, value: g !== null ? 100 * (1 + g/100) : null };
+      const svGBP = stockValueGBP(p, sym);
+      const gPct  = gainPct(sym);
+      return { sym, name: p.names?.[j] || sym, g: gPct, value: svGBP };
     });
     const known = stocks.filter(s => s.value !== null);
     if (!known.length) return null;
@@ -2684,7 +3165,7 @@ function renderStackedBarChart() {
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#566a8a'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
-    ctx.fillText(val.toFixed(0), padL-4, y+3.5);
+    ctx.fillText('£' + val.toFixed(0), padL-4, y+3.5);
   }
 
   // Reference line at 300 (starting value)
@@ -2693,7 +3174,7 @@ function renderStackedBarChart() {
   ctx.beginPath(); ctx.moveTo(padL, refY); ctx.lineTo(W-padR, refY); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(249,115,22,0.8)'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('start 300', padL+4, refY-4);
+  ctx.fillText('£300 start', padL+4, refY-4);
 
   // Store bar hit areas for tooltip
   canvas._barAreas = [];
@@ -2721,8 +3202,8 @@ function renderStackedBarChart() {
     // Total label above bar
     const topY = yPos(total);
     ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = total >= 300 ? '#4ade80' : '#f87171';
-    ctx.fillText(total.toFixed(1), cx, topY - 5);
+    ctx.fillStyle = total >= ALLOC_TOTAL ? '#4ade80' : '#f87171';
+    ctx.fillText('£' + total.toFixed(0), cx, topY - 5);
 
     // Player name
     ctx.fillStyle = '#8899bb'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
@@ -2745,21 +3226,23 @@ function renderStackedBarChart() {
     const hex = PLAYER_COLORS[hit.pidx % PLAYER_COLORS.length];
     const rows = hit.stocks.map(s => {
       if (s.value === null) return '';
-      const gStr = s.g !== null ? (s.g >= 0 ? '+' : '') + s.g.toFixed(2) + '%' : '—';
-      const col  = s.g === null ? '' : s.g >= 0 ? 'color:#4ade80' : 'color:#f87171';
+      const alloc = hit.p.allocations?.[hit.p.picks.indexOf(s.sym)] ?? 100;
+      const diff  = s.value - alloc;
+      const col   = diff >= 0 ? 'color:#4ade80' : 'color:#f87171';
+      const gStr  = `${diff >= 0 ? '+' : '−'}£${Math.abs(diff).toFixed(2)}`;
       return `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:4px">
-        <span style="color:var(--muted)">${esc(s.name)}</span>
-        <span style="font-family:var(--mono);font-weight:700;${col}">${gStr}</span>
+        <span style="color:var(--muted);font-size:11px">${esc(s.name)} <span style="color:var(--dim)">(£${alloc})</span></span>
+        <span style="font-family:var(--mono);font-weight:700;${col}">${fmtGBP(s.value)}</span>
       </div>`;
     }).join('');
-    const totalDiff = hit.total - 300;
-    const totalCol  = totalDiff >= 0 ? '#4ade80' : '#f87171';
+    const gainGBP = hit.total - ALLOC_TOTAL;
+    const totalCol = gainGBP >= 0 ? '#4ade80' : '#f87171';
     tip.innerHTML = `
       <div style="font-weight:700;color:${hex};margin-bottom:6px;font-size:12px">${esc(hit.p.name)}</div>
       ${rows}
       <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:16px">
         <span style="color:var(--muted);font-size:11px">Portfolio value</span>
-        <span style="font-family:var(--mono);font-weight:700;color:${totalCol}">${hit.total.toFixed(1)}</span>
+        <span style="font-family:var(--mono);font-weight:700;color:${totalCol}">${fmtGBP(hit.total)} <span style="font-size:10px">(${fmtGBP(gainGBP, true)})</span></span>
       </div>`;
     // Position tooltip — flip left if near right edge
     const tipW = 210;
@@ -2778,16 +3261,24 @@ function initChart() {
   if (myChart) return;
 
   if (isDemoMode) {
-    // Demo mode: full simulated history across all trading days
+    // Demo mode: build history from simulated price paths using £ values
     const labels = TRADING_DAYS.map(d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
-    const datasets = DEMO_PLAYERS.map((p,i) => ({
-      label: p.name,
-      data:  portfolioIndexHistory(p),
-      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-    }));
+    const datasets = S.players.map((p, i) => {
+      const data = TRADING_DAYS.map((_, day) => {
+        // Each pick: shares × simulated price / GBPUSD
+        const total = p.picks.reduce((sum, sym) => {
+          const path   = PRICE_HISTORY[sym];
+          const shares = p.startShares?.[sym];
+          if (!path || !shares) return sum;
+          return sum + shares * (path[day] / DEMO_GBP_USD);
+        }, 0);
+        return parseFloat(total.toFixed(2));
+      });
+      return { label: p.name, data, color: PLAYER_COLORS[i % PLAYER_COLORS.length] };
+    });
     myChart = new LineChart('portfolio-chart');
     myChart.setData(labels, datasets);
-    buildChartLegend(DEMO_PLAYERS);
+    buildChartLegend(S.players);
     return;
   }
 
@@ -2819,10 +3310,19 @@ function initChart() {
     allSymbols().forEach(s => { if (prices[s]) allSnapshots[todayKey][s] = prices[s].price; });
   }
 
+  // Merge stored FX history alongside price history for accurate GBP conversion
+  const fxHistory = S.fxHistory || {};
+  const allFXSnaps = {...fxHistory};
+
+  // Inject start-of-game FX snapshot using current live prices as fallback
+  const startFXSnap = {};
+  getFXSymbols().forEach(fx => {
+    if (prices[fx]?.price) startFXSnap[fx] = prices[fx].price;
+  });
+  if (Object.keys(startFXSnap).length) allFXSnaps['0000-00-00'] = startFXSnap;
+
   // Always inject a guaranteed "Game Start" baseline using the exact locked startPrices.
   // Key '0000-00-00' sorts before every real ISO date so this is always the first point.
-  // Because snap[sym] === startPrices[sym] the ratio = 1.0 and every player starts at 1000,
-  // regardless of when real snapshots were taken or whether the first day already has one.
   const startSnap = {};
   allSymbols().forEach(s => { if (S.startPrices[s]) startSnap[s] = S.startPrices[s]; });
   allSnapshots['0000-00-00'] = startSnap;
@@ -2849,14 +3349,26 @@ function initChart() {
     return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   });
 
-  const datasets = S.players.map((p,i) => {
+  const datasets = S.players.map((p, i) => {
     const data = sortedDates.map(date => {
-      const snap = allSnapshots[date];
-      const ratio = p.picks.reduce((sum,sym) => {
-        const sp = S.startPrices[sym], cp = snap?.[sym];
-        return sum + (sp && cp ? cp/sp : 1);
-      }, 0) / p.picks.length;
-      return parseFloat((1000 * ratio).toFixed(2));
+      const snap   = allSnapshots[date];
+      const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
+      const total  = p.picks.reduce((sum, sym) => {
+        const shares = p.startShares?.[sym];
+        const raw    = snap?.[sym];
+        if (!shares || !raw) return sum + (p.allocations?.[p.picks.indexOf(sym)] ?? 100); // hold flat
+        const cur = S.currencies?.[sym] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP')      priceGBP = raw;
+        else if (cur === 'GBp') priceGBP = raw / 100;
+        else {
+          const fxKey  = 'GBP' + cur + '=X';
+          const fxRate = fxSnap[fxKey] ?? prices[fxKey]?.price;
+          priceGBP = fxRate ? raw / fxRate : null;
+        }
+        return sum + (priceGBP !== null ? shares * priceGBP : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
+      }, 0);
+      return parseFloat(total.toFixed(2));
     });
     return { label: p.name, data, color: PLAYER_COLORS[i % PLAYER_COLORS.length] };
   });
@@ -2881,6 +3393,183 @@ function toggleDataset(idx) {
   document.getElementById('li-'+idx)?.classList.toggle('faded', myChart.hidden.has(idx));
 }
 
+// ═══════════════════════════════════════════════════════════
+//  FUND vs BENCHMARKS CHART
+// ═══════════════════════════════════════════════════════════
+function initFundChart() {
+  if (myFundChart) return;
+
+  if (isDemoMode) {
+    const labels = TRADING_DAYS.map(d =>
+      new Date(d).toLocaleDateString('en-GB', {day:'numeric', month:'short'})
+    );
+
+    // Fund line: average of all player portfolio values indexed to 100 at day 0
+    const fundData = TRADING_DAYS.map((_, day) => {
+      const totalValue = S.players.reduce((psum, p) => {
+        const pv = p.picks.reduce((sum, sym) => {
+          const path   = PRICE_HISTORY[sym];
+          const shares = p.startShares?.[sym];
+          if (!path || !shares) return sum;
+          return sum + shares * (path[day] / DEMO_GBP_USD);
+        }, 0);
+        return psum + pv;
+      }, 0);
+      const avg = totalValue / S.players.length;
+      return parseFloat(((avg / ALLOC_TOTAL) * 100).toFixed(2));
+    });
+
+    // Benchmark lines: price path indexed to 100 at day 0
+    const benchDatasets = BENCHMARK_TICKERS.map(sym => {
+      const path = PRICE_HISTORY[sym];
+      if (!path) return null;
+      const base = path[0];
+      const data = TRADING_DAYS.map((_, d) =>
+        parseFloat(((path[d] / base) * 100).toFixed(2))
+      );
+      return { label: BENCHMARK_META[sym].name, data, color: BENCHMARK_META[sym].color };
+    }).filter(Boolean);
+
+    const datasets = [
+      { label: 'SMB Fund', data: fundData, color: '#f97316' },
+      ...benchDatasets,
+    ];
+
+    myFundChart = new LineChart('fund-chart');
+    myFundChart.baseline = 100;
+    myFundChart.setData(labels, datasets);
+    buildFundChartLegend(datasets);
+    return;
+  }
+
+  // ── Real game ──────────────────────────────────────────────
+  const hasStart = Object.keys(S.startPrices || {}).length > 0;
+  if (!hasStart) {
+    const canvas = document.getElementById('fund-chart');
+    if (!canvas) return;
+    canvas.width  = canvas.offsetWidth || 900;
+    canvas.height = 260;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#3a4e72';
+    ctx.font = '14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Lock start prices to enable the fund chart.', canvas.width / 2, 130);
+    return;
+  }
+
+  const history   = S.priceHistory || {};
+  const fxHistory = S.fxHistory    || {};
+  const todayKey  = new Date().toISOString().slice(0, 10);
+
+  // Merge stored history with live prices for today
+  const allSnapshots = {...history};
+  if (Object.keys(prices || {}).length) {
+    allSnapshots[todayKey] = allSnapshots[todayKey] || {};
+    allSymbols().forEach(s => { if (prices[s]) allSnapshots[todayKey][s] = prices[s].price; });
+    BENCHMARK_TICKERS.forEach(b => { if (prices[b]) allSnapshots[todayKey][b] = prices[b].price; });
+  }
+
+  // FX snapshots — used when converting S&P to GBP terms
+  const allFXSnaps = {...fxHistory};
+  const liveFXSnap = {};
+  getFXSymbols().forEach(fx => { if (prices[fx]?.price) liveFXSnap[fx] = prices[fx].price; });
+  if (Object.keys(liveFXSnap).length) allFXSnaps['0000-00-00'] = liveFXSnap;
+
+  // Baseline snapshot at game start
+  const startSnap = {};
+  allSymbols().forEach(s => { if (S.startPrices[s]) startSnap[s] = S.startPrices[s]; });
+  BENCHMARK_TICKERS.forEach(b => { if (S.startPrices[b]) startSnap[b] = S.startPrices[b]; });
+  allSnapshots['0000-00-00'] = startSnap;
+
+  // Filter to weekdays only (same logic as portfolio chart)
+  const sortedDates = Object.keys(allSnapshots).sort().filter(d => {
+    if (d === '0000-00-00') return true;
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    return dow !== 0 && dow !== 6;
+  });
+  if (!sortedDates.length) return;
+
+  const labels = sortedDates.map(d =>
+    d === '0000-00-00' ? 'Start' : new Date(d).toLocaleDateString('en-GB', {day:'numeric', month:'short'})
+  );
+
+  // Fund: average portfolio value in GBP, indexed to 100 at start
+  const fundData = sortedDates.map(date => {
+    const snap   = allSnapshots[date];
+    const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
+    const total  = S.players.reduce((psum, p) => {
+      const pv = p.picks.reduce((sum, sym) => {
+        const shares = p.startShares?.[sym];
+        const raw    = snap?.[sym];
+        if (!shares || !raw) return sum + (p.allocations?.[p.picks.indexOf(sym)] ?? 100);
+        const cur = S.currencies?.[sym] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP')      priceGBP = raw;
+        else if (cur === 'GBp') priceGBP = raw / 100;
+        else {
+          const fxKey  = 'GBP' + cur + '=X';
+          const fxRate = fxSnap[fxKey] ?? prices[fxKey]?.price;
+          priceGBP = fxRate ? raw / fxRate : null;
+        }
+        return sum + (priceGBP !== null ? shares * priceGBP : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
+      }, 0);
+      return psum + pv;
+    }, 0);
+    const avg = total / S.players.length;
+    return parseFloat(((avg / ALLOC_TOTAL) * 100).toFixed(2));
+  });
+
+  // Benchmarks: indexed to 100 at game start; S&P GBP-adjusted via GBPUSD=X
+  const startFXBase = (allFXSnaps['0000-00-00'] || {})['GBPUSD=X'] ?? prices['GBPUSD=X']?.price;
+  const benchDatasets = BENCHMARK_TICKERS.map(sym => {
+    const startPrice = S.startPrices[sym];
+    if (!startPrice) return null;
+    const isFTSE = sym === '^FTSE'; // FTSE is in GBP already; S&P is in USD
+    const data = sortedDates.map(date => {
+      const snap   = allSnapshots[date];
+      const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
+      const raw    = snap?.[sym];
+      if (!raw) return 100; // hold flat when no data
+      if (isFTSE) {
+        return parseFloat(((raw / startPrice) * 100).toFixed(2));
+      } else {
+        // GBP-adjust: compare S&P in sterling terms to capture FX effect
+        const fxNow  = fxSnap['GBPUSD=X'] ?? prices['GBPUSD=X']?.price;
+        const fxBase = startFXBase ?? fxNow;
+        if (!fxNow || !fxBase) return parseFloat(((raw / startPrice) * 100).toFixed(2)); // USD fallback
+        return parseFloat((((raw / fxNow) / (startPrice / fxBase)) * 100).toFixed(2));
+      }
+    });
+    return { label: BENCHMARK_META[sym].name, data, color: BENCHMARK_META[sym].color };
+  }).filter(Boolean);
+
+  const datasets = [
+    { label: 'SMB Fund', data: fundData, color: '#f97316' },
+    ...benchDatasets,
+  ];
+
+  myFundChart = new LineChart('fund-chart');
+  myFundChart.baseline = 100;
+  myFundChart.setData(labels, datasets);
+  buildFundChartLegend(datasets);
+}
+
+function buildFundChartLegend(datasets) {
+  const el = document.getElementById('fund-legend');
+  if (!el) return;
+  el.innerHTML = datasets.map((ds, i) => `
+    <div class="legend-item" id="fli-${i}" onclick="toggleFundDataset(${i})">
+      <div class="legend-dot" style="background:${ds.color}"></div>
+      <span>${esc(ds.label)}</span>
+    </div>`).join('');
+}
+
+function toggleFundDataset(idx) {
+  if (!myFundChart) return;
+  myFundChart.toggle(idx);
+  document.getElementById('fli-' + idx)?.classList.toggle('faded', myFundChart.hidden.has(idx));
+}
+
 
 // ═══════════════════════════════════════════════════════════
 //  ADMIN — email whitelist auth
@@ -2898,12 +3587,49 @@ function closeAdmin() { hide('admin-overlay'); }
 function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin(); }
 
 async function lockStartPrices() {
-  if (!confirm('Overwrite start prices with today\'s current prices?')) return;
+  if (!confirm('Overwrite start prices with today\'s current prices?\n\nThis will recalculate each player\'s share count based on their allocations and the new prices.')) return;
   try {
-    const p=await fetchPrices(allSymbols());
-    allSymbols().forEach(s=>{ if(p[s]) S.startPrices[s]=p[s].price; });
-    prices=p; await save(); toast('✅ Start prices updated!'); closeAdmin(); renderDash();
-  } catch(e) { toast('❌ Failed: '+e.message); }
+    const syms = allSymbols();
+    const p    = await fetchPrices([...syms, ...BENCHMARK_TICKERS]);
+    syms.forEach(s => { if (p[s]) S.startPrices[s] = p[s].price; });
+    // Also update benchmark start prices for fund chart indexing
+    BENCHMARK_TICKERS.forEach(b => { if (p[b]) S.startPrices[b] = p[b].price; });
+
+    // Update stored currencies
+    S.currencies = {};
+    syms.forEach(s => { if (p[s]?.currency) S.currencies[s] = p[s].currency; });
+
+    // Fetch FX rates
+    const fxSyms = getFXSymbols();
+    const fxData = fxSyms.length ? await fetchPrices(fxSyms) : {};
+    Object.assign(p, fxData);
+    prices = p;
+
+    // Recompute startShares using current prices + allocations
+    S.players.forEach(player => {
+      player.startShares = {};
+      player.picks.forEach((sym, j) => {
+        const rawPrice = S.startPrices[sym];
+        if (!rawPrice) return;
+        const cur      = S.currencies[sym] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP')      priceGBP = rawPrice;
+        else if (cur === 'GBp') priceGBP = rawPrice / 100;
+        else {
+          const fxKey  = 'GBP' + cur + '=X';
+          const fxRate = fxData[fxKey]?.price;
+          priceGBP = fxRate ? rawPrice / fxRate : rawPrice;
+        }
+        const alloc             = (player.allocations?.[j] ?? 100);
+        player.startShares[sym] = alloc / priceGBP;
+      });
+    });
+
+    await save();
+    toast('✅ Start prices locked! Share counts updated.');
+    closeAdmin();
+    renderDash();
+  } catch(e) { toast('❌ Failed: ' + e.message); }
 }
 
 async function endSeason() {
@@ -2911,14 +3637,16 @@ async function endSeason() {
   if (!seasonName) return;
   if (!confirm(`Archive "${seasonName}" and save final standings? The game state will be preserved — use Reset to start fresh.`)) return;
   try {
-    // Build final standings
+    // Build final standings — track both £ value and % gain
     const finalStandings = S.players.map(p => ({
-      name:        p.name,
-      uid:         p.uid || null,
-      email:       p.email || null,
-      picks:       p.picks,
-      finalReturn: portfolioGain(p) ?? 0
-    })).sort((a,b) => b.finalReturn - a.finalReturn);
+      name:           p.name,
+      uid:            p.uid || null,
+      email:          p.email || null,
+      picks:          p.picks,
+      finalValueGBP:  portfolioValueGBP(p) ?? ALLOC_TOTAL,
+      finalGainGBP:   portfolioGainGBP(p)  ?? 0,
+      finalReturn:    portfolioGainPct(p)   ?? 0,   // % gain (kept for legacy)
+    })).sort((a, b) => b.finalValueGBP - a.finalValueGBP);
 
     const seasonData = {
       name:           seasonName,
@@ -2938,7 +3666,7 @@ async function endSeason() {
         if (!s.uid) continue;
         const ref = db.collection('players').doc(s.uid);
         const snap = await ref.get();
-        const existing = snap.exists ? snap.data() : { seasons:0, gold:0, silver:0, bronze:0, totalReturn:0, bestReturn:-Infinity };
+        const existing = snap.exists ? snap.data() : { seasons:0, gold:0, silver:0, bronze:0, totalGainGBP:0, totalReturn:0, bestGainGBP:-Infinity };
         const rank = finalStandings.indexOf(s);
         await ref.set({
           displayName:  s.name,
@@ -2948,9 +3676,11 @@ async function endSeason() {
           gold:         (existing.gold||0)   + (rank===0 ? 1 : 0),
           silver:       (existing.silver||0) + (rank===1 ? 1 : 0),
           bronze:       (existing.bronze||0) + (rank===2 ? 1 : 0),
-          totalReturn:  (existing.totalReturn||0) + s.finalReturn,
-          bestReturn:   Math.max(existing.bestReturn ?? -Infinity, s.finalReturn),
-          bestSeason:   s.finalReturn >= (existing.bestReturn ?? -Infinity) ? seasonName : (existing.bestSeason || seasonName)
+          totalGainGBP: (existing.totalGainGBP||0) + s.finalGainGBP,
+          totalReturn:  (existing.totalReturn||0)  + s.finalReturn,
+          bestGainGBP:  Math.max(existing.bestGainGBP ?? -Infinity, s.finalGainGBP),
+          bestReturn:   Math.max(existing.bestReturn  ?? -Infinity, s.finalReturn),
+          bestSeason:   s.finalGainGBP >= (existing.bestGainGBP ?? -Infinity) ? seasonName : (existing.bestSeason || seasonName)
         }, { merge: true });
       }
       toast('✅ Season archived!');
@@ -2992,8 +3722,10 @@ async function renderAllTimeLeaderboard() {
         (b.bronze||0)-(a.bronze||0) ||
         ((b.seasons ? b.totalReturn/b.seasons : 0) - (a.seasons ? a.totalReturn/a.seasons : 0))
       );
-      const rows = players.map((p,i) => {
-        const avg = p.seasons ? ((p.totalReturn/p.seasons)*100).toFixed(1)+'%' : '—';
+      const rows = players.map((p, i) => {
+        const avgGBP = p.seasons && p.totalGainGBP != null
+          ? fmtGBP(p.totalGainGBP / p.seasons, true)
+          : (p.seasons ? fmtPct((p.totalReturn / p.seasons) * 100) : '—');
         const gold = p.gold||0, silver = p.silver||0, bronze = p.bronze||0;
         const total = gold + silver + bronze;
         return `<tr>
@@ -3004,7 +3736,7 @@ async function renderAllTimeLeaderboard() {
           <td style="text-align:center;font-weight:${silver?'700':'400'};color:${silver?'#b0b8c8':'var(--muted)'}">${silver||'—'}</td>
           <td style="text-align:center;font-weight:${bronze?'700':'400'};color:${bronze?'#cd7f32':'var(--muted)'}">${bronze||'—'}</td>
           <td style="text-align:center;font-weight:${total?'700':'400'}">${total||'—'}</td>
-          <td style="text-align:right;color:var(--muted)">${avg}</td>
+          <td style="text-align:right;color:var(--muted)">${avgGBP}</td>
         </tr>`;
       }).join('');
       document.getElementById('alltime-content').innerHTML = `
@@ -3029,12 +3761,15 @@ async function renderAllTimeLeaderboard() {
       document.getElementById('seasons-archive').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">No archived seasons yet.</div>';
     } else {
       document.getElementById('seasons-archive').innerHTML = seasons.map(s => {
-        const standings = (s.finalStandings||[]).map((p,i) =>
-          `<div class="season-standings-row">
+        const standings = (s.finalStandings||[]).map((p, i) => {
+          const valueStr = p.finalValueGBP != null
+            ? fmtGBP(p.finalValueGBP) + ' &nbsp;<span style="color:var(--muted)">(' + fmtGBP(p.finalGainGBP, true) + ')</span>'
+            : (p.finalReturn >= 0 ? '+' : '') + (p.finalReturn * 100).toFixed(1) + '%';
+          return `<div class="season-standings-row">
             <span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.'} ${esc(p.name)}</span>
-            <span class="${p.finalReturn>=0?'green':'red'}" style="font-weight:600">${p.finalReturn>=0?'+':''}${(p.finalReturn*100).toFixed(1)}%</span>
-          </div>`
-        ).join('');
+            <span class="${(p.finalGainGBP ?? p.finalReturn) >= 0 ? 'green' : 'red'}" style="font-weight:600">${valueStr}</span>
+          </div>`;
+        }).join('');
         return `<div class="season-card">
           <div class="season-card-head">
             <div class="season-card-title">${esc(s.name)}</div>
