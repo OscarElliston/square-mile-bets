@@ -485,10 +485,12 @@
 
       <div class="picks-container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <label class="form-label" style="margin-bottom:0">3 Stock Picks</label>
-          <button class="btn btn-secondary" onclick="openStockBrowser(PICK_IDS)" style="font-size:11px;padding:4px 10px;text-transform:none;letter-spacing:0">📂 Browse stocks</button>
+          <label class="form-label" style="margin-bottom:0">3 Stock Picks &amp; Allocation</label>
+          <button class="btn btn-primary" onclick="openStockBrowser(PICK_IDS)" style="font-size:12px;padding:7px 14px">📂 Browse stocks</button>
         </div>
-        <div class="pick-field">
+        <div class="alloc-section-hint" style="margin-bottom:10px">Min £50 · max £150 per pick · must total £300</div>
+
+        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-0" placeholder="Pick 1 — e.g. Apple or AAPL"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -498,8 +500,18 @@
             <div class="ac-dropdown" id="dropdown-pick-0"></div>
           </div>
           <div class="pick-msg" id="msg-pick-0"></div>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="alloc-ticker-lbl" id="alloc-tick-pick-0" style="font-size:11px;color:var(--muted)">Allocation</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
+            </div>
+          </div>
         </div>
-        <div class="pick-field">
+
+        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-1" placeholder="Pick 2 — e.g. Microsoft or MSFT"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -509,8 +521,18 @@
             <div class="ac-dropdown" id="dropdown-pick-1"></div>
           </div>
           <div class="pick-msg" id="msg-pick-1"></div>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="alloc-ticker-lbl" id="alloc-tick-pick-1" style="font-size:11px;color:var(--muted)">Allocation</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
+            </div>
+          </div>
         </div>
-        <div class="pick-field">
+
+        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-2" placeholder="Pick 3 — e.g. Tesla or TSLA"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -520,47 +542,24 @@
             <div class="ac-dropdown" id="dropdown-pick-2"></div>
           </div>
           <div class="pick-msg" id="msg-pick-2"></div>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <span class="alloc-ticker-lbl" id="alloc-tick-pick-2" style="font-size:11px;color:var(--muted)">Allocation</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Allocation stepper — setup form -->
-      <div class="alloc-section" id="alloc-section-pick">
-        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-0">Pick 1</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
-          </div>
-        </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-1">Pick 2</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
-          </div>
-        </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-2">Pick 3</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
-          </div>
-        </div>
-        <div class="alloc-total-row">
-          <span class="alloc-total-lbl">Total invested:</span>
+        <div class="alloc-total-row" id="alloc-section-pick">
+          <span class="alloc-total-lbl">💷 Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-pick">£300 ✓</span>
         </div>
       </div>
 
-      <button class="btn btn-primary btn-full" id="add-btn" disabled onclick="addPlayer()">Add Player</button>
+      <button class="btn btn-primary btn-full" id="add-btn" disabled onclick="addPlayer()">✓ Confirm choices</button>
       <div class="add-btn-hint" id="add-hint">Enter a name and 3 valid tickers to add a player.</div>
 
       <div id="submitted-section" class="hidden">
@@ -655,13 +654,14 @@
         </div>
       </div>
       <div id="inline-join-error" class="error-box hidden" style="margin-bottom:10px"></div>
-      <div class="join-panel-fields">
-        <div>
-          <label class="form-label">Your Name</label>
-          <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
-                 oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
-        </div>
-        <div style="position:relative">
+      <div style="margin-bottom:8px">
+        <label class="form-label">Your Name</label>
+        <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
+               oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
+      </div>
+      <div class="alloc-section-hint" style="margin-bottom:10px">Pick 3 stocks &amp; allocate your £300 pot · Min £50 · max £150 per pick</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
           <label class="form-label">Pick 1</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-0" placeholder="Search ticker…"
@@ -672,8 +672,16 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-0"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-0"></div>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0" style="font-size:11px;color:var(--muted)">Allocation</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
+            </div>
+          </div>
         </div>
-        <div style="position:relative">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
           <label class="form-label">Pick 2</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-1" placeholder="Search ticker…"
@@ -684,8 +692,16 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-1"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-1"></div>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1" style="font-size:11px;color:var(--muted)">Allocation</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
+            </div>
+          </div>
         </div>
-        <div style="position:relative">
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
           <label class="form-label">Pick 3</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-2" placeholder="Search ticker…"
@@ -696,37 +712,8 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-2"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-2"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;justify-content:flex-end">
-          <label class="form-label" style="visibility:hidden">Add</label>
-          <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">Add Player</button>
-          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
-        </div>
-      </div>
-
-      <!-- Allocation stepper — inline join panel -->
-      <div class="alloc-section" id="alloc-section-ij">
-        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0">Pick 1</span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
-              <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
-            </div>
-          </div>
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1">Pick 2</span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
-              <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
-            </div>
-          </div>
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2">Pick 3</span>
+          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2" style="font-size:11px;color:var(--muted)">Allocation</span>
             <div class="alloc-stepper">
               <button class="alloc-btn" id="alloc-minus-ij-2" onclick="adjustAlloc('ij',2,-10)">−</button>
               <span class="alloc-amount" id="alloc-amt-ij-2">£100</span>
@@ -734,9 +721,15 @@
             </div>
           </div>
         </div>
-        <div class="alloc-total-row">
-          <span class="alloc-total-lbl">Total invested:</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div id="alloc-section-ij" style="display:flex;align-items:center;gap:10px">
+          <span class="alloc-total-lbl" style="font-size:12px;font-family:var(--mono);color:var(--muted)">💷 Total:</span>
           <span class="alloc-total-val valid" id="alloc-total-ij">£300 ✓</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end">
+          <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">✓ Confirm choices</button>
+          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
         </div>
       </div>
 
