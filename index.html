@@ -659,7 +659,10 @@
         <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
                oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
       </div>
-      <div class="alloc-section-hint" style="margin-bottom:10px">Pick 3 stocks &amp; allocate your £300 pot · Min £50 · max £150 per pick</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="alloc-section-hint" style="margin-bottom:0">Pick 3 stocks &amp; allocate your £300 pot · Min £50 · max £150 per pick</div>
+        <button class="btn btn-primary" onclick="openStockBrowser(IJ_PICK_IDS)" style="font-size:12px;padding:7px 14px;flex-shrink:0;margin-left:12px">📂 Browse stocks</button>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
         <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
           <label class="form-label">Pick 1</label>
