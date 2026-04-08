@@ -3504,12 +3504,17 @@ function renderCards(sorted) {
     const rankBadge = i < 3
       ? `<span class="card-rank-medal">${MEDALS[i]}</span>`
       : `<span class="card-rank-num">${i + 1}</span>`;
+    const cardPaid = S.payments?.[p.origIdx] === true;
+    const cardPaidBadge = cardPaid
+      ? `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:2px;padding:1px 5px;flex-shrink:0">£ PAID</span>`
+      : `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--red);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:2px;padding:1px 5px;flex-shrink:0">£ UNPAID</span>`;
     return `<div class="player-card">
       <div class="card-head">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
           ${rankBadge}
           ${playerAvatar(p, 28)}
           <div class="card-name">${esc(p.name)}</div>
+          ${cardPaidBadge}
         </div>
         <div class="card-gain ${gainCls(p.pg)}">${p.pv !== null ? fmtGBP(p.pv) : '—'}</div>
       </div>
