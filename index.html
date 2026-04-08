@@ -327,6 +327,11 @@
     .sb-card-ticker { font-size:13px;font-weight:800;font-family:var(--mono);color:var(--text);margin-bottom:2px; }
     .sb-card-name   { font-size:10px;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
     .sb-card-check  { position:absolute;top:7px;right:8px;color:#34d399;font-size:12px;font-weight:700; }
+    .sb-search-bar { padding:10px 14px;border-bottom:1px solid var(--border2);flex-shrink:0; }
+    .sb-search-input { width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px 9px 34px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s; }
+    .sb-search-input:focus { border-color:var(--accent); }
+    .sb-search-wrap { position:relative; }
+    .sb-search-icon { position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;opacity:.5; }
     @media(max-width:600px){
       #stock-browser-overlay { padding:0; }
       .sb-modal { border-radius:0;max-height:100vh; }
@@ -1123,6 +1128,12 @@
       <div class="sb-slot-indicator" id="sb-slot-indicator">Filling Pick 1</div>
       <button class="btn btn-secondary" onclick="closeStockBrowser()" style="padding:5px 10px;letter-spacing:0;text-transform:none;font-size:14px">✕</button>
     </div>
+    <div class="sb-search-bar">
+      <div class="sb-search-wrap">
+        <span class="sb-search-icon">🔍</span>
+        <input type="text" id="sb-search" class="sb-search-input" placeholder="Search by name or ticker (e.g. Apple, TSLA)…" oninput="sbHandleSearch(this.value)" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
     <div class="sb-body">
       <nav class="sb-nav" id="sb-nav"></nav>
       <div class="sb-content">
@@ -1250,8 +1261,13 @@ const CATEGORY_MAP = {
   'tech':                 ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL','CRM'],
   'technology':           ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL'],
   'big tech':             ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
-  'software':             ['MSFT','ORCL','CRM','NOW','ADBE','SAP','WDAY'],
-  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW','NOW','MDB'],
+  'magnificent 7':        ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA'],
+  'mag 7':                ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA'],
+  'software':             ['MSFT','ORCL','CRM','NOW','ADBE','SAP','WDAY','IBM'],
+  'enterprise saas':      ['CRM','NOW','WDAY','ADBE','ZM','TWLO','DDOG','HUBS','NET'],
+  'saas':                 ['CRM','NOW','WDAY','ADBE','SNOW','DDOG','ZM','TWLO','NET','HUBS'],
+  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW','NOW','MDB','NET','DDOG'],
+  'legacy tech':          ['IBM','DELL','HPQ','CSCO','ORCL','INTC'],
   'semiconductors':       ['NVDA','AMD','INTC','QCOM','AMAT','TSM','ASML','ARM','MRVL'],
   'chips':                ['NVDA','AMD','INTC','QCOM','TSM','ARM','AMAT'],
   'artificial intelligence': ['NVDA','MSFT','GOOGL','META','PLTR','ARM','CRM','AMZN'],
@@ -1290,8 +1306,10 @@ const CATEGORY_MAP = {
   'music':                ['SPOT','SIRI','LYV','WMG'],
 
   // ── Transport & Travel ────────────────────────────────────
+  'rideshare':            ['UBER','LYFT'],
+  'mobility':             ['UBER','LYFT','TSLA','GM','F'],
   'airlines':             ['DAL','UAL','AAL','LUV','IAG.L','EZJ.L','RYA.L'],
-  'travel':               ['DAL','UAL','BKNG','ABNB','IAG.L','EZJ.L','EXPE'],
+  'travel':               ['DAL','UAL','BKNG','ABNB','IAG.L','EZJ.L','EXPE','UBER'],
   'logistics':            ['UPS','FDX','XPO','GXO','DPDHL.DE'],
   'shipping':             ['ZIM','DAC','MATX','GSL'],
 
@@ -1324,11 +1342,12 @@ const CATEGORY_MAP = {
   'fashion':              ['CPRI','TPR','RL','PVH','BRBY.L','TIF'],
 
   // ── UK-Listed Stocks ─────────────────────────────────────
-  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','BT.L'],
-  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','DGE.L'],
-  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','NWG.L'],
+  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','BT.L','REL.L','EXPN.L','RR.L','LSEG.L'],
+  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','DGE.L','REL.L','EXPN.L','LSEG.L'],
+  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','NWG.L','REL.L','EXPN.L','RR.L'],
   'uk banks':             ['HSBA.L','BARC.L','LLOY.L','NWG.L','STAN.L'],
-  'ftse 100':             ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','GLEN.L'],
+  'ftse 100':             ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','GLEN.L','REL.L','EXPN.L','RR.L','LSEG.L','DGE.L'],
+  'uk tech':              ['AUTO.L','DARK.L','EXPN.L','REL.L','LSEG.L'],
 
   // ── Telecoms & Utilities ──────────────────────────────────
   'telecom':              ['T','VZ','VOD.L','BT.L','TMUS','AMX'],
@@ -1437,19 +1456,53 @@ const TICKER_NAMES = {
   VMC:'Vulcan Materials',MLM:'Martin Marietta',SUM:'Summit Materials','CRH.L':'CRH',
   // Private Equity
   'EQT.ST':'EQT',
+  // Rideshare / Mobility
+  UBER:'Uber',LYFT:'Lyft',
+  // Enterprise SaaS / Dev Tools
+  ZM:'Zoom',NET:'Cloudflare',TWLO:'Twilio',DDOG:'Datadog',
+  HUBS:'HubSpot',GTLB:'GitLab',PATH:'UiPath',ZI:'ZoomInfo',
+  // Legacy Tech
+  IBM:'IBM',DELL:'Dell Technologies',HPQ:'HP Inc',CSCO:'Cisco',
+  QCOM:'Qualcomm', // already listed above but ensuring name exists
+  // ETFs / Indices
+  SPY:'S&P 500 ETF',QQQ:'Nasdaq 100 ETF',DIA:'Dow Jones ETF',
+  IWM:'Russell 2000 ETF',XLK:'Tech Sector ETF',XLF:'Finance Sector ETF',
+  // More UK stocks
+  'REL.L':'RELX Group','EXPN.L':'Experian','LSEG.L':'London Stock Exchange Group',
+  'RR.L':'Rolls-Royce','BDEV.L':'Barratt Developments','PSN.L':'Persimmon',
+  'MNDI.L':'Mondi','SMDS.L':'DS Smith','AUTO.L':'Auto Trader',
+  'DARK.L':'Darktrace','OXB.L':'Oxford Biomedica',
+  // Emerging markets / global
+  BABA:'Alibaba',PDD:'Pinduoduo / Temu',GRAB:'Grab',MELI:'MercadoLibre',
+  // Consumer/lifestyle
+  NKE:'Nike',LULU:'Lululemon',SBUX:'Starbucks', // SBUX already listed
+  // More financials
+  SQ:'Block (Square)',HOOD:'Robinhood',OPEN:'Opendoor',
+  // Healthcare additions
+  TMO:'Thermo Fisher Scientific',DHR:'Danaher',ZBH:'Zimmer Biomet',IQV:'IQVIA',
+  // More media
+  TTWO:'Take-Two Interactive',NWSA:'News Corp',NYT:'New York Times',
+  // Industrials
+  GEV:'GE Vernova',AXON:'Axon Enterprise',TDG:'TransDigm',
 };
 
 // ═══════════════════════════════════════════════════════════
 //  BROWSER CATEGORIES — grouped nav for the stock browser
 // ═══════════════════════════════════════════════════════════
 const BROWSER_CATEGORIES = [
-  { group:'🤖 Technology', items:[
+  { group:'⭐ Popular', items:[
+    {key:'magnificent 7',  label:'Magnificent 7'},
     {key:'big tech',       label:'Big Tech'},
+    {key:'ftse 100',       label:'FTSE 100'},
+  ]},
+  { group:'🤖 Technology', items:[
     {key:'ai',             label:'Artificial Intelligence'},
     {key:'semiconductors', label:'Semiconductors'},
+    {key:'enterprise saas',label:'Enterprise SaaS'},
     {key:'software',       label:'Software'},
     {key:'cloud',          label:'Cloud Computing'},
     {key:'cybersecurity',  label:'Cybersecurity'},
+    {key:'legacy tech',    label:'Legacy Tech'},
   ]},
   { group:'💰 Finance', items:[
     {key:'investment banks',  label:'Investment Banks'},
@@ -1483,6 +1536,7 @@ const BROWSER_CATEGORIES = [
   { group:'🇬🇧 UK Stocks', items:[
     {key:'ftse 100', label:'FTSE 100'},
     {key:'uk banks', label:'UK Banks'},
+    {key:'uk tech',  label:'UK Tech'},
     {key:'london',   label:'All London'},
   ]},
   { group:'🎮 Media & Entertainment', items:[
@@ -1494,6 +1548,7 @@ const BROWSER_CATEGORIES = [
   { group:'✈️ Transport & Autos', items:[
     {key:'airlines',         label:'Airlines'},
     {key:'travel',           label:'Travel'},
+    {key:'rideshare',        label:'Rideshare (Uber/Lyft)'},
     {key:'electric vehicles',label:'Electric Vehicles'},
     {key:'autos',            label:'Cars & Autos'},
   ]},
@@ -2408,6 +2463,10 @@ function openStockBrowser(pickIds) {
   _browserPickIds = pickIds || [];
   _browserCatKey  = null;
 
+  // Clear search box
+  const searchEl = document.getElementById('sb-search');
+  if (searchEl) searchEl.value = '';
+
   // Render category nav
   const nav = document.getElementById('sb-nav');
   nav.innerHTML = BROWSER_CATEGORIES.map(group =>
@@ -2427,6 +2486,49 @@ function openStockBrowser(pickIds) {
     const first = BROWSER_CATEGORIES[0].items[0];
     sbSelectCategory(first.key, first.label);
   }
+
+  // Focus the search box after a short delay
+  setTimeout(() => searchEl?.focus(), 150);
+}
+
+function sbHandleSearch(query) {
+  const q = query.trim().toLowerCase();
+
+  if (!q) {
+    // Restore category view
+    if (_browserCatKey) {
+      const cat = BROWSER_CATEGORIES.flatMap(g => g.items).find(i => i.key === _browserCatKey);
+      sbSelectCategory(_browserCatKey, cat?.label || _browserCatKey);
+    } else {
+      document.getElementById('sb-content-title').textContent = 'Select a category on the left';
+      document.getElementById('sb-grid').innerHTML = '';
+    }
+    return;
+  }
+
+  // Search across all TICKER_NAMES
+  const results = Object.entries(TICKER_NAMES).filter(([sym, name]) =>
+    sym.toLowerCase().includes(q) || name.toLowerCase().includes(q)
+  ).slice(0, 60);
+
+  document.getElementById('sb-content-title').textContent =
+    results.length ? `${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"` : `No results for "${query}"`;
+
+  const grid = document.getElementById('sb-grid');
+  if (!results.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No stocks found — try typing a ticker directly in the pick field above.</div>';
+    return;
+  }
+
+  grid.innerHTML = results.map(([sym, name]) => {
+    const isDupe = _browserPickIds.some(id => tickerState[id]?.sym === sym);
+    return `
+      <div class="sb-card ${isDupe ? 'selected' : ''}" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
+        <div class="sb-card-ticker">${esc(sym)}</div>
+        <div class="sb-card-name">${esc(name)}</div>
+        ${isDupe ? '<div class="sb-card-check">✓</div>' : ''}
+      </div>`;
+  }).join('');
 }
 
 function closeStockBrowser() { hide('stock-browser-overlay'); }
