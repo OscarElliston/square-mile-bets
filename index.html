@@ -756,6 +756,75 @@
       </div>
     </div>
 
+    <!-- FAQ section — visible before game starts -->
+    <div id="faq-section" style="margin-bottom:24px">
+      <div class="section-title" style="margin-bottom:16px">❓ FAQ</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            How does the game work?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            Pick 3 stocks and split your virtual £300 pot across them. The player whose portfolio gains the most by the end of the game wins. Performance is tracked live on the leaderboard so you can see exactly where you stand.
+          </div>
+        </details>
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            How much does it cost to play?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            It costs <strong style="color:var(--text)">£10 to enter</strong>. Transfer this to the game organiser before the game starts — they'll confirm receipt and get you set up.
+          </div>
+        </details>
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            When does the game start and end?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            Check the <strong style="color:var(--text)">Game Progress bar</strong> at the top of this page — it shows the exact start and end dates for the current season.
+          </div>
+        </details>
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            What stocks can I pick?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            You can pick from a wide range of publicly listed stocks across US and UK markets — big tech, finance, energy, healthcare, crypto-adjacent stocks and more. Hit <strong style="color:var(--text)">Browse Stocks</strong> to explore by category, or search by company name or ticker symbol (e.g. "Apple" or "AAPL"). If a stock appears in the browser or is accepted by the search, it's fair game.
+          </div>
+        </details>
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            What does the allocation do?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            You decide how much of your virtual £300 to put behind each pick — minimum £50, maximum £150 per stock. It works in £10 steps. If you're more confident in one pick, back it harder. Your total must always equal exactly £300.
+          </div>
+        </details>
+
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            Is this real money?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            The £300 pot is virtual — no real trades are made. The £10 entry fee is real though, and goes into the prize pot. Purely bragging rights on the line (and mild office shame if you finish last).
+          </div>
+        </details>
+
+      </div>
+    </div>
+
     <!-- Game content — hidden until game starts -->
     <div id="game-content" class="hidden">
 
@@ -1819,6 +1888,7 @@ let S = {
   players:[], startPrices:{}, startDate:'', endDate:'', adminPwd:'',
   currencies:{},   // { sym: 'USD'|'GBp'|'EUR'|... } — locked at game start
   fxHistory:{},    // { date: { 'GBPUSD=X': rate, ... } } — daily FX snapshots
+  payments:{},     // { playerIndex: true|false } — £10 entry fee tracking
 };
 let prices        = {};
 let isDemoMode    = false;
@@ -2520,15 +2590,8 @@ function sbHandleSearch(query) {
     return;
   }
 
-  grid.innerHTML = results.map(([sym, name]) => {
-    const isDupe = _browserPickIds.some(id => tickerState[id]?.sym === sym);
-    return `
-      <div class="sb-card ${isDupe ? 'selected' : ''}" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
-        <div class="sb-card-ticker">${esc(sym)}</div>
-        <div class="sb-card-name">${esc(name)}</div>
-        ${isDupe ? '<div class="sb-card-check">✓</div>' : ''}
-      </div>`;
-  }).join('');
+  const taken = sbGetTakenTickers();
+  grid.innerHTML = results.map(([sym]) => sbRenderCard(sym, taken)).join('');
 }
 
 function closeStockBrowser() { hide('stock-browser-overlay'); }
@@ -2549,36 +2612,61 @@ function sbUpdateSlotIndicator() {
   }
 }
 
+// Returns a map of sym → playerName for all tickers already claimed by other players
+function sbGetTakenTickers() {
+  const taken = {};
+  (S.players || []).forEach(p => {
+    (p.picks || []).forEach(sym => { taken[sym] = p.name; });
+  });
+  return taken;
+}
+
+function sbRenderCard(sym, taken) {
+  const name    = TICKER_NAMES[sym] || tickerCache[sym]?.name || sym;
+  const isMine  = _browserPickIds.some(id => tickerState[id]?.sym === sym);
+  const takenBy = taken[sym];
+  if (isMine) {
+    return `<div class="sb-card selected" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
+      <div class="sb-card-ticker">${esc(sym)}</div>
+      <div class="sb-card-name">${esc(name)}</div>
+      <div class="sb-card-check">✓</div>
+    </div>`;
+  }
+  if (takenBy) {
+    return `<div class="sb-card disabled" title="Already picked by ${esc(takenBy)}" style="cursor:not-allowed;opacity:.45;position:relative">
+      <div class="sb-card-ticker" style="text-decoration:line-through">${esc(sym)}</div>
+      <div class="sb-card-name">${esc(name)}</div>
+      <div style="position:absolute;top:5px;right:7px;font-size:9px;font-family:var(--mono);font-weight:700;color:var(--red);letter-spacing:.04em">TAKEN</div>
+    </div>`;
+  }
+  return `<div class="sb-card" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
+    <div class="sb-card-ticker">${esc(sym)}</div>
+    <div class="sb-card-name">${esc(name)}</div>
+  </div>`;
+}
+
 function sbSelectCategory(key, label) {
   _browserCatKey = key;
-  // Highlight active nav item
   document.querySelectorAll('.sb-nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.key === key);
   });
   document.getElementById('sb-content-title').textContent = label;
 
   const tickers = CATEGORY_MAP[key] || [];
-  const selectedSyms = new Set(
-    _browserPickIds.map(id => tickerState[id]?.sym).filter(Boolean)
-  );
-
-  const grid = document.getElementById('sb-grid');
-  grid.innerHTML = tickers.map(sym => {
-    const name     = TICKER_NAMES[sym] || tickerCache[sym]?.name || sym;
-    const isSel    = selectedSyms.has(sym);
-    const isDupe   = _browserPickIds.some(id => tickerState[id]?.sym === sym);
-    return `
-      <div class="sb-card ${isDupe ? 'selected' : ''}"
-           onclick="sbPickStock('${esc(sym)}','${esc(name)}')"
-           title="${esc(name)}">
-        <div class="sb-card-ticker">${esc(sym)}</div>
-        <div class="sb-card-name">${esc(name)}</div>
-        ${isDupe ? '<div class="sb-card-check">✓</div>' : ''}
-      </div>`;
-  }).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px 0">No tickers in this category</div>';
+  const taken   = sbGetTakenTickers();
+  const grid    = document.getElementById('sb-grid');
+  grid.innerHTML = tickers.map(sym => sbRenderCard(sym, taken)).join('')
+    || '<div style="color:var(--muted);font-size:12px;padding:8px 0">No tickers in this category</div>';
 }
 
 function sbPickStock(sym, name) {
+  // Block if already taken by another player
+  const takenBy = sbGetTakenTickers()[sym];
+  if (takenBy) {
+    toast(`⚡ ${sym} is already picked by ${takenBy}`);
+    return;
+  }
+
   // Find next empty pick slot
   const targetId = _browserPickIds.find(id => {
     const state = tickerState[id]?.status;
@@ -3327,8 +3415,9 @@ function renderWinnerBanner(sorted) {
 }
 
 function renderDash() {
-  const sorted = S.players.map(p => ({
+  const sorted = S.players.map((p, origIdx) => ({
     ...p,
+    origIdx,
     pv:  portfolioValueGBP(p),     // current £ value
     pg:  portfolioGainGBP(p),      // £ gain/loss
     pct: portfolioGainPct(p),      // % gain/loss
@@ -3356,12 +3445,16 @@ function renderLeaderboard(sorted) {
          </div>`
       : `<div class="lb-gain waiting">Waiting…</div>`;
     const rowCls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
+    const paid = S.payments?.[p.origIdx] === true;
+    const paidBadge = paid
+      ? `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:2px;padding:1px 5px;flex-shrink:0">£ PAID</span>`
+      : `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--red);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:2px;padding:1px 5px;flex-shrink:0">£ UNPAID</span>`;
     return `<div class="lb-row ${rowCls}">
       <div class="lb-rank">${rankEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         ${playerAvatar(p, 30)}
         <div style="min-width:0">
-          <div class="lb-name">${esc(p.name)}</div>
+          <div class="lb-name" style="display:flex;align-items:center;gap:7px">${esc(p.name)} ${paidBadge}</div>
           <div class="lb-picks muted">${p.picks.map(esc).join(' · ')}</div>
         </div>
       </div>
@@ -4290,6 +4383,26 @@ function renderAdminPanel() {
       <div class="divider" style="margin:16px 0"></div>`;
   }
 
+  // ── Payment Status ────────────────────────────────────────
+  if (S.players && S.players.length > 0) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">💳 Payment Status</div>
+        <div class="modal-desc">Track who has paid their £10 entry fee.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          ${S.players.map((p, i) => {
+            const paid = S.payments?.[i] === true;
+            return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:${paid ? 'rgba(34,197,94,.07)' : 'rgba(239,68,68,.06)'};border:1px solid ${paid ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.2)'};border-radius:var(--radius);transition:background .15s">
+              <input type="checkbox" ${paid ? 'checked' : ''} onchange="togglePayment(${i}, this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;flex-shrink:0" />
+              <span style="font-size:13px;font-weight:600;flex:1;color:var(--text)">${esc(p.name)}</span>
+              <span style="font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;${paid ? 'color:var(--green)' : 'color:var(--red)'}">${paid ? '✓ PAID' : '✗ UNPAID'}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
   // ── Danger zone (always visible) ─────────────────────────
   html += `
     <div class="modal-section" style="margin-bottom:0">
@@ -4299,6 +4412,14 @@ function renderAdminPanel() {
     </div>`;
 
   panel.innerHTML = html;
+}
+
+async function togglePayment(idx, paid) {
+  if (!S.payments) S.payments = {};
+  S.payments[idx] = paid;
+  await save();
+  renderAdminPanel();
+  if (Object.keys(S.startPrices || {}).length > 0) renderDash();
 }
 
 async function saveGameDates() {
