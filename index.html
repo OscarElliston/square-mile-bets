@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Square Mile Bets</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- Firebase SDK (compat mode — no build step needed) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -31,7 +34,203 @@
       --amber-bg: rgba(245,158,11,.07);
       --radius:   6px;
       --mono:     'SF Mono','Fira Code','Consolas','Courier New',monospace;
+      --heading:  var(--mono);
     }
+
+    /* ══════════════════════════════════════
+       FT (Financial Times) LIGHT THEME
+    ══════════════════════════════════════ */
+    [data-theme="ft"] {
+      --bg:       #FFF1E0;
+      --surface:  #FFFFFF;
+      --surface2: #F6ECE1;
+      --border:   #E6D9CE;
+      --border2:  #D4C4B0;
+      --text:     #33302E;
+      --muted:    #807973;
+      --dim:      #A69E97;
+      --accent:   #9E2F50;
+      --accent2:  #7D1D3F;
+      --green:    #0D7680;
+      --green-bg: rgba(13,118,128,.08);
+      --red:      #CC0000;
+      --red-bg:   rgba(204,0,0,.06);
+      --amber:    #C77B10;
+      --amber-bg: rgba(199,123,16,.07);
+      --heading:  'DM Serif Display', Georgia, 'Times New Roman', serif;
+    }
+
+    /* FT body & typography */
+    [data-theme="ft"] body { font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+    [data-theme="ft"] .topbar-title,
+    [data-theme="ft"] .topbar-ident,
+    [data-theme="ft"] .setup-hero h1,
+    [data-theme="ft"] .countdown-label,
+    [data-theme="ft"] .countdown-num,
+    [data-theme="ft"] .section-title,
+    [data-theme="ft"] .join-panel-title,
+    [data-theme="ft"] .ij-players-label,
+    [data-theme="ft"] .progress-label,
+    [data-theme="ft"] .lb-name,
+    [data-theme="ft"] .winner-name,
+    [data-theme="ft"] .winner-label,
+    [data-theme="ft"] .modal-title,
+    [data-theme="ft"] .setup-section-title,
+    [data-theme="ft"] .sb-title,
+    [data-theme="ft"] .chart-card-header { font-family:var(--heading); }
+
+    /* FT topbar — clean white with claret underline */
+    [data-theme="ft"] .topbar { background:rgba(255,255,255,.96); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-top:none; border-bottom:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    [data-theme="ft"] .topbar-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:15px; }
+    [data-theme="ft"] .topbar-ident { background:var(--accent); color:#fff; font-family:var(--heading); font-size:12px; letter-spacing:.02em; border-radius:3px; padding:3px 8px; }
+    [data-theme="ft"] .topbar-dates { font-family:'Inter',sans-serif; }
+
+    /* FT buttons */
+    [data-theme="ft"] .btn { font-family:'Inter',sans-serif; border-radius:4px; letter-spacing:.02em; }
+    [data-theme="ft"] .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    [data-theme="ft"] .btn-primary:not(:disabled):hover { background:var(--accent2); border-color:var(--accent2); }
+    [data-theme="ft"] .btn-secondary { border-color:var(--border2); color:var(--muted); }
+    [data-theme="ft"] .btn-secondary:not(:disabled):hover { color:var(--accent); border-color:var(--accent); }
+    [data-theme="ft"] .btn-danger { background:rgba(204,0,0,.06); color:#CC0000; border:1px solid rgba(204,0,0,.2); }
+    [data-theme="ft"] .btn-danger:hover { background:rgba(204,0,0,.12); }
+
+    /* FT forms */
+    [data-theme="ft"] .form-input { background:var(--surface); border-color:var(--border2); }
+    [data-theme="ft"] .form-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(158,47,80,.12); }
+    [data-theme="ft"] .ticker-input { background:var(--surface); font-family:var(--mono); }
+    [data-theme="ft"] .ticker-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(158,47,80,.12); }
+    [data-theme="ft"] .ticker-input::placeholder { color:var(--dim); }
+
+    /* FT setup hero */
+    [data-theme="ft"] .setup-hero { background:var(--accent); border-bottom:none; }
+    [data-theme="ft"] .setup-hero h1 { color:#fff; font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:24px; }
+    [data-theme="ft"] .setup-hero p { color:rgba(255,255,255,.75); }
+    [data-theme="ft"] .setup-hero::before { color:rgba(255,255,255,.6); }
+
+    /* FT progress bar */
+    [data-theme="ft"] .progress-fill { background:linear-gradient(90deg,var(--accent),#C84B6B); }
+
+    /* FT countdown */
+    [data-theme="ft"] .countdown-section { border-top:2px solid var(--accent); background:var(--surface); }
+    [data-theme="ft"] .countdown-num { color:var(--accent); text-shadow:none; font-family:var(--heading); font-size:38px; }
+    [data-theme="ft"] .countdown-sep { color:var(--border2); }
+    [data-theme="ft"] .countdown-sub { color:var(--muted); font-family:'Inter',sans-serif; }
+
+    /* FT leaderboard */
+    [data-theme="ft"] .lb-card { box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    [data-theme="ft"] .lb-row.top-1 { border-left-color:var(--accent); }
+    [data-theme="ft"] .lb-row.top-2 { border-left-color:#807973; }
+    [data-theme="ft"] .lb-row.top-3 { border-left-color:#C77B10; }
+    [data-theme="ft"] .lb-name { font-family:var(--heading); font-size:15px; }
+    [data-theme="ft"] .lb-gain { font-family:var(--mono); }
+    [data-theme="ft"] .lb-rank { font-size:20px; }
+
+    /* FT player cards */
+    [data-theme="ft"] .player-card { box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    [data-theme="ft"] .player-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
+    [data-theme="ft"] .card-head { background:var(--surface2); }
+    [data-theme="ft"] .card-name { font-family:var(--heading); font-size:14px; }
+
+    /* FT inline join cards */
+    [data-theme="ft"] .ij-card { border-left:3px solid var(--accent); }
+    [data-theme="ft"] .ij-card:hover { box-shadow:0 3px 12px rgba(0,0,0,.06); }
+    [data-theme="ft"] .ij-card-name { color:var(--text); font-family:var(--heading); }
+    [data-theme="ft"] .ij-card-ticker { color:var(--accent); }
+
+    /* FT modals & overlays */
+    [data-theme="ft"] .overlay { background:rgba(51,48,46,.5); }
+    [data-theme="ft"] .modal { border-top:2px solid var(--accent); box-shadow:0 8px 40px rgba(0,0,0,.12); }
+    [data-theme="ft"] .modal-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:14px; }
+
+    /* FT toast */
+    [data-theme="ft"] #toast { background:var(--surface); border-color:var(--accent); box-shadow:0 4px 20px rgba(0,0,0,.1); }
+
+    /* FT chart tooltip */
+    [data-theme="ft"] #chart-tooltip { background:var(--surface); border-color:var(--border2); box-shadow:0 4px 20px rgba(0,0,0,.1); }
+
+    /* FT stock browser */
+    [data-theme="ft"] .sb-card:hover { border-color:var(--accent); background:var(--surface2); }
+    [data-theme="ft"] .sb-card.selected { border-color:var(--green); background:rgba(13,118,128,.06); }
+    [data-theme="ft"] .sb-nav-item.active { background:rgba(158,47,80,.08); color:var(--accent); }
+
+    /* FT autocomplete */
+    [data-theme="ft"] .ac-dropdown { box-shadow:0 8px 28px rgba(0,0,0,.12); }
+    [data-theme="ft"] .ac-sym { color:var(--accent); }
+
+    /* FT winner banner */
+    [data-theme="ft"] .winner-banner { background:linear-gradient(135deg,rgba(13,118,128,.06),rgba(199,123,16,.04)); border-color:rgba(13,118,128,.2); border-left-color:var(--green); }
+    [data-theme="ft"] .winner-name { color:var(--text); font-family:var(--heading); }
+    [data-theme="ft"] .winner-gain { color:var(--amber); }
+
+    /* FT firebase notice */
+    [data-theme="ft"] #firebase-notice { background:rgba(13,118,128,.08) !important; border-color:rgba(13,118,128,.2) !important; color:var(--green) !important; }
+
+    /* FT demo banner */
+    [data-theme="ft"] .demo-banner { background:rgba(158,47,80,.06); border-color:rgba(158,47,80,.15); color:var(--accent); }
+
+    /* FT section titles — serif with claret accent line */
+    [data-theme="ft"] .section-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:14px; }
+    [data-theme="ft"] .section-title::before { background:var(--accent); }
+
+    /* FT setup section titles */
+    [data-theme="ft"] .setup-section-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:13px; }
+    [data-theme="ft"] .setup-section-title::before { background:var(--accent); }
+
+    /* FT scrollbars */
+    [data-theme="ft"] ::-webkit-scrollbar-thumb { background:var(--border2); }
+    [data-theme="ft"] ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+
+    /* FT day gain badges */
+    [data-theme="ft"] .day-gain.green { color:var(--green); background:rgba(13,118,128,.1); }
+    [data-theme="ft"] .day-gain.red { color:var(--red); background:rgba(204,0,0,.08); }
+
+    /* FT dash tabs */
+    [data-theme="ft"] .dash-tab { font-family:'Inter',sans-serif; }
+    [data-theme="ft"] .dash-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(158,47,80,.04); }
+    [data-theme="ft"] .dash-tab:not(.active):hover { color:var(--text); background:rgba(0,0,0,.03); }
+
+    /* FT error box */
+    [data-theme="ft"] .error-box { background:rgba(204,0,0,.05); border-color:rgba(204,0,0,.15); color:#CC0000; }
+
+    /* FT user menu */
+    [data-theme="ft"] #user-menu { background:var(--surface) !important; border-color:var(--border) !important; box-shadow:0 4px 20px rgba(0,0,0,.1) !important; }
+    [data-theme="ft"] .user-menu-item:hover { background:var(--surface2); }
+
+    /* FT stock leaderboard */
+    [data-theme="ft"] .slb-card { box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    [data-theme="ft"] .slb-ticker { color:var(--accent); }
+    [data-theme="ft"] .slb-bar.pos { background:var(--green); }
+    [data-theme="ft"] .slb-bar.neg { background:var(--red); }
+
+    /* FT chart card */
+    [data-theme="ft"] .chart-card { box-shadow:0 1px 3px rgba(0,0,0,.06); }
+
+    /* FT season cards */
+    [data-theme="ft"] .season-card { box-shadow:0 1px 3px rgba(0,0,0,.06); }
+
+    /* FT alltime table */
+    [data-theme="ft"] .alltime-table th { color:var(--muted); }
+
+    /* FT submitted player list */
+    [data-theme="ft"] .submitted-player:hover { border-color:var(--accent); }
+    [data-theme="ft"] .sp-pick { color:var(--accent); border-color:var(--border2); background:var(--surface); }
+
+    /* FT join panel */
+    [data-theme="ft"] .join-panel { box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    [data-theme="ft"] .join-panel-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:14px; }
+
+    /* FT alloc stepper */
+    [data-theme="ft"] .alloc-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+
+    /* FT player count badge */
+    [data-theme="ft"] .player-count-badge.has { background:rgba(158,47,80,.08); border-color:rgba(158,47,80,.2); color:var(--accent); }
+
+    /* ── Theme toggle button ── */
+    .theme-toggle { background:var(--surface2); border:1px solid var(--border2); border-radius:20px; cursor:pointer; display:flex; align-items:center; gap:0; padding:2px; height:28px; width:52px; position:relative; transition:all .2s; flex-shrink:0; }
+    .theme-toggle:hover { border-color:var(--accent); }
+    .theme-toggle-thumb { width:22px; height:22px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; line-height:1; transition:transform .25s ease; }
+    .theme-toggle-thumb.ft { transform:translateX(0); }
+    .theme-toggle-thumb.dark { transform:translateX(24px); }
 
     html { scroll-behavior:smooth; }
 
@@ -634,6 +833,7 @@
         <div class="live-dot" id="live-dot" role="status" aria-label="Price feed: loading"></div>
         <span class="last-updated" id="last-updated">Loading…</span>
       </div>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Switch theme" title="Switch theme"><span class="theme-toggle-thumb dark" id="theme-thumb">$</span></button>
       <button class="btn btn-secondary" onclick="refreshPrices()" style="padding:6px 12px" aria-label="Refresh prices">↻</button>
       <button class="btn btn-secondary" onclick="openAdmin()" style="padding:6px 12px" aria-label="Settings" id="admin-btn">⚙</button>
       <button id="signin-topbar-btn" class="btn btn-primary" onclick="show('signin-screen')" style="padding:6px 14px;font-size:12px;display:none">Sign In</button>
@@ -1175,6 +1375,44 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════════
+//  THEME TOGGLE
+// ═══════════════════════════════════════════════════════════
+(function initTheme() {
+  const saved = localStorage.getItem('smb-theme');
+  if (saved === 'ft') document.documentElement.setAttribute('data-theme', 'ft');
+})();
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const thumb = document.getElementById('theme-thumb');
+  const isFT = html.getAttribute('data-theme') === 'ft';
+  if (isFT) {
+    html.removeAttribute('data-theme');
+    if (thumb) { thumb.textContent = '$'; thumb.className = 'theme-toggle-thumb dark'; }
+    localStorage.setItem('smb-theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'ft');
+    if (thumb) { thumb.textContent = '\u00A3'; thumb.className = 'theme-toggle-thumb ft'; }
+    localStorage.setItem('smb-theme', 'ft');
+  }
+  // Redraw charts so canvas picks up new theme colors
+  try { if (typeof myChart !== 'undefined' && myChart) myChart.draw(); } catch(e) {}
+  try { if (typeof myFundChart !== 'undefined' && myFundChart) myFundChart.draw(); } catch(e) {}
+  // Redraw breakdown chart if visible
+  try { if (typeof renderBreakdownChart === 'function') renderBreakdownChart(); } catch(e) {}
+}
+
+// Restore toggle thumb visual on load
+document.addEventListener('DOMContentLoaded', function() {
+  const saved = localStorage.getItem('smb-theme');
+  const thumb = document.getElementById('theme-thumb');
+  if (saved === 'ft' && thumb) {
+    thumb.textContent = '\u00A3';
+    thumb.className = 'theme-toggle-thumb ft';
+  }
+});
+
 // ═══════════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════
@@ -3002,7 +3240,7 @@ function updateProgress() {
   document.getElementById('game-dates').textContent=fmt(start)+' → '+fmt(end);
   const fillEl = document.getElementById('progress-fill');
   fillEl.style.width=pct+'%';
-  fillEl.style.background = pct>=100 ? 'linear-gradient(90deg,#16a34a,#4ade80)' : 'linear-gradient(90deg,var(--accent),#60a5fa)';
+  fillEl.style.background = pct>=100 ? 'linear-gradient(90deg,var(--green),var(--green))' : '';
   document.getElementById('progress-days').textContent=daysLeft>0?`Day ${Math.round(elapsed)} of ${Math.round(total)} · ${daysLeft} days left`:'🏁 Game over!';
 }
 
@@ -3489,13 +3727,19 @@ class LineChart {
     ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
     ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
 
+    // Theme-aware chart colors
+    const _cs = getComputedStyle(document.documentElement);
+    const _grid = _cs.getPropertyValue('--border2').trim() || '#1c2840';
+    const _lbl  = _cs.getPropertyValue('--muted').trim() || '#5a6e96';
+    const _dim  = _cs.getPropertyValue('--dim').trim() || '#3a4e72';
+
     // Y grid + labels
     const yStep=Math.ceil((r.mx-r.mn)/7/10)*10||10;
     for (let v=r.mn; v<=r.mx+1; v+=yStep) {
       const y=this._yS(v,p,r);
-      ctx.strokeStyle='#1c2840'; ctx.lineWidth=1;
+      ctx.strokeStyle=_grid; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p.x,y); ctx.lineTo(p.x+p.w,y); ctx.stroke();
-      ctx.fillStyle='#5a6e96'; ctx.textAlign='right';
+      ctx.fillStyle=_lbl; ctx.textAlign='right';
       ctx.fillText(v.toFixed(0), p.x-7, y+4);
     }
 
@@ -3504,9 +3748,9 @@ class LineChart {
     ctx.font='12px -apple-system,BlinkMacSystemFont,sans-serif';
     for (let i=vs; i<=ve; i+=xStep) {
       const x=this._xS(i,p);
-      ctx.strokeStyle='#1c2840'; ctx.lineWidth=1;
+      ctx.strokeStyle=_grid; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
-      ctx.fillStyle='#7a90b8'; ctx.textAlign='center';
+      ctx.fillStyle=_lbl; ctx.textAlign='center';
       ctx.fillText(this.labels[i], x, p.y+p.h+20);
     }
     ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
@@ -3519,10 +3763,10 @@ class LineChart {
     const baselineVal = (this.baseline !== undefined) ? this.baseline : 1000;
     const y0=this._yS(baselineVal,p,r);
     if (y0>=p.y&&y0<=p.y+p.h) {
-      ctx.setLineDash([5,4]); ctx.strokeStyle='#3a4e72'; ctx.lineWidth=1;
+      ctx.setLineDash([5,4]); ctx.strokeStyle=_dim; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p.x,y0); ctx.lineTo(p.x+p.w,y0); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle='#3a4e72'; ctx.textAlign='left'; ctx.font='10px sans-serif';
+      ctx.fillStyle=_dim; ctx.textAlign='left'; ctx.font='10px sans-serif';
       ctx.fillText('start', p.x+5, y0-5);
     }
 
@@ -3542,15 +3786,16 @@ class LineChart {
     // Hover crosshair + dots
     if (this.hovered!==null && this.hovered>=vs && this.hovered<=ve) {
       const x=this._xS(this.hovered,p);
-      ctx.setLineDash([3,3]); ctx.strokeStyle='#5a6e96'; ctx.lineWidth=1;
+      ctx.setLineDash([3,3]); ctx.strokeStyle=_lbl; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
       ctx.setLineDash([]);
+      const _isFT = document.documentElement.getAttribute('data-theme') === 'ft';
       this.datasets.forEach((ds,i)=>{
         if (this.hidden.has(i)) return;
         const v=ds.data[this.hovered], ys=this._yS(v,p,r);
         ctx.beginPath(); ctx.fillStyle=ds.color;
         ctx.arc(x,ys,4.5,0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.strokeStyle=_isFT?'rgba(0,0,0,.15)':'rgba(255,255,255,.25)'; ctx.lineWidth=1.5;
         ctx.arc(x,ys,4.5,0,Math.PI*2); ctx.stroke();
       });
     }
@@ -3735,24 +3980,30 @@ function renderStackedBarChart() {
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0f1b35';
   ctx.fillRect(0, 0, W, H);
 
+  // Theme-aware colors for canvas
+  const _cs = getComputedStyle(document.documentElement);
+  const _gridCol  = _cs.getPropertyValue('--border2').trim() || '#1e2d4d';
+  const _labelCol = _cs.getPropertyValue('--muted').trim() || '#566a8a';
+  const _accentCol = _cs.getPropertyValue('--accent').trim() || '#f97316';
+
   // Grid lines + y-axis labels
   const ticks = 5;
   for (let i = 0; i <= ticks; i++) {
     const val = yMin + (yRange * i / ticks);
     const y   = yPos(val);
-    ctx.strokeStyle = '#1e2d4d'; ctx.lineWidth = 0.5; ctx.setLineDash([3,3]);
+    ctx.strokeStyle = _gridCol; ctx.lineWidth = 0.5; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#566a8a'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillStyle = _labelCol; ctx.font = '10px monospace'; ctx.textAlign = 'right';
     ctx.fillText('£' + val.toFixed(0), padL-4, y+3.5);
   }
 
   // Reference line at 300 (starting value)
   const refY = yPos(300);
-  ctx.strokeStyle = 'rgba(249,115,22,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([5,4]);
+  ctx.strokeStyle = _accentCol + '99'; ctx.lineWidth = 1; ctx.setLineDash([5,4]);
   ctx.beginPath(); ctx.moveTo(padL, refY); ctx.lineTo(W-padR, refY); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(249,115,22,0.8)'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
+  ctx.fillStyle = _accentCol + 'CC'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
   ctx.fillText('£300 start', padL+4, refY-4);
 
   // Store bar hit areas for tooltip
@@ -3781,11 +4032,11 @@ function renderStackedBarChart() {
     // Total label above bar
     const topY = yPos(total);
     ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = total >= ALLOC_TOTAL ? '#4ade80' : '#f87171';
+    ctx.fillStyle = total >= ALLOC_TOTAL ? (_cs.getPropertyValue('--green').trim()||'#4ade80') : (_cs.getPropertyValue('--red').trim()||'#f87171');
     ctx.fillText('£' + total.toFixed(0), cx, topY - 5);
 
     // Player name
-    ctx.fillStyle = '#8899bb'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = _labelCol; ctx.font = '11px monospace'; ctx.textAlign = 'center';
     const lbl = p.name.length > 9 ? p.name.slice(0,8)+'…' : p.name;
     ctx.fillText(lbl, cx, H - padB + 16);
 
@@ -3807,7 +4058,7 @@ function renderStackedBarChart() {
       if (s.value === null) return '';
       const alloc = hit.p.allocations?.[hit.p.picks.indexOf(s.sym)] ?? 100;
       const diff  = s.value - alloc;
-      const col   = diff >= 0 ? 'color:#4ade80' : 'color:#f87171';
+      const col   = diff >= 0 ? 'color:var(--green)' : 'color:var(--red)';
       const gStr  = `${diff >= 0 ? '+' : '−'}£${Math.abs(diff).toFixed(2)}`;
       return `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:4px">
         <span style="color:var(--muted);font-size:11px">${esc(s.name)} <span style="color:var(--dim)">(£${alloc})</span></span>
@@ -3815,7 +4066,7 @@ function renderStackedBarChart() {
       </div>`;
     }).join('');
     const gainGBP = hit.total - ALLOC_TOTAL;
-    const totalCol = gainGBP >= 0 ? '#4ade80' : '#f87171';
+    const totalCol = gainGBP >= 0 ? 'var(--green)' : 'var(--red)';
     tip.innerHTML = `
       <div style="font-weight:700;color:${hex};margin-bottom:6px;font-size:12px">${esc(hit.p.name)}</div>
       ${rows}
