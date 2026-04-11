@@ -22,8 +22,8 @@
       --border:   #141c2c;
       --border2:  #1c2840;
       --text:     #dde5f0;
-      --muted:    #5d7090;
-      --dim:      #283548;
+      --muted:    #7088a8;
+      --dim:      #4a5f7a;
       --accent:   #f97316;
       --accent2:  #ea6c0a;
       --green:    #22c55e;
@@ -80,7 +80,7 @@
     [data-theme="ft"] .chart-card-header { font-family:var(--heading); }
 
     /* FT topbar — clean white with claret underline */
-    [data-theme="ft"] .topbar { background:rgba(255,255,255,.96); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-top:none; border-bottom:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.06); }
+    [data-theme="ft"] .topbar { background:rgba(255,255,255,.96); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-top:none; border-bottom:2px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.06); padding:6px 22px; }
     [data-theme="ft"] .topbar-title { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:15px; }
     [data-theme="ft"] .topbar-ident { background:var(--accent); color:#fff; font-family:var(--heading); font-size:12px; letter-spacing:.02em; border-radius:3px; padding:3px 8px; }
     [data-theme="ft"] .topbar-dates { font-family:'Inter',sans-serif; }
@@ -326,7 +326,7 @@
 
     /* ── DASHBOARD ── */
     #dashboard-screen { min-height:100vh; }
-    .topbar { background:rgba(8,12,22,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--border2); border-top:2px solid var(--accent); padding:0 22px; display:flex; align-items:center; justify-content:space-between; height:52px; position:sticky; top:0; z-index:10; }
+    .topbar { background:rgba(8,12,22,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--border2); border-top:2px solid var(--accent); padding:6px 22px; display:flex; align-items:center; justify-content:space-between; min-height:52px; position:sticky; top:0; z-index:10; gap:8px; flex-wrap:wrap; }
     .topbar-left  { display:flex; align-items:center; gap:14px; min-width:0; overflow:hidden; }
     .topbar-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
     .topbar-ident { font-family:var(--mono); font-size:10px; font-weight:800; background:var(--accent); color:#000; padding:3px 7px; border-radius:2px; letter-spacing:.06em; flex-shrink:0; }
@@ -563,7 +563,7 @@
     @media (max-width:580px) {
       .setup-body { padding:20px 18px 24px; }
       .setup-hero { padding:26px 18px 22px; }
-      .topbar   { padding:0 12px; }
+      .topbar   { padding:6px 12px; }
       .main     { padding:14px 10px; }
       .lb-row   { padding:11px 13px; }
       .lb-gain  { font-size:18px; }
@@ -582,11 +582,16 @@
     }
 
     @media (max-width:380px) {
-      .topbar { padding:0 8px; height:48px; }
+      .topbar { padding:6px 8px; }
       .topbar-ident { font-size:8px; padding:2px 5px; }
+      .topbar-left { gap:8px; }
       .topbar-title { font-size:11px; }
       .topbar-dates { font-size:9px; }
       .topbar-right .btn { padding:4px 8px; }
+      .last-updated { display:none; }
+      .theme-toggle { width:44px; height:24px; }
+      .theme-toggle-thumb { width:18px; height:18px; font-size:10px; }
+      .theme-toggle-thumb.dark { transform:translateX(20px); }
       .sb-nav { width:120px; }
       .sb-grid { grid-template-columns:1fr; }
     }
@@ -637,6 +642,14 @@
     .alloc-total-val.valid   { color:var(--green); }
     .alloc-total-val.invalid { color:var(--amber); }
     .alloc-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+
+    /* ── Pick + Allocation unified card ── */
+    .pick-card { background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius); padding:14px; margin-bottom:8px; }
+    .pick-card-alloc { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+    .pick-card-alloc-label { font-size:11px; color:var(--muted); font-family:var(--mono); flex-shrink:0; }
+    .pick-card-num { font-size:10px; font-weight:700; color:var(--accent); font-family:var(--mono); letter-spacing:.06em; margin-bottom:6px; text-transform:uppercase; }
+    [data-theme="ft"] .pick-card { background:var(--surface); border-color:var(--border); }
+    [data-theme="ft"] .pick-card-num { font-family:var(--heading); text-transform:none; letter-spacing:0; font-size:12px; }
   </style>
 </head>
 <body>
@@ -721,73 +734,84 @@
           <label class="form-label" style="margin-bottom:0">3 Stock Picks</label>
           <button class="btn btn-secondary" onclick="openStockBrowser(PICK_IDS)" style="font-size:11px;padding:4px 10px;text-transform:none;letter-spacing:0">📂 Browse stocks</button>
         </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="pick-0" placeholder="Pick 1 — e.g. Apple or AAPL"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-pick-0"></span>
-            <div class="ac-dropdown" id="dropdown-pick-0"></div>
-          </div>
-          <div class="pick-msg" id="msg-pick-0"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="pick-1" placeholder="Pick 2 — e.g. Microsoft or MSFT"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-pick-1"></span>
-            <div class="ac-dropdown" id="dropdown-pick-1"></div>
-          </div>
-          <div class="pick-msg" id="msg-pick-1"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="pick-2" placeholder="Pick 3 — e.g. Tesla or TSLA"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-pick-2"></span>
-            <div class="ac-dropdown" id="dropdown-pick-2"></div>
-          </div>
-          <div class="pick-msg" id="msg-pick-2"></div>
-        </div>
-      </div>
+        <div class="alloc-section-hint" style="margin-bottom:10px">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
 
-      <!-- Allocation stepper — setup form -->
-      <div class="alloc-section" id="alloc-section-pick">
-        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-0">Pick 1</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
+        <!-- Pick 1 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 1</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="pick-0" placeholder="e.g. Apple or AAPL"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-pick-0"></span>
+              <div class="ac-dropdown" id="dropdown-pick-0"></div>
+            </div>
+            <div class="pick-msg" id="msg-pick-0"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-1">Pick 2</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
+
+        <!-- Pick 2 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 2</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="pick-1" placeholder="e.g. Microsoft or MSFT"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-pick-1"></span>
+              <div class="ac-dropdown" id="dropdown-pick-1"></div>
+            </div>
+            <div class="pick-msg" id="msg-pick-1"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-pick-2">Pick 3</span>
-          <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
-            <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
+
+        <!-- Pick 3 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 3</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="pick-2" placeholder="e.g. Tesla or TSLA"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-pick-2"></span>
+              <div class="ac-dropdown" id="dropdown-pick-2"></div>
+            </div>
+            <div class="pick-msg" id="msg-pick-2"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
+              <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-total-row">
+
+        <div class="alloc-total-row" id="alloc-section-pick">
           <span class="alloc-total-lbl">Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-pick">£300 ✓</span>
         </div>
@@ -889,78 +913,84 @@
         </div>
       </div>
       <div id="inline-join-error" class="error-box hidden" style="margin-bottom:10px"></div>
-      <div class="join-panel-fields">
+
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;margin-bottom:10px">
         <div>
           <label class="form-label">Your Name</label>
           <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
                  oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
         </div>
-        <div style="position:relative">
-          <label class="form-label">Pick 1</label>
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ij-pick-0" placeholder="Search ticker…"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ij-pick-0"></span>
-            <div class="ac-dropdown" id="dropdown-ij-pick-0"></div>
-          </div>
-          <div class="pick-msg" id="msg-ij-pick-0"></div>
-        </div>
-        <div style="position:relative">
-          <label class="form-label">Pick 2</label>
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ij-pick-1" placeholder="Search ticker…"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ij-pick-1"></span>
-            <div class="ac-dropdown" id="dropdown-ij-pick-1"></div>
-          </div>
-          <div class="pick-msg" id="msg-ij-pick-1"></div>
-        </div>
-        <div style="position:relative">
-          <label class="form-label">Pick 3</label>
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ij-pick-2" placeholder="Search ticker…"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ij-pick-2"></span>
-            <div class="ac-dropdown" id="dropdown-ij-pick-2"></div>
-          </div>
-          <div class="pick-msg" id="msg-ij-pick-2"></div>
-        </div>
         <div style="display:flex;flex-direction:column;justify-content:flex-end">
           <label class="form-label" style="visibility:hidden">Add</label>
           <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">Add Player</button>
-          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
         </div>
       </div>
 
-      <!-- Allocation stepper — inline join panel -->
-      <div class="alloc-section" id="alloc-section-ij">
-        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
-        <div class="alloc-grid-3">
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0">Pick 1</span>
+      <div class="alloc-section-hint" style="margin-bottom:8px">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px" id="alloc-section-ij">
+        <!-- Pick 1 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 1</div>
+          <div class="pick-field" style="margin-bottom:0;position:relative">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ij-pick-0" placeholder="Search ticker…"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ij-pick-0"></span>
+              <div class="ac-dropdown" id="dropdown-ij-pick-0"></div>
+            </div>
+            <div class="pick-msg" id="msg-ij-pick-0"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
             <div class="alloc-stepper">
               <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
               <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
               <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
             </div>
           </div>
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1">Pick 2</span>
+        </div>
+        <!-- Pick 2 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 2</div>
+          <div class="pick-field" style="margin-bottom:0;position:relative">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ij-pick-1" placeholder="Search ticker…"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ij-pick-1"></span>
+              <div class="ac-dropdown" id="dropdown-ij-pick-1"></div>
+            </div>
+            <div class="pick-msg" id="msg-ij-pick-1"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
             <div class="alloc-stepper">
               <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
               <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
               <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
             </div>
           </div>
-          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2">Pick 3</span>
+        </div>
+        <!-- Pick 3 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 3</div>
+          <div class="pick-field" style="margin-bottom:0;position:relative">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ij-pick-2" placeholder="Search ticker…"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ij-pick-2"></span>
+              <div class="ac-dropdown" id="dropdown-ij-pick-2"></div>
+            </div>
+            <div class="pick-msg" id="msg-ij-pick-2"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
             <div class="alloc-stepper">
               <button class="alloc-btn" id="alloc-minus-ij-2" onclick="adjustAlloc('ij',2,-10)">−</button>
               <span class="alloc-amount" id="alloc-amt-ij-2">£100</span>
@@ -968,11 +998,12 @@
             </div>
           </div>
         </div>
-        <div class="alloc-total-row">
-          <span class="alloc-total-lbl">Total invested:</span>
-          <span class="alloc-total-val valid" id="alloc-total-ij">£300 ✓</span>
-        </div>
       </div>
+      <div class="alloc-total-row">
+        <span class="alloc-total-lbl">Total invested:</span>
+        <span class="alloc-total-val valid" id="alloc-total-ij">£300 ✓</span>
+      </div>
+      <div class="add-btn-hint" id="ij-hint" style="margin-top:8px;font-size:11px">Enter name + 3 valid picks.</div>
 
       <!-- Players section -->
       <div id="ij-players-section" class="ij-players-section" style="display:none">
@@ -1165,72 +1196,84 @@
           <label class="form-label" style="margin-bottom:0">Your 3 Stock Picks</label>
           <button class="btn btn-secondary" onclick="openStockBrowser(JOIN_PICK_IDS)" style="font-size:11px;padding:4px 10px;text-transform:none;letter-spacing:0">📂 Browse stocks</button>
         </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="join-pick-0" placeholder="Pick 1 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-join-pick-0"></span>
-            <div class="ac-dropdown" id="dropdown-join-pick-0"></div>
+        <div class="alloc-section-hint" style="margin-bottom:10px">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+
+        <!-- Pick 1 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 1</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="join-pick-0" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-join-pick-0"></span>
+              <div class="ac-dropdown" id="dropdown-join-pick-0"></div>
+            </div>
+            <div class="pick-msg" id="msg-join-pick-0"></div>
           </div>
-          <div class="pick-msg" id="msg-join-pick-0"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="join-pick-1" placeholder="Pick 2 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-join-pick-1"></span>
-            <div class="ac-dropdown" id="dropdown-join-pick-1"></div>
-          </div>
-          <div class="pick-msg" id="msg-join-pick-1"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="join-pick-2" placeholder="Pick 3 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-join-pick-2"></span>
-            <div class="ac-dropdown" id="dropdown-join-pick-2"></div>
-          </div>
-          <div class="pick-msg" id="msg-join-pick-2"></div>
-        </div>
-      </div>
-      <!-- Allocation stepper — join modal -->
-      <div class="alloc-section" id="alloc-section-join">
-        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-join-0">Pick 1</span>
-          <span class="alloc-name-lbl" id="alloc-name-join-0"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-join-0" onclick="adjustAlloc('join',0,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-join-0">£100</span>
-            <button class="alloc-btn" id="alloc-plus-join-0" onclick="adjustAlloc('join',0,10)">+</button>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-join-0"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-join-0" onclick="adjustAlloc('join',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-join-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-join-0" onclick="adjustAlloc('join',0,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-join-1">Pick 2</span>
-          <span class="alloc-name-lbl" id="alloc-name-join-1"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-join-1" onclick="adjustAlloc('join',1,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-join-1">£100</span>
-            <button class="alloc-btn" id="alloc-plus-join-1" onclick="adjustAlloc('join',1,10)">+</button>
+
+        <!-- Pick 2 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 2</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="join-pick-1" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-join-pick-1"></span>
+              <div class="ac-dropdown" id="dropdown-join-pick-1"></div>
+            </div>
+            <div class="pick-msg" id="msg-join-pick-1"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-join-1"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-join-1" onclick="adjustAlloc('join',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-join-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-join-1" onclick="adjustAlloc('join',1,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-join-2">Pick 3</span>
-          <span class="alloc-name-lbl" id="alloc-name-join-2"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-join-2" onclick="adjustAlloc('join',2,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-join-2">£100</span>
-            <button class="alloc-btn" id="alloc-plus-join-2" onclick="adjustAlloc('join',2,10)">+</button>
+
+        <!-- Pick 3 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 3</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="join-pick-2" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-join-pick-2"></span>
+              <div class="ac-dropdown" id="dropdown-join-pick-2"></div>
+            </div>
+            <div class="pick-msg" id="msg-join-pick-2"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-join-2"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-join-2" onclick="adjustAlloc('join',2,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-join-2">£100</span>
+              <button class="alloc-btn" id="alloc-plus-join-2" onclick="adjustAlloc('join',2,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-total-row">
+
+        <div class="alloc-total-row" id="alloc-section-join">
           <span class="alloc-total-lbl">Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-join">£300 ✓</span>
         </div>
@@ -1255,76 +1298,88 @@
     <div class="modal-body">
       <div id="edit-player-error" class="error-box hidden" style="margin-bottom:10px"></div>
       <div class="picks-container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <label class="form-label" style="margin-bottom:0">Stock Picks</label>
           <button class="btn btn-secondary" onclick="openStockBrowser(EP_PICK_IDS)" style="font-size:11px;padding:4px 10px;text-transform:none;letter-spacing:0">📂 Browse stocks</button>
         </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ep-pick-0" placeholder="Pick 1 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ep-pick-0"></span>
-            <div class="ac-dropdown" id="dropdown-ep-pick-0"></div>
+        <div class="alloc-section-hint" style="margin-bottom:10px">Min £50 · max £150 per pick · must total £300</div>
+
+        <!-- Pick 1 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 1</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ep-pick-0" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ep-pick-0"></span>
+              <div class="ac-dropdown" id="dropdown-ep-pick-0"></div>
+            </div>
+            <div class="pick-msg" id="msg-ep-pick-0"></div>
           </div>
-          <div class="pick-msg" id="msg-ep-pick-0"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ep-pick-1" placeholder="Pick 2 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ep-pick-1"></span>
-            <div class="ac-dropdown" id="dropdown-ep-pick-1"></div>
-          </div>
-          <div class="pick-msg" id="msg-ep-pick-1"></div>
-        </div>
-        <div class="pick-field">
-          <div class="pick-input-row" style="position:relative">
-            <input type="text" class="ticker-input" id="ep-pick-2" placeholder="Pick 3 — search by name or ticker"
-                   oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
-                   onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
-                   autocomplete="off" spellcheck="false" maxlength="50" />
-            <span class="pick-icon" id="icon-ep-pick-2"></span>
-            <div class="ac-dropdown" id="dropdown-ep-pick-2"></div>
-          </div>
-          <div class="pick-msg" id="msg-ep-pick-2"></div>
-        </div>
-      </div>
-      <!-- Allocation stepper — edit player modal -->
-      <div class="alloc-section" id="alloc-section-ep">
-        <div class="alloc-section-label">💷 Allocation</div>
-        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300</div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-ep-0">Pick 1</span>
-          <span class="alloc-name-lbl" id="alloc-name-ep-0"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-ep-0" onclick="adjustAlloc('ep',0,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-ep-0">£100</span>
-            <button class="alloc-btn" id="alloc-plus-ep-0" onclick="adjustAlloc('ep',0,10)">+</button>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-ep-0"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ep-0" onclick="adjustAlloc('ep',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ep-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ep-0" onclick="adjustAlloc('ep',0,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-ep-1">Pick 2</span>
-          <span class="alloc-name-lbl" id="alloc-name-ep-1"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-ep-1" onclick="adjustAlloc('ep',1,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-ep-1">£100</span>
-            <button class="alloc-btn" id="alloc-plus-ep-1" onclick="adjustAlloc('ep',1,10)">+</button>
+
+        <!-- Pick 2 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 2</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ep-pick-1" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ep-pick-1"></span>
+              <div class="ac-dropdown" id="dropdown-ep-pick-1"></div>
+            </div>
+            <div class="pick-msg" id="msg-ep-pick-1"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-ep-1"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ep-1" onclick="adjustAlloc('ep',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ep-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ep-1" onclick="adjustAlloc('ep',1,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-row">
-          <span class="alloc-ticker-lbl" id="alloc-tick-ep-2">Pick 3</span>
-          <span class="alloc-name-lbl" id="alloc-name-ep-2"></span>
-          <div class="alloc-stepper">
-            <button class="alloc-btn" id="alloc-minus-ep-2" onclick="adjustAlloc('ep',2,-10)">−</button>
-            <span class="alloc-amount" id="alloc-amt-ep-2">£100</span>
-            <button class="alloc-btn" id="alloc-plus-ep-2" onclick="adjustAlloc('ep',2,10)">+</button>
+
+        <!-- Pick 3 card -->
+        <div class="pick-card">
+          <div class="pick-card-num">Pick 3</div>
+          <div class="pick-field" style="margin-bottom:0">
+            <div class="pick-input-row" style="position:relative">
+              <input type="text" class="ticker-input" id="ep-pick-2" placeholder="Search by name or ticker"
+                     oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
+                     onfocus="onPickFocus(this)" onblur="hideDropdownDelay(this)"
+                     autocomplete="off" spellcheck="false" maxlength="50" />
+              <span class="pick-icon" id="icon-ep-pick-2"></span>
+              <div class="ac-dropdown" id="dropdown-ep-pick-2"></div>
+            </div>
+            <div class="pick-msg" id="msg-ep-pick-2"></div>
+          </div>
+          <div class="pick-card-alloc">
+            <span class="pick-card-alloc-label">Invest:</span>
+            <span class="alloc-name-lbl" id="alloc-name-ep-2"></span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ep-2" onclick="adjustAlloc('ep',2,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ep-2">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ep-2" onclick="adjustAlloc('ep',2,10)">+</button>
+            </div>
           </div>
         </div>
-        <div class="alloc-total-row">
+
+        <div class="alloc-total-row" id="alloc-section-ep">
           <span class="alloc-total-lbl">Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-ep">£300 ✓</span>
         </div>
