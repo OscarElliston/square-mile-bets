@@ -19,8 +19,8 @@
       --border:   #141c2c;
       --border2:  #1c2840;
       --text:     #dde5f0;
-      --muted:    #8aa4c0;
-      --dim:      #5a7494;
+      --muted:    #5d7090;
+      --dim:      #283548;
       --accent:   #f97316;
       --accent2:  #ea6c0a;
       --green:    #22c55e;
@@ -33,7 +33,14 @@
       --mono:     'SF Mono','Fira Code','Consolas','Courier New',monospace;
     }
 
+    html { scroll-behavior:smooth; }
+
     body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif; min-height:100vh; line-height:1.5; }
+
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 
     .hidden { display:none !important; }
     .green  { color:var(--green); }
@@ -49,6 +56,7 @@
     .btn-primary:not(:disabled):hover { background:var(--accent2); border-color:var(--accent2); }
     .btn-secondary { background:transparent; color:var(--muted); border:1px solid var(--border2); }
     .btn-secondary:not(:disabled):hover { color:var(--accent); border-color:var(--accent); }
+    .btn:active:not(:disabled) { transform:scale(.97); }
     .btn-danger { background:#150808; color:#fca5a5; border:1px solid #4b1111; }
     .btn-danger:hover { background:#251010; }
     .btn-full { width:100%; padding:13px; font-size:12px; }
@@ -56,7 +64,7 @@
     /* Forms */
     .form-label { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; font-family:var(--mono); }
     .form-input { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:var(--radius); padding:10px 12px; color:var(--text); font-size:14px; outline:none; transition:border-color .15s; }
-    .form-input:focus { border-color:var(--accent); }
+    .form-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(249,115,22,.15); }
     .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .error-box { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:var(--radius); padding:11px 14px; font-size:12px; color:#fca5a5; margin-bottom:14px; font-family:var(--mono); }
 
@@ -80,7 +88,7 @@
     .pick-input-row { position:relative; }
     .ticker-input { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:var(--radius); padding:10px 36px 10px 12px; color:var(--text); font-family:var(--mono); font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; outline:none; transition:border-color .2s,background .2s; }
     .ticker-input::placeholder { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-weight:400; letter-spacing:0; text-transform:none; color:var(--dim); font-size:13px; }
-    .ticker-input:focus   { border-color:var(--accent); }
+    .ticker-input:focus   { border-color:var(--accent); box-shadow:0 0 0 2px rgba(249,115,22,.15); }
     .ticker-input.valid   { border-color:var(--green); background:var(--green-bg); }
     .ticker-input.invalid { border-color:var(--red);   background:var(--red-bg); }
     .ticker-input.duplicate { border-color:var(--amber); background:var(--amber-bg); }
@@ -119,12 +127,12 @@
 
     /* ── DASHBOARD ── */
     #dashboard-screen { min-height:100vh; }
-    .topbar { background:var(--surface); border-bottom:1px solid var(--border2); border-top:2px solid var(--accent); padding:0 22px; display:flex; align-items:center; justify-content:space-between; height:52px; position:sticky; top:0; z-index:10; }
-    .topbar-left  { display:flex; align-items:center; gap:14px; }
-    .topbar-right { display:flex; align-items:center; gap:8px; }
+    .topbar { background:rgba(8,12,22,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--border2); border-top:2px solid var(--accent); padding:0 22px; display:flex; align-items:center; justify-content:space-between; height:52px; position:sticky; top:0; z-index:10; }
+    .topbar-left  { display:flex; align-items:center; gap:14px; min-width:0; overflow:hidden; }
+    .topbar-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
     .topbar-ident { font-family:var(--mono); font-size:10px; font-weight:800; background:var(--accent); color:#000; padding:3px 7px; border-radius:2px; letter-spacing:.06em; flex-shrink:0; }
-    .topbar-title { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-family:var(--mono); color:var(--text); }
-    .topbar-dates { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:1px; }
+    .topbar-title { font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-family:var(--mono); color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .topbar-dates { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
     .live-dot.stale { background:var(--amber); animation:none; }
     .live-dot.error { background:var(--red);   animation:none; }
@@ -135,6 +143,7 @@
 
     /* Demo notice */
     .demo-banner { background:rgba(249,115,22,.06); border:1px solid rgba(249,115,22,.18); border-radius:var(--radius); padding:9px 16px; font-size:11px; color:var(--accent); margin-bottom:20px; text-align:center; font-family:var(--mono); letter-spacing:.03em; }
+    #firebase-notice { background:rgba(16,185,129,.08) !important; border-color:rgba(16,185,129,.2) !important; color:#6ee7b7 !important; font-size:10px; padding:8px 14px; }
 
     /* Progress */
     .progress-section { margin-bottom:22px; }
@@ -172,7 +181,8 @@
 
     /* Portfolio cards */
     .cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:10px; }
-    .player-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .player-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:transform .15s ease, box-shadow .15s ease; }
+    .player-card:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,.35); }
     .card-head { display:flex; justify-content:space-between; align-items:center; padding:11px 15px; background:var(--surface2); border-bottom:1px solid var(--border); }
     .card-name { font-size:13px; font-weight:700; }
     .card-gain { font-size:15px; font-weight:800; font-family:var(--mono); }
@@ -221,10 +231,10 @@
 
     /* Modal */
     .overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
-    .modal { background:var(--surface); border:1px solid var(--border2); border-top:2px solid var(--accent); border-radius:var(--radius); width:100%; max-width:430px; }
+    .modal { background:var(--surface); border:1px solid var(--border2); border-top:2px solid var(--accent); border-radius:var(--radius); width:100%; max-width:430px; max-height:calc(100vh - 40px); display:flex; flex-direction:column; }
     .modal-head { display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border); }
     .modal-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-family:var(--mono); }
-    .modal-body  { padding:20px; }
+    .modal-body  { padding:20px; overflow-y:auto; flex:1; min-height:0; }
     .modal-section { margin-bottom:20px; }
     .modal-section-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px; font-family:var(--mono); }
     .modal-desc { font-size:13px; color:var(--muted); margin-bottom:10px; line-height:1.5; }
@@ -233,7 +243,7 @@
     #chart-tooltip { position:absolute; pointer-events:none; background:#030508; border:1px solid var(--border2); border-radius:var(--radius); padding:10px 13px; min-width:175px; display:none; z-index:10; font-family:var(--mono); box-shadow:0 8px 28px rgba(0,0,0,.7); }
 
     /* Toast */
-    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(70px); background:var(--surface); border:1px solid var(--accent); border-radius:var(--radius); padding:10px 18px; font-size:12px; font-weight:700; color:var(--text); z-index:200; transition:transform .25s ease; pointer-events:none; white-space:nowrap; font-family:var(--mono); letter-spacing:.03em; }
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(70px); background:var(--surface); border:1px solid var(--accent); border-radius:var(--radius); padding:10px 18px; font-size:12px; font-weight:700; color:var(--text); z-index:200; transition:transform .25s ease; pointer-events:none; white-space:nowrap; font-family:var(--mono); letter-spacing:.03em; box-shadow:0 8px 32px rgba(0,0,0,.5); }
     #toast.show { transform:translateX(-50%) translateY(0); }
 
     /* ── WINNER BANNER ── */
@@ -251,12 +261,12 @@
     .countdown-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); margin-bottom:10px; }
     .countdown-digits { display:flex; justify-content:center; gap:10px; align-items:flex-end; }
     .countdown-unit { display:flex; flex-direction:column; align-items:center; min-width:52px; }
-    .countdown-num { font-size:34px; font-weight:800; font-family:var(--mono); color:#fff; line-height:1; }
+    .countdown-num { font-size:34px; font-weight:800; font-family:var(--mono); color:#fff; line-height:1; text-shadow:0 0 20px rgba(249,115,22,.3); }
     .countdown-sub { font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:3px; font-family:var(--mono); }
     .countdown-sep { font-size:28px; font-weight:700; color:var(--dim); padding-bottom:6px; font-family:var(--mono); }
 
     /* ── INLINE JOIN PANEL ── */
-    .join-panel { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px; }
+    .join-panel { background:var(--surface); border:1px solid var(--border2); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px; overflow:hidden; }
     .join-panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .join-panel-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); }
     .join-panel-sub { font-size:12px; color:var(--muted); }
@@ -267,7 +277,8 @@
     .ij-players-label   { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); font-family:var(--mono); }
     .ij-players-count   { font-size:11px; color:var(--muted); font-family:var(--mono); }
     .ij-cards-grid      { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; }
-    .ij-card            { background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius); padding:14px; position:relative; }
+    .ij-card            { background:var(--surface2); border:1px solid var(--border2); border-left:3px solid var(--accent); border-radius:var(--radius); padding:14px; position:relative; transition:transform .15s ease, box-shadow .15s ease; }
+    .ij-card:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,.3); }
     .ij-card-head       { display:flex; justify-content:space-between; align-items:center; margin-bottom:11px; }
     .ij-card-name       { font-size:14px; font-weight:700; color:#fff; }
     .ij-card-menu-btn   { background:none; border:none; color:var(--dim); cursor:pointer; font-size:16px; padding:2px 6px; line-height:1; border-radius:var(--radius); transition:color .15s,background .15s; }
@@ -327,16 +338,15 @@
     .sb-card-ticker { font-size:13px;font-weight:800;font-family:var(--mono);color:var(--text);margin-bottom:2px; }
     .sb-card-name   { font-size:10px;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
     .sb-card-check  { position:absolute;top:7px;right:8px;color:#34d399;font-size:12px;font-weight:700; }
-    .sb-search-bar { padding:10px 14px;border-bottom:1px solid var(--border2);flex-shrink:0; }
-    .sb-search-input { width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px 9px 34px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s; }
-    .sb-search-input:focus { border-color:var(--accent); }
-    .sb-search-wrap { position:relative; }
-    .sb-search-icon { position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;opacity:.5; }
     @media(max-width:600px){
       #stock-browser-overlay { padding:0; }
-      .sb-modal { border-radius:0;max-height:100vh; }
-      .sb-nav { width:160px; }
-      .sb-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
+      .sb-modal { border-radius:0; max-height:100vh; height:100vh; }
+      .sb-nav { width:140px; font-size:11px; }
+      .sb-nav-group { padding:10px 10px 3px; font-size:8px; }
+      .sb-nav-item { padding:7px 10px; font-size:11px; }
+      .sb-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:6px; }
+      .sb-card { padding:9px 10px; }
+      .sb-header { padding:12px 14px; }
     }
 
     /* ── Season archive card ── */
@@ -362,6 +372,24 @@
       .grid-2   { grid-template-columns:1fr; }
       .dash-tabs { width:100%; }
       .dash-tab  { flex:1; padding:8px 12px; font-size:12px; }
+      .join-panel { padding:14px 12px; }
+      .countdown-num { font-size:24px; }
+      .countdown-unit { min-width:40px; }
+      .alloc-grid-3 { grid-template-columns:1fr; }
+      .btn { min-height:40px; }
+      .form-input { padding:12px; font-size:15px; }
+      .ticker-input { padding:12px 36px 12px 12px; font-size:14px; }
+      .alloc-btn { width:34px; height:34px; font-size:20px; }
+    }
+
+    @media (max-width:380px) {
+      .topbar { padding:0 8px; height:48px; }
+      .topbar-ident { font-size:8px; padding:2px 5px; }
+      .topbar-title { font-size:11px; }
+      .topbar-dates { font-size:9px; }
+      .topbar-right .btn { padding:4px 8px; }
+      .sb-nav { width:120px; }
+      .sb-grid { grid-template-columns:1fr; }
     }
 
     /* ── Reduced motion ── */
@@ -409,6 +437,7 @@
     .alloc-total-val { font-weight:800; }
     .alloc-total-val.valid   { color:var(--green); }
     .alloc-total-val.invalid { color:var(--amber); }
+    .alloc-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   </style>
 </head>
 <body>
@@ -490,12 +519,10 @@
 
       <div class="picks-container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <label class="form-label" style="margin-bottom:0">3 Stock Picks &amp; Allocation</label>
-          <button class="btn btn-primary" onclick="openStockBrowser(PICK_IDS)" style="font-size:12px;padding:7px 14px">📂 Browse stocks</button>
+          <label class="form-label" style="margin-bottom:0">3 Stock Picks</label>
+          <button class="btn btn-secondary" onclick="openStockBrowser(PICK_IDS)" style="font-size:11px;padding:4px 10px;text-transform:none;letter-spacing:0">📂 Browse stocks</button>
         </div>
-        <div class="alloc-section-hint" style="margin-bottom:10px">Min £50 · max £150 per pick · must total £300</div>
-
-        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+        <div class="pick-field">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-0" placeholder="Pick 1 — e.g. Apple or AAPL"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -505,18 +532,8 @@
             <div class="ac-dropdown" id="dropdown-pick-0"></div>
           </div>
           <div class="pick-msg" id="msg-pick-0"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-            <span class="alloc-ticker-lbl" id="alloc-tick-pick-0" style="font-size:11px;color:var(--muted)">Allocation</span>
-            <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
-              <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
-            </div>
-          </div>
         </div>
-
-        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+        <div class="pick-field">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-1" placeholder="Pick 2 — e.g. Microsoft or MSFT"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -526,18 +543,8 @@
             <div class="ac-dropdown" id="dropdown-pick-1"></div>
           </div>
           <div class="pick-msg" id="msg-pick-1"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-            <span class="alloc-ticker-lbl" id="alloc-tick-pick-1" style="font-size:11px;color:var(--muted)">Allocation</span>
-            <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
-              <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
-            </div>
-          </div>
         </div>
-
-        <div class="pick-field" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+        <div class="pick-field">
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="pick-2" placeholder="Pick 3 — e.g. Tesla or TSLA"
                    oninput="onPickSearch(this)" onkeydown="onPickKeydown(event,this)"
@@ -547,24 +554,47 @@
             <div class="ac-dropdown" id="dropdown-pick-2"></div>
           </div>
           <div class="pick-msg" id="msg-pick-2"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-            <span class="alloc-ticker-lbl" id="alloc-tick-pick-2" style="font-size:11px;color:var(--muted)">Allocation</span>
-            <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
-              <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
-            </div>
+        </div>
+      </div>
+
+      <!-- Allocation stepper — setup form -->
+      <div class="alloc-section" id="alloc-section-pick">
+        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-0">Pick 1</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-0"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-0" onclick="adjustAlloc('pick',0,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-0">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-0" onclick="adjustAlloc('pick',0,10)">+</button>
           </div>
         </div>
-
-        <div class="alloc-total-row" id="alloc-section-pick">
-          <span class="alloc-total-lbl">💷 Total invested:</span>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-1">Pick 2</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-1"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-1" onclick="adjustAlloc('pick',1,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-1">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-1" onclick="adjustAlloc('pick',1,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-row">
+          <span class="alloc-ticker-lbl" id="alloc-tick-pick-2">Pick 3</span>
+          <span class="alloc-name-lbl" id="alloc-name-pick-2"></span>
+          <div class="alloc-stepper">
+            <button class="alloc-btn" id="alloc-minus-pick-2" onclick="adjustAlloc('pick',2,-10)">−</button>
+            <span class="alloc-amount" id="alloc-amt-pick-2">£100</span>
+            <button class="alloc-btn" id="alloc-plus-pick-2" onclick="adjustAlloc('pick',2,10)">+</button>
+          </div>
+        </div>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-pick">£300 ✓</span>
         </div>
       </div>
 
-      <button class="btn btn-primary btn-full" id="add-btn" disabled onclick="addPlayer()">✓ Confirm choices</button>
+      <button class="btn btn-primary btn-full" id="add-btn" disabled onclick="addPlayer()">Add Player</button>
       <div class="add-btn-hint" id="add-hint">Enter a name and 3 valid tickers to add a player.</div>
 
       <div id="submitted-section" class="hidden">
@@ -659,17 +689,13 @@
         </div>
       </div>
       <div id="inline-join-error" class="error-box hidden" style="margin-bottom:10px"></div>
-      <div style="margin-bottom:8px">
-        <label class="form-label">Your Name</label>
-        <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
-               oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="alloc-section-hint" style="margin-bottom:0">Pick 3 stocks &amp; allocate your £300 pot · Min £50 · max £150 per pick</div>
-        <button class="btn btn-primary" onclick="openStockBrowser(IJ_PICK_IDS)" style="font-size:12px;padding:7px 14px;flex-shrink:0;margin-left:12px">📂 Browse stocks</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
+      <div class="join-panel-fields">
+        <div>
+          <label class="form-label">Your Name</label>
+          <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
+                 oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
+        </div>
+        <div style="position:relative">
           <label class="form-label">Pick 1</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-0" placeholder="Search ticker…"
@@ -680,16 +706,8 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-0"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-0"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0" style="font-size:11px;color:var(--muted)">Allocation</span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
-              <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
-            </div>
-          </div>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
+        <div style="position:relative">
           <label class="form-label">Pick 2</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-1" placeholder="Search ticker…"
@@ -700,16 +718,8 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-1"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-1"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1" style="font-size:11px;color:var(--muted)">Allocation</span>
-            <div class="alloc-stepper">
-              <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
-              <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
-              <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
-            </div>
-          </div>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px">
+        <div style="position:relative">
           <label class="form-label">Pick 3</label>
           <div class="pick-input-row" style="position:relative">
             <input type="text" class="ticker-input" id="ij-pick-2" placeholder="Search ticker…"
@@ -720,8 +730,37 @@
             <div class="ac-dropdown" id="dropdown-ij-pick-2"></div>
           </div>
           <div class="pick-msg" id="msg-ij-pick-2"></div>
-          <div class="alloc-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:4px">
-            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2" style="font-size:11px;color:var(--muted)">Allocation</span>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end">
+          <label class="form-label" style="visibility:hidden">Add</label>
+          <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">Add Player</button>
+          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
+        </div>
+      </div>
+
+      <!-- Allocation stepper — inline join panel -->
+      <div class="alloc-section" id="alloc-section-ij">
+        <div class="alloc-section-label">💷 Allocate your £300 pot</div>
+        <div class="alloc-section-hint">Min £50 · max £150 per pick · must total £300 · adjust in £10 steps</div>
+        <div class="alloc-grid-3">
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-0">Pick 1</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-0" onclick="adjustAlloc('ij',0,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-0">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-0" onclick="adjustAlloc('ij',0,10)">+</button>
+            </div>
+          </div>
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-1">Pick 2</span>
+            <div class="alloc-stepper">
+              <button class="alloc-btn" id="alloc-minus-ij-1" onclick="adjustAlloc('ij',1,-10)">−</button>
+              <span class="alloc-amount" id="alloc-amt-ij-1">£100</span>
+              <button class="alloc-btn" id="alloc-plus-ij-1" onclick="adjustAlloc('ij',1,10)">+</button>
+            </div>
+          </div>
+          <div class="alloc-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <span class="alloc-ticker-lbl" id="alloc-tick-ij-2">Pick 3</span>
             <div class="alloc-stepper">
               <button class="alloc-btn" id="alloc-minus-ij-2" onclick="adjustAlloc('ij',2,-10)">−</button>
               <span class="alloc-amount" id="alloc-amt-ij-2">£100</span>
@@ -729,15 +768,9 @@
             </div>
           </div>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div id="alloc-section-ij" style="display:flex;align-items:center;gap:10px">
-          <span class="alloc-total-lbl" style="font-size:12px;font-family:var(--mono);color:var(--muted)">💷 Total:</span>
+        <div class="alloc-total-row">
+          <span class="alloc-total-lbl">Total invested:</span>
           <span class="alloc-total-val valid" id="alloc-total-ij">£300 ✓</span>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end">
-          <button class="btn btn-primary" id="ij-submit-btn" disabled onclick="submitInlineJoin()" style="white-space:nowrap">✓ Confirm choices</button>
-          <div class="add-btn-hint" id="ij-hint" style="margin-top:5px;font-size:11px">Enter name + 3 valid picks.</div>
         </div>
       </div>
 
@@ -753,75 +786,6 @@
       <div id="start-game-row" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">When everyone's in, start the game to lock prices and reveal the leaderboard.</span>
         <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
-      </div>
-    </div>
-
-    <!-- FAQ section — visible before game starts -->
-    <div id="faq-section" style="margin-bottom:24px">
-      <div class="section-title" style="margin-bottom:16px">❓ FAQ</div>
-
-      <div style="display:flex;flex-direction:column;gap:10px">
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            How does the game work?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            Pick 3 stocks and split your virtual £300 pot across them. The player whose portfolio gains the most by the end of the game wins. Performance is tracked live on the leaderboard so you can see exactly where you stand.
-          </div>
-        </details>
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            How much does it cost to play?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            It costs <strong style="color:var(--text)">£10 to enter</strong>. Transfer this to the game organiser before the game starts — they'll confirm receipt and get you set up.
-          </div>
-        </details>
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            When does the game start and end?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            Check the <strong style="color:var(--text)">Game Progress bar</strong> at the top of this page — it shows the exact start and end dates for the current season.
-          </div>
-        </details>
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            What stocks can I pick?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            You can pick from a wide range of publicly listed stocks across US and UK markets — big tech, finance, energy, healthcare, crypto-adjacent stocks and more. Hit <strong style="color:var(--text)">Browse Stocks</strong> to explore by category, or search by company name or ticker symbol (e.g. "Apple" or "AAPL"). If a stock appears in the browser or is accepted by the search, it's fair game.
-          </div>
-        </details>
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            What does the allocation do?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            You decide how much of your virtual £300 to put behind each pick — minimum £50, maximum £150 per stock. It works in £10 steps. If you're more confident in one pick, back it harder. Your total must always equal exactly £300.
-          </div>
-        </details>
-
-        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
-          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
-            Is this real money?
-            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
-          </summary>
-          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
-            The £300 pot is virtual — no real trades are made. The £10 entry fee is real though, and goes into the prize pot. Purely bragging rights on the line (and mild office shame if you finish last).
-          </div>
-        </details>
-
       </div>
     </div>
 
@@ -1197,12 +1161,6 @@
       <div class="sb-slot-indicator" id="sb-slot-indicator">Filling Pick 1</div>
       <button class="btn btn-secondary" onclick="closeStockBrowser()" style="padding:5px 10px;letter-spacing:0;text-transform:none;font-size:14px">✕</button>
     </div>
-    <div class="sb-search-bar">
-      <div class="sb-search-wrap">
-        <span class="sb-search-icon">🔍</span>
-        <input type="text" id="sb-search" class="sb-search-input" placeholder="Search by name or ticker (e.g. Apple, TSLA)…" oninput="sbHandleSearch(this.value)" autocomplete="off" spellcheck="false" />
-      </div>
-    </div>
     <div class="sb-body">
       <nav class="sb-nav" id="sb-nav"></nav>
       <div class="sb-content">
@@ -1330,13 +1288,8 @@ const CATEGORY_MAP = {
   'tech':                 ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL','CRM'],
   'technology':           ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA','ORCL'],
   'big tech':             ['AAPL','MSFT','GOOGL','META','AMZN','NVDA'],
-  'magnificent 7':        ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA'],
-  'mag 7':                ['AAPL','MSFT','GOOGL','META','AMZN','NVDA','TSLA'],
-  'software':             ['MSFT','ORCL','CRM','NOW','ADBE','SAP','WDAY','IBM'],
-  'enterprise saas':      ['CRM','NOW','WDAY','ADBE','ZM','TWLO','DDOG','HUBS','NET'],
-  'saas':                 ['CRM','NOW','WDAY','ADBE','SNOW','DDOG','ZM','TWLO','NET','HUBS'],
-  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW','NOW','MDB','NET','DDOG'],
-  'legacy tech':          ['IBM','DELL','HPQ','CSCO','ORCL','INTC'],
+  'software':             ['MSFT','ORCL','CRM','NOW','ADBE','SAP','WDAY'],
+  'cloud':                ['AMZN','MSFT','GOOGL','CRM','SNOW','NOW','MDB'],
   'semiconductors':       ['NVDA','AMD','INTC','QCOM','AMAT','TSM','ASML','ARM','MRVL'],
   'chips':                ['NVDA','AMD','INTC','QCOM','TSM','ARM','AMAT'],
   'artificial intelligence': ['NVDA','MSFT','GOOGL','META','PLTR','ARM','CRM','AMZN'],
@@ -1375,10 +1328,8 @@ const CATEGORY_MAP = {
   'music':                ['SPOT','SIRI','LYV','WMG'],
 
   // ── Transport & Travel ────────────────────────────────────
-  'rideshare':            ['UBER','LYFT'],
-  'mobility':             ['UBER','LYFT','TSLA','GM','F'],
   'airlines':             ['DAL','UAL','AAL','LUV','IAG.L','EZJ.L','RYA.L'],
-  'travel':               ['DAL','UAL','BKNG','ABNB','IAG.L','EZJ.L','EXPE','UBER'],
+  'travel':               ['DAL','UAL','BKNG','ABNB','IAG.L','EZJ.L','EXPE'],
   'logistics':            ['UPS','FDX','XPO','GXO','DPDHL.DE'],
   'shipping':             ['ZIM','DAC','MATX','GSL'],
 
@@ -1411,12 +1362,11 @@ const CATEGORY_MAP = {
   'fashion':              ['CPRI','TPR','RL','PVH','BRBY.L','TIF'],
 
   // ── UK-Listed Stocks ─────────────────────────────────────
-  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','BT.L','REL.L','EXPN.L','RR.L','LSEG.L'],
-  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','DGE.L','REL.L','EXPN.L','LSEG.L'],
-  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','NWG.L','REL.L','EXPN.L','RR.L'],
+  'london':               ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','BT.L'],
+  'ftse':                 ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','DGE.L'],
+  'uk stocks':            ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','VOD.L','NWG.L'],
   'uk banks':             ['HSBA.L','BARC.L','LLOY.L','NWG.L','STAN.L'],
-  'ftse 100':             ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','GLEN.L','REL.L','EXPN.L','RR.L','LSEG.L','DGE.L'],
-  'uk tech':              ['AUTO.L','DARK.L','EXPN.L','REL.L','LSEG.L'],
+  'ftse 100':             ['BP.L','SHEL.L','HSBA.L','BARC.L','AZN.L','GSK.L','RIO.L','LLOY.L','NWG.L','GLEN.L'],
 
   // ── Telecoms & Utilities ──────────────────────────────────
   'telecom':              ['T','VZ','VOD.L','BT.L','TMUS','AMX'],
@@ -1525,53 +1475,19 @@ const TICKER_NAMES = {
   VMC:'Vulcan Materials',MLM:'Martin Marietta',SUM:'Summit Materials','CRH.L':'CRH',
   // Private Equity
   'EQT.ST':'EQT',
-  // Rideshare / Mobility
-  UBER:'Uber',LYFT:'Lyft',
-  // Enterprise SaaS / Dev Tools
-  ZM:'Zoom',NET:'Cloudflare',TWLO:'Twilio',DDOG:'Datadog',
-  HUBS:'HubSpot',GTLB:'GitLab',PATH:'UiPath',ZI:'ZoomInfo',
-  // Legacy Tech
-  IBM:'IBM',DELL:'Dell Technologies',HPQ:'HP Inc',CSCO:'Cisco',
-  QCOM:'Qualcomm', // already listed above but ensuring name exists
-  // ETFs / Indices
-  SPY:'S&P 500 ETF',QQQ:'Nasdaq 100 ETF',DIA:'Dow Jones ETF',
-  IWM:'Russell 2000 ETF',XLK:'Tech Sector ETF',XLF:'Finance Sector ETF',
-  // More UK stocks
-  'REL.L':'RELX Group','EXPN.L':'Experian','LSEG.L':'London Stock Exchange Group',
-  'RR.L':'Rolls-Royce','BDEV.L':'Barratt Developments','PSN.L':'Persimmon',
-  'MNDI.L':'Mondi','SMDS.L':'DS Smith','AUTO.L':'Auto Trader',
-  'DARK.L':'Darktrace','OXB.L':'Oxford Biomedica',
-  // Emerging markets / global
-  BABA:'Alibaba',PDD:'Pinduoduo / Temu',GRAB:'Grab',MELI:'MercadoLibre',
-  // Consumer/lifestyle
-  NKE:'Nike',LULU:'Lululemon',SBUX:'Starbucks', // SBUX already listed
-  // More financials
-  SQ:'Block (Square)',HOOD:'Robinhood',OPEN:'Opendoor',
-  // Healthcare additions
-  TMO:'Thermo Fisher Scientific',DHR:'Danaher',ZBH:'Zimmer Biomet',IQV:'IQVIA',
-  // More media
-  TTWO:'Take-Two Interactive',NWSA:'News Corp',NYT:'New York Times',
-  // Industrials
-  GEV:'GE Vernova',AXON:'Axon Enterprise',TDG:'TransDigm',
 };
 
 // ═══════════════════════════════════════════════════════════
 //  BROWSER CATEGORIES — grouped nav for the stock browser
 // ═══════════════════════════════════════════════════════════
 const BROWSER_CATEGORIES = [
-  { group:'⭐ Popular', items:[
-    {key:'magnificent 7',  label:'Magnificent 7'},
-    {key:'big tech',       label:'Big Tech'},
-    {key:'ftse 100',       label:'FTSE 100'},
-  ]},
   { group:'🤖 Technology', items:[
+    {key:'big tech',       label:'Big Tech'},
     {key:'ai',             label:'Artificial Intelligence'},
     {key:'semiconductors', label:'Semiconductors'},
-    {key:'enterprise saas',label:'Enterprise SaaS'},
     {key:'software',       label:'Software'},
     {key:'cloud',          label:'Cloud Computing'},
     {key:'cybersecurity',  label:'Cybersecurity'},
-    {key:'legacy tech',    label:'Legacy Tech'},
   ]},
   { group:'💰 Finance', items:[
     {key:'investment banks',  label:'Investment Banks'},
@@ -1605,7 +1521,6 @@ const BROWSER_CATEGORIES = [
   { group:'🇬🇧 UK Stocks', items:[
     {key:'ftse 100', label:'FTSE 100'},
     {key:'uk banks', label:'UK Banks'},
-    {key:'uk tech',  label:'UK Tech'},
     {key:'london',   label:'All London'},
   ]},
   { group:'🎮 Media & Entertainment', items:[
@@ -1617,7 +1532,6 @@ const BROWSER_CATEGORIES = [
   { group:'✈️ Transport & Autos', items:[
     {key:'airlines',         label:'Airlines'},
     {key:'travel',           label:'Travel'},
-    {key:'rideshare',        label:'Rideshare (Uber/Lyft)'},
     {key:'electric vehicles',label:'Electric Vehicles'},
     {key:'autos',            label:'Cars & Autos'},
   ]},
@@ -1888,7 +1802,6 @@ let S = {
   players:[], startPrices:{}, startDate:'', endDate:'', adminPwd:'',
   currencies:{},   // { sym: 'USD'|'GBp'|'EUR'|... } — locked at game start
   fxHistory:{},    // { date: { 'GBPUSD=X': rate, ... } } — daily FX snapshots
-  payments:{},     // { playerIndex: true|false } — £10 entry fee tracking
 };
 let prices        = {};
 let isDemoMode    = false;
@@ -2533,10 +2446,6 @@ function openStockBrowser(pickIds) {
   _browserPickIds = pickIds || [];
   _browserCatKey  = null;
 
-  // Clear search box
-  const searchEl = document.getElementById('sb-search');
-  if (searchEl) searchEl.value = '';
-
   // Render category nav
   const nav = document.getElementById('sb-nav');
   nav.innerHTML = BROWSER_CATEGORIES.map(group =>
@@ -2556,42 +2465,6 @@ function openStockBrowser(pickIds) {
     const first = BROWSER_CATEGORIES[0].items[0];
     sbSelectCategory(first.key, first.label);
   }
-
-  // Focus the search box after a short delay
-  setTimeout(() => searchEl?.focus(), 150);
-}
-
-function sbHandleSearch(query) {
-  const q = query.trim().toLowerCase();
-
-  if (!q) {
-    // Restore category view
-    if (_browserCatKey) {
-      const cat = BROWSER_CATEGORIES.flatMap(g => g.items).find(i => i.key === _browserCatKey);
-      sbSelectCategory(_browserCatKey, cat?.label || _browserCatKey);
-    } else {
-      document.getElementById('sb-content-title').textContent = 'Select a category on the left';
-      document.getElementById('sb-grid').innerHTML = '';
-    }
-    return;
-  }
-
-  // Search across all TICKER_NAMES
-  const results = Object.entries(TICKER_NAMES).filter(([sym, name]) =>
-    sym.toLowerCase().includes(q) || name.toLowerCase().includes(q)
-  ).slice(0, 60);
-
-  document.getElementById('sb-content-title').textContent =
-    results.length ? `${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"` : `No results for "${query}"`;
-
-  const grid = document.getElementById('sb-grid');
-  if (!results.length) {
-    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No stocks found — try typing a ticker directly in the pick field above.</div>';
-    return;
-  }
-
-  const taken = sbGetTakenTickers();
-  grid.innerHTML = results.map(([sym]) => sbRenderCard(sym, taken)).join('');
 }
 
 function closeStockBrowser() { hide('stock-browser-overlay'); }
@@ -2612,61 +2485,36 @@ function sbUpdateSlotIndicator() {
   }
 }
 
-// Returns a map of sym → playerName for all tickers already claimed by other players
-function sbGetTakenTickers() {
-  const taken = {};
-  (S.players || []).forEach(p => {
-    (p.picks || []).forEach(sym => { taken[sym] = p.name; });
-  });
-  return taken;
-}
-
-function sbRenderCard(sym, taken) {
-  const name    = TICKER_NAMES[sym] || tickerCache[sym]?.name || sym;
-  const isMine  = _browserPickIds.some(id => tickerState[id]?.sym === sym);
-  const takenBy = taken[sym];
-  if (isMine) {
-    return `<div class="sb-card selected" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
-      <div class="sb-card-ticker">${esc(sym)}</div>
-      <div class="sb-card-name">${esc(name)}</div>
-      <div class="sb-card-check">✓</div>
-    </div>`;
-  }
-  if (takenBy) {
-    return `<div class="sb-card disabled" title="Already picked by ${esc(takenBy)}" style="cursor:not-allowed;opacity:.45;position:relative">
-      <div class="sb-card-ticker" style="text-decoration:line-through">${esc(sym)}</div>
-      <div class="sb-card-name">${esc(name)}</div>
-      <div style="position:absolute;top:5px;right:7px;font-size:9px;font-family:var(--mono);font-weight:700;color:var(--red);letter-spacing:.04em">TAKEN</div>
-    </div>`;
-  }
-  return `<div class="sb-card" onclick="sbPickStock('${esc(sym)}','${esc(name)}')" title="${esc(name)}">
-    <div class="sb-card-ticker">${esc(sym)}</div>
-    <div class="sb-card-name">${esc(name)}</div>
-  </div>`;
-}
-
 function sbSelectCategory(key, label) {
   _browserCatKey = key;
+  // Highlight active nav item
   document.querySelectorAll('.sb-nav-item').forEach(b => {
     b.classList.toggle('active', b.dataset.key === key);
   });
   document.getElementById('sb-content-title').textContent = label;
 
   const tickers = CATEGORY_MAP[key] || [];
-  const taken   = sbGetTakenTickers();
-  const grid    = document.getElementById('sb-grid');
-  grid.innerHTML = tickers.map(sym => sbRenderCard(sym, taken)).join('')
-    || '<div style="color:var(--muted);font-size:12px;padding:8px 0">No tickers in this category</div>';
+  const selectedSyms = new Set(
+    _browserPickIds.map(id => tickerState[id]?.sym).filter(Boolean)
+  );
+
+  const grid = document.getElementById('sb-grid');
+  grid.innerHTML = tickers.map(sym => {
+    const name     = TICKER_NAMES[sym] || tickerCache[sym]?.name || sym;
+    const isSel    = selectedSyms.has(sym);
+    const isDupe   = _browserPickIds.some(id => tickerState[id]?.sym === sym);
+    return `
+      <div class="sb-card ${isDupe ? 'selected' : ''}"
+           onclick="sbPickStock('${esc(sym)}','${esc(name)}')"
+           title="${esc(name)}">
+        <div class="sb-card-ticker">${esc(sym)}</div>
+        <div class="sb-card-name">${esc(name)}</div>
+        ${isDupe ? '<div class="sb-card-check">✓</div>' : ''}
+      </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px 0">No tickers in this category</div>';
 }
 
 function sbPickStock(sym, name) {
-  // Block if already taken by another player
-  const takenBy = sbGetTakenTickers()[sym];
-  if (takenBy) {
-    toast(`⚡ ${sym} is already picked by ${takenBy}`);
-    return;
-  }
-
   // Find next empty pick slot
   const targetId = _browserPickIds.find(id => {
     const state = tickerState[id]?.status;
@@ -2809,20 +2657,14 @@ function renderInlinePlayers() {
   if (!players.length) { section.style.display = 'none'; return; }
   section.style.display = '';
   if (countEl) countEl.textContent = players.length + ' joined';
-  grid.innerHTML = players.map((p, i) => {
-    const paid = S.payments?.[i] === true;
-    const payBadge = paid
-      ? `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:2px;padding:1px 5px;flex-shrink:0">£ PAID</span>`
-      : `<span style="font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.05em;color:var(--red);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:2px;padding:1px 5px;flex-shrink:0">£ UNPAID</span>`;
-    return `
+  grid.innerHTML = players.map((p, i) => `
     <div class="ij-card" id="ij-card-${i}">
       <div class="ij-card-head">
-        <div style="display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px;min-width:0">
           ${playerAvatar(p, 22)}
           <div class="ij-card-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
-          ${payBadge}
         </div>
-        ${!pricesLocked ? `<button class="ij-card-menu-btn" onclick="togglePlayerMenu(${i},event)" title="Options">⋮</button>` : ''}
+        ${!pricesLocked && (isAdmin() || (currentUser && p.uid && currentUser.uid === p.uid)) ? `<button class="ij-card-menu-btn" onclick="togglePlayerMenu(${i},event)" title="Options">⋮</button>` : ''}
       </div>
       <div class="ij-card-picks">
         ${p.picks.map((sym, j) => `
@@ -2837,8 +2679,7 @@ function renderInlinePlayers() {
           <div class="ij-card-menu-item" onclick="editPlayerAtIdx(${i})">✏️ Edit picks</div>
           <div class="ij-card-menu-item danger" onclick="deletePlayerAtIdx(${i})">🗑 Remove player</div>
         </div>` : ''}
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 function togglePlayerMenu(idx, e) {
@@ -2856,6 +2697,10 @@ async function deletePlayerAtIdx(idx) {
   _openMenuIdx = -1;
   const p = S.players[idx];
   if (!p) return;
+  if (!isAdmin() && !(currentUser && p.uid && currentUser.uid === p.uid)) {
+    toast('⛔ You can only remove your own entry.');
+    return;
+  }
   if (!confirm(`Remove ${p.name} from the game?`)) return;
   S.players.splice(idx, 1);
   await save();
@@ -2873,6 +2718,10 @@ function editPlayerAtIdx(idx) {
   renderInlinePlayers();
   const p = S.players[idx];
   if (!p) return;
+  if (!isAdmin() && !(currentUser && p.uid && currentUser.uid === p.uid)) {
+    toast('⛔ You can only edit your own picks.');
+    return;
+  }
   _editingPlayerIdx = idx;
   window._editingPlayerIdx = idx;
 
@@ -3422,9 +3271,8 @@ function renderWinnerBanner(sorted) {
 }
 
 function renderDash() {
-  const sorted = S.players.map((p, origIdx) => ({
+  const sorted = S.players.map(p => ({
     ...p,
-    origIdx,
     pv:  portfolioValueGBP(p),     // current £ value
     pg:  portfolioGainGBP(p),      // £ gain/loss
     pct: portfolioGainPct(p),      // % gain/loss
@@ -3509,7 +3357,7 @@ function renderCards(sorted) {
       : `<span class="card-rank-num">${i + 1}</span>`;
     return `<div class="player-card">
       <div class="card-head">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
           ${rankBadge}
           ${playerAvatar(p, 28)}
           <div class="card-name">${esc(p.name)}</div>
@@ -4386,26 +4234,6 @@ function renderAdminPanel() {
       <div class="divider" style="margin:16px 0"></div>`;
   }
 
-  // ── Payment Status ────────────────────────────────────────
-  if (S.players && S.players.length > 0) {
-    html += `
-      <div class="modal-section">
-        <div class="modal-section-title">💳 Payment Status</div>
-        <div class="modal-desc">Track who has paid their £10 entry fee.</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-          ${S.players.map((p, i) => {
-            const paid = S.payments?.[i] === true;
-            return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:${paid ? 'rgba(34,197,94,.07)' : 'rgba(239,68,68,.06)'};border:1px solid ${paid ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.2)'};border-radius:var(--radius);transition:background .15s">
-              <input type="checkbox" ${paid ? 'checked' : ''} onchange="togglePayment(${i}, this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;flex-shrink:0" />
-              <span style="font-size:13px;font-weight:600;flex:1;color:var(--text)">${esc(p.name)}</span>
-              <span style="font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;${paid ? 'color:var(--green)' : 'color:var(--red)'}">${paid ? '✓ PAID' : '✗ UNPAID'}</span>
-            </label>`;
-          }).join('')}
-        </div>
-      </div>
-      <div class="divider" style="margin:16px 0"></div>`;
-  }
-
   // ── Danger zone (always visible) ─────────────────────────
   html += `
     <div class="modal-section" style="margin-bottom:0">
@@ -4415,14 +4243,6 @@ function renderAdminPanel() {
     </div>`;
 
   panel.innerHTML = html;
-}
-
-async function togglePayment(idx, paid) {
-  if (!S.payments) S.payments = {};
-  S.payments[idx] = paid;
-  await save();
-  renderAdminPanel();
-  if (Object.keys(S.startPrices || {}).length > 0) renderDash();
 }
 
 async function saveGameDates() {
