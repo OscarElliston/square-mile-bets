@@ -831,9 +831,7 @@
 
       </div><!-- end #setup-add-player-section -->
 
-      <div class="divider"></div>
       <div id="setup-error" class="error-box hidden"></div>
-      <button class="btn btn-primary btn-full" id="start-btn" disabled onclick="startGame()">🚀 Start Game</button>
     </div>
   </div>
 </div>
@@ -909,15 +907,15 @@
       <div class="join-panel-head">
         <div>
           <div class="join-panel-title">+ Join the Game</div>
-          <div class="join-panel-sub">Enter your name and 3 stock picks to join. Updates are shared live.</div>
+          <div class="join-panel-sub">Enter your full name and 3 stock picks to join. Updates are shared live.</div>
         </div>
       </div>
       <div id="inline-join-error" class="error-box hidden" style="margin-bottom:10px"></div>
 
       <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;margin-bottom:10px">
         <div>
-          <label class="form-label">Your Name</label>
-          <input class="form-input" id="ij-name" placeholder="e.g. Sarah"
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="ij-name" placeholder="e.g. Warren Buffett"
                  oninput="updateInlineJoinBtn()" onkeydown="if(event.key==='Enter')document.getElementById('ij-pick-0')?.focus()" />
         </div>
         <div style="display:flex;flex-direction:column;justify-content:flex-end">
@@ -1013,10 +1011,66 @@
         </div>
         <div class="ij-cards-grid" id="ij-players-grid"></div>
       </div>
-      <!-- Start Game button — visible to everyone, triggers price lock -->
-      <div id="start-game-row" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">When everyone's in, start the game to lock prices and reveal the leaderboard.</span>
-        <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
+    </div>
+
+    <!-- FAQ section — visible before game starts -->
+    <div id="faq-section" style="margin-bottom:24px">
+      <div class="section-title" style="margin-bottom:16px">❓ FAQ</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            How does the game work?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            Pick 3 stocks and split your virtual £300 pot across them. The player whose portfolio gains the most by the end of the game wins. Performance is tracked live on the leaderboard so you can see exactly where you stand.
+          </div>
+        </details>
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            How much does it cost to play?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            It costs <strong style="color:var(--text)">£10 to enter</strong>. Transfer this to the game organiser before the game starts — they'll confirm receipt and get you set up.
+          </div>
+        </details>
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            When does the game start and end?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            Check the <strong style="color:var(--text)">Game Progress bar</strong> at the top of this page — it shows the exact start and end dates for the current season.
+          </div>
+        </details>
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            What stocks can I pick?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            You can pick from a wide range of publicly listed stocks across US and UK markets — big tech, finance, energy, healthcare, crypto-adjacent stocks and more. Hit <strong style="color:var(--text)">Browse Stocks</strong> to explore by category, or search by company name or ticker symbol (e.g. "Apple" or "AAPL"). If a stock appears in the browser or is accepted by the search, it's fair game.
+          </div>
+        </details>
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            What does the allocation do?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            You decide how much of your virtual £300 to put behind each pick — minimum £50, maximum £150 per stock. It works in £10 steps. If you're more confident in one pick, back it harder. Your total must always equal exactly £300.
+          </div>
+        </details>
+        <details style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <summary style="padding:14px 18px;cursor:pointer;font-size:13px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">
+            Is this real money?
+            <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:12px">▾</span>
+          </summary>
+          <div style="padding:0 18px 16px;font-size:13px;color:var(--muted);line-height:1.7;border-top:1px solid var(--border)">
+            The £300 pot is virtual — no real trades are made. The £10 entry fee is real though, and goes into the prize pot. Purely bragging rights on the line (and mild office shame if you finish last).
+          </div>
+        </details>
       </div>
     </div>
 
@@ -1280,7 +1334,7 @@
       </div>
 
       <button class="btn btn-primary btn-full" id="join-submit-btn" disabled onclick="submitJoin()">Join Game</button>
-      <div class="add-btn-hint" id="join-hint">Enter your name and 3 valid picks to join.</div>
+      <div class="add-btn-hint" id="join-hint">Enter your full name and 3 valid picks to join.</div>
       </div><!-- end #join-picks-form -->
     </div>
   </div>
@@ -1297,6 +1351,10 @@
     </div>
     <div class="modal-body">
       <div id="edit-player-error" class="error-box hidden" style="margin-bottom:10px"></div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">Player Name</label>
+        <input class="form-input" id="ep-name" placeholder="Full name" />
+      </div>
       <div class="picks-container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <label class="form-label" style="margin-bottom:0">Stock Picks</label>
@@ -2158,6 +2216,7 @@ function startRealtimeSync() {
       // If the game just started on another browser, reveal the game content
       if (!wasLocked && nowLocked) {
         hide('inline-join-panel');
+        hide('faq-section');
         stopCountdown();
         show('game-content');
         refreshPrices();
@@ -2220,7 +2279,6 @@ function updateUserBadge() {
   const badge   = document.getElementById('user-badge');
   const signBtn = document.getElementById('signin-topbar-btn');
   const adminBtn = document.getElementById('admin-btn');
-  const startRow = document.getElementById('start-game-row');
 
   if (currentUser) {
     const nameEl   = document.getElementById('user-name');
@@ -2239,10 +2297,9 @@ function updateUserBadge() {
     if (signBtn)  signBtn.style.display = '';
   }
 
-  // Only admins see the settings button and Start Game row
+  // Only admins see the settings button
   const admin = isAdmin();
   if (adminBtn)  adminBtn.style.display = admin ? '' : 'none';
-  if (startRow)  startRow.style.display = admin ? '' : 'none';
 
   // Setup screen: admin sees editable date fields; non-admins see read-only display
   const dateAdmin    = document.getElementById('setup-date-admin');
@@ -2589,7 +2646,6 @@ function addPlayer() {
   PICK_IDS.forEach(id=>{ document.getElementById(id).value=''; applyTickerState(id,'idle','',''); });
   resetAllocState('pick');
   updateAddBtn();
-  document.getElementById('start-btn').disabled = submittedPlayers.length<1;
   toast(`✅ ${name} added!`);
   document.getElementById('player-name').focus();
 }
@@ -2600,7 +2656,6 @@ function removePlayer(idx) {
   renderSubmittedPlayers();
   recheckCurrentInputs();
   updateAddBtn();
-  document.getElementById('start-btn').disabled=submittedPlayers.length<1;
   if (name) toast(`Removed ${name}`);
 }
 
@@ -2859,7 +2914,7 @@ function updateJoinBtn() {
   const hint  = document.getElementById('join-hint');
   const btn   = document.getElementById('join-submit-btn');
   if (!btn) return;
-  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your name first.'; return; }
+  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your full name first.'; return; }
   const states = JOIN_PICK_IDS.map(id => tickerState[id]?.status || 'idle');
   if (states.some(s => s === 'checking'))                      { btn.disabled = true; if (hint) hint.textContent = 'Checking tickers…'; return; }
   if (states.some(s => s === 'invalid' || s === 'duplicate'))  { btn.disabled = true; if (hint) hint.textContent = 'Fix the errors above first.'; return; }
@@ -2873,7 +2928,7 @@ function updateJoinBtn() {
 async function submitJoin() {
   const name   = document.getElementById('join-name').value.trim();
   const errEl  = document.getElementById('join-error');
-  if (!name) { errEl.textContent='Please enter your name.'; errEl.classList.remove('hidden'); return; }
+  if (!name) { errEl.textContent='Please enter your full name.'; errEl.classList.remove('hidden'); return; }
 
   // Name uniqueness check
   if ((S.players||[]).some(p => p.name.toLowerCase() === name.toLowerCase())) {
@@ -3031,6 +3086,10 @@ function editPlayerAtIdx(idx) {
   allocState.ep = p.allocations ? [...p.allocations] : [100, 100, 100];
   renderAllocUI('ep');
 
+  // Populate name field for admin editing
+  const epNameInput = document.getElementById('ep-name');
+  if (epNameInput) epNameInput.value = p.name;
+
   EP_PICK_IDS.forEach((id, j) => {
     const sym  = p.picks[j] || '';
     const name = p.names?.[j] || sym;
@@ -3077,12 +3136,21 @@ async function submitEditPlayer() {
   }
   if (picks.length < 3) { errEl.textContent = 'Please fill in all 3 picks.'; errEl.classList.remove('hidden'); return; }
   if (!isAllocValid('ep')) { errEl.textContent = 'Allocation must total £300.'; errEl.classList.remove('hidden'); return; }
+  // Read updated name (admin can edit names)
+  const newName = document.getElementById('ep-name')?.value.trim();
+  if (isAdmin() && newName) {
+    // Admin can change player names
+  } else if (!newName) {
+    errEl.textContent = 'Player name cannot be empty.'; errEl.classList.remove('hidden'); return;
+  }
+
   errEl.classList.add('hidden');
-  S.players[idx] = { ...S.players[idx], picks, names, allocations: [...allocState.ep] };
+  const updatedName = (isAdmin() && newName) ? newName : (newName || S.players[idx].name);
+  S.players[idx] = { ...S.players[idx], name: updatedName, picks, names, allocations: [...allocState.ep] };
   await save();
   closeEditPlayer();
   renderInlinePlayers();
-  toast(`✅ ${S.players[idx].name}'s picks updated!`);
+  toast(`✅ ${updatedName}'s picks updated!`);
 }
 
 function updateInlineJoinBtn() {
@@ -3090,7 +3158,7 @@ function updateInlineJoinBtn() {
   const hint = document.getElementById('ij-hint');
   if (!btn) return;
   const name = document.getElementById('ij-name')?.value.trim();
-  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your name first.'; return; }
+  if (!name) { btn.disabled = true; if (hint) hint.textContent = 'Enter your full name first.'; return; }
   const states = IJ_PICK_IDS.map(id => tickerState[id]?.status || 'idle');
   if (states.some(s => s === 'checking'))                     { btn.disabled = true; if (hint) hint.textContent = 'Checking tickers…'; return; }
   if (states.some(s => s === 'invalid' || s === 'duplicate')) { btn.disabled = true; if (hint) hint.textContent = 'Fix the errors above first.'; return; }
@@ -3105,7 +3173,7 @@ async function submitInlineJoin() {
   if (!requireAuth()) return;
   const name   = document.getElementById('ij-name').value.trim();
   const errEl  = document.getElementById('inline-join-error');
-  if (!name) { errEl.textContent = 'Please enter your name.'; errEl.classList.remove('hidden'); return; }
+  if (!name) { errEl.textContent = 'Please enter your full name.'; errEl.classList.remove('hidden'); return; }
   if ((S.players || []).some(p => p.name.toLowerCase() === name.toLowerCase())) {
     errEl.textContent = `"${name}" has already joined. Choose a different name.`;
     errEl.classList.remove('hidden'); return;
@@ -3152,7 +3220,8 @@ async function startGameManually() {
   if (!isAdmin()) { toast('⛔ Only the admin can start the game.'); return; }
   if (!confirm(`Start the game now?\n\nThis will lock in today's prices as the starting point for all ${S.players.length} player(s). The leaderboard will become visible to everyone.`)) return;
 
-  const startBtn = document.querySelector('#start-game-row .btn');
+  // Disable the admin panel start button while locking
+  const startBtn = document.querySelector('#admin-panel .btn-primary');
   if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'Locking prices…'; }
 
   try {
@@ -3201,6 +3270,7 @@ async function startGameManually() {
     // Hide pre-game section, reveal game content
     hide('inline-join-panel');
     hide('countdown-section');
+    hide('faq-section');
     show('game-content');
     stopCountdown();
 
@@ -3213,6 +3283,7 @@ async function startGameManually() {
 
     // Kick off the normal refresh cycle
     if (!isGameOver()) refreshTimer = setTimeout(refreshPrices, REFRESH_MS);
+    hide('admin-overlay');
     toast('🚀 Game started! Prices locked in.');
   } catch(e) {
     toast('❌ Failed to fetch prices: ' + e.message);
@@ -3276,6 +3347,7 @@ function showDash() {
   const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
 
   if (isDemoMode) {
+    hide('faq-section');
     show('game-content');
     setDot('live');
     document.getElementById('last-updated').textContent = 'Simulated data';
@@ -3284,11 +3356,13 @@ function showDash() {
     renderStockLeaderboard();
   } else if (pricesLocked) {
     // Game already started — show tabs and fetch prices as normal
+    hide('faq-section');
     show('game-content');
     refreshPrices();
   } else {
     // Game not yet started — hide game tabs, show pre-game view only
     hide('game-content');
+    show('faq-section');
     hide('loading-state');
   }
 }
@@ -4507,14 +4581,17 @@ function renderAdminPanel() {
     </div>
     <div class="divider" style="margin:16px 0"></div>`;
 
-  // ── Lock prices ─────────────────────────────────────────
-  // Only show manual lock button before the game has started
+  // ── Start Game / Lock prices ─────────────────────────────
+  // Only show before the game has started
   if (notStarted) {
     html += `
       <div class="modal-section">
-        <div class="modal-section-title">🔒 Lock Start Prices</div>
-        <div class="modal-desc">Prices are locked automatically when you click <strong>Start Game</strong>. You can also lock them manually here if needed.</div>
-        <button class="btn btn-primary" onclick="lockStartPrices()">Lock Current Prices</button>
+        <div class="modal-section-title">🚀 Start Game</div>
+        <div class="modal-desc">Lock in today's prices as the starting point for all players. The leaderboard will become visible to everyone.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
+          <button class="btn btn-secondary" onclick="lockStartPrices()">🔒 Lock Prices Only</button>
+        </div>
       </div>
       <div class="divider" style="margin:16px 0"></div>`;
   }
