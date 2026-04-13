@@ -1119,16 +1119,18 @@
 
     <!-- ── TAB: HISTORY ── -->
     <div id="dt-history" class="hidden">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:13px">
-        <div class="section-title" style="margin-bottom:0">Portfolio Value Over Time (£)</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span id="chart-zoom-hint" style="font-size:11px;color:var(--dim);margin-right:4px">scroll or use buttons to zoom · drag to pan</span>
-          <button id="chart-zoom-in" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom in (tighten value scale)" onclick="if(myChart)myChart._zoom(0.65)">+</button>
-          <button id="chart-zoom-out" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom out (widen value scale)" onclick="if(myChart)myChart._zoom(1.55)">−</button>
-          <button id="chart-reset-zoom" class="btn btn-secondary" style="padding:5px 11px;font-size:11px;display:none" onclick="if(myChart)myChart.resetZoom()">↺ Reset</button>
-        </div>
-      </div>
       <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="section-title" style="margin-bottom:0">Portfolio Value Over Time (£)</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">scroll or use buttons to zoom · drag to pan</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button id="chart-zoom-in" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom in (tighten value scale)" onclick="if(myChart)myChart._zoom(0.65)">+</button>
+            <button id="chart-zoom-out" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom out (widen value scale)" onclick="if(myChart)myChart._zoom(1.55)">−</button>
+            <button id="chart-reset-zoom" class="btn btn-secondary" style="padding:5px 11px;font-size:11px;display:none" onclick="if(myChart)myChart.resetZoom()">↺ Reset</button>
+          </div>
+        </div>
         <div class="chart-wrap">
           <canvas id="portfolio-chart" style="display:block;cursor:crosshair"></canvas>
           <div id="chart-tooltip"></div>
@@ -1165,6 +1167,12 @@
           <div>
             <div class="section-title" style="margin-bottom:2px">Square Mile Bets Fund vs Benchmarks</div>
             <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">combined fund (avg of all portfolios) · indexed to 100 at game start</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="fund-zoom-hint" style="font-size:11px;color:var(--dim);margin-right:4px">scroll or use buttons to zoom</span>
+            <button id="fund-zoom-in" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom in" onclick="if(myFundChart)myFundChart._zoom(0.65)">+</button>
+            <button id="fund-zoom-out" class="btn btn-secondary" style="padding:4px 13px;font-size:18px;font-weight:700;line-height:1.2;min-width:36px" title="Zoom out" onclick="if(myFundChart)myFundChart._zoom(1.55)">−</button>
+            <button id="fund-reset-zoom" class="btn btn-secondary" style="padding:5px 11px;font-size:11px;display:none" onclick="if(myFundChart)myFundChart.resetZoom()">↺ Reset</button>
           </div>
         </div>
         <div class="chart-wrap">
@@ -3807,13 +3815,14 @@ function renderStockLeaderboard() {
 //  CHART — SELF-CONTAINED CANVAS LINE CHART
 // ═══════════════════════════════════════════════════════════
 class LineChart {
-  constructor(canvasId) {
+  constructor(canvasId, opts) {
     this.canvas   = document.getElementById(canvasId);
     this.ctx      = this.canvas.getContext('2d');
     this.labels   = [];
     this.datasets = [];
     this.hidden   = new Set();
     this.hovered  = null;
+    this.uiPrefix = (opts && opts.uiPrefix) || 'chart'; // prefix for zoom button IDs
     this.vs = 0;   // viewStart index (X range — always full)
     this.ve = 0;   // viewEnd index
     this.yZoom = 1.0;  // Y-axis zoom: 1.0 = default range; lower = zoomed in (tighter)
@@ -3859,15 +3868,17 @@ class LineChart {
     const vis = this.datasets.filter((_,i)=>!this.hidden.has(i)).flatMap(d=>d.data.slice(this.vs, this.ve+1));
     if (!vis.length) return {mn:880,mx:1120};
     const mn=Math.min(...vis), mx=Math.max(...vis);
-    const pad=Math.max((mx-mn)*0.14, 25);
-    // Full (unzoomed) range centred on data midpoint with natural padding
-    const baseMn=mn-pad, baseMx=mx+pad;
-    const mid=(baseMn+baseMx)/2, halfSpan=(baseMx-baseMn)/2;
-    // yZoom < 1 = zoomed in (tighter range); 1.0 = default; clamped
+    const range = mx - mn;
+    const pad = Math.max(range * 0.08, 3); // Tighter 8% padding, min 3 units
+    const baseMn = mn - pad, baseMx = mx + pad;
+    const mid = (baseMn + baseMx) / 2, halfSpan = (baseMx - baseMn) / 2;
     const z = Math.max(0.07, Math.min(1.5, this.yZoom));
     const zHalf = halfSpan * z;
     const centre = mid + this.yPan;
-    return {mn:Math.floor((centre-zHalf)/10)*10, mx:Math.ceil((centre+zHalf)/10)*10};
+    // Smart rounding: use £1 steps for tight ranges, £5 for medium, £10 for wide
+    const span = zHalf * 2;
+    const roundTo = span < 20 ? 1 : span < 60 ? 2 : span < 150 ? 5 : 10;
+    return {mn:Math.floor((centre-zHalf)/roundTo)*roundTo, mx:Math.ceil((centre+zHalf)/roundTo)*roundTo};
   }
 
   _xS(i,p) { const r=Math.max(1,this.ve-this.vs); return p.x+((i-this.vs)/r)*p.w; }
@@ -3885,14 +3896,20 @@ class LineChart {
     const _lbl  = _cs.getPropertyValue('--muted').trim() || '#5a6e96';
     const _dim  = _cs.getPropertyValue('--dim').trim() || '#3a4e72';
 
-    // Y grid + labels
-    const yStep=Math.ceil((r.mx-r.mn)/7/10)*10||10;
-    for (let v=r.mn; v<=r.mx+1; v+=yStep) {
+    // Y grid + labels — adaptive step size for finer gridlines
+    const ySpan = r.mx - r.mn;
+    const targetLines = 8;
+    const rawStep = ySpan / targetLines;
+    // Pick a nice step: 1, 2, 5, 10, 20, 50, 100...
+    const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500];
+    const yStep = niceSteps.find(s => s >= rawStep) || Math.ceil(rawStep / 100) * 100;
+    for (let v = Math.ceil(r.mn / yStep) * yStep; v <= r.mx + 0.01; v += yStep) {
       const y=this._yS(v,p,r);
       ctx.strokeStyle=_grid; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p.x,y); ctx.lineTo(p.x+p.w,y); ctx.stroke();
       ctx.fillStyle=_lbl; ctx.textAlign='right';
-      ctx.fillText(v.toFixed(0), p.x-7, y+4);
+      const label = yStep < 1 ? v.toFixed(1) : v.toFixed(0);
+      ctx.fillText(label, p.x-7, y+4);
     }
 
     // X grid + labels (visible range only)
@@ -3967,9 +3984,10 @@ class LineChart {
   _updateUI() {
     this.canvas.style.cursor = this.dragging ? 'grabbing' : (this.yZoom < 0.99 ? 'grab' : 'crosshair');
     const zoomed = this.isZoomed();
+    const pfx = this.uiPrefix;
 
-    // Reset button: hidden when not zoomed; glows blue when active
-    const resetBtn = document.getElementById('chart-reset-zoom');
+    // Reset button: hidden when not zoomed; glows when active
+    const resetBtn = document.getElementById(pfx + '-reset-zoom');
     if (resetBtn) {
       if (zoomed) {
         resetBtn.style.display = 'inline-flex';
@@ -3988,9 +4006,9 @@ class LineChart {
       }
     }
 
-    const zoomIn  = document.getElementById('chart-zoom-in');
-    const zoomOut = document.getElementById('chart-zoom-out');
-    const hint    = document.getElementById('chart-zoom-hint');
+    const zoomIn  = document.getElementById(pfx + '-zoom-in');
+    const zoomOut = document.getElementById(pfx + '-zoom-out');
+    const hint    = document.getElementById(pfx + '-zoom-hint');
     if (zoomIn)  zoomIn.disabled  = this.yZoom <= 0.08;
     if (zoomOut) zoomOut.disabled = this.yZoom >= 1.49;
     if (hint) hint.textContent = 'scroll or + / − to zoom · drag to pan up/down';
@@ -4556,7 +4574,7 @@ function initFundChart() {
       ...benchDatasets,
     ];
 
-    myFundChart = new LineChart('fund-chart');
+    myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
     myFundChart.baseline = 100;
     myFundChart.setData(labels, datasets);
     buildFundChartLegend(datasets);
@@ -4669,7 +4687,7 @@ function initFundChart() {
     ...benchDatasets,
   ];
 
-  myFundChart = new LineChart('fund-chart');
+  myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
   myFundChart.baseline = 100;
   myFundChart.setData(labels, datasets);
   buildFundChartLegend(datasets);
