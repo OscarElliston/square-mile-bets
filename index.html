@@ -4749,6 +4749,48 @@ function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin()
 let _digestEntries = [];
 let _digestLoaded = false;
 
+// Helper: expose game state as JSON for scheduled task to read via Chrome console
+window._getGameDataForDigest = function() {
+  if (!S.players?.length) return JSON.stringify({ error: 'No players' });
+  const data = {
+    players: S.players.map((p, i) => ({
+      name: p.name,
+      picks: p.picks,
+      names: p.names,
+      allocations: p.allocations,
+      startShares: p.startShares,
+      portfolioValue: p.picks.reduce((sum, sym) => {
+        const v = stockValueGBP(p, sym);
+        return sum + (v !== null ? v : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
+      }, 0)
+    })),
+    startPrices: S.startPrices,
+    currencies: S.currencies,
+    gameActive: Object.keys(S.startPrices || {}).length > 0
+  };
+  return JSON.stringify(data);
+};
+
+// Helper: write a digest entry to Firestore — called from Chrome console by scheduled task
+window._saveDigestEntry = async function(dateStr, headline, body, biggestMovers, leaderboard, roasts) {
+  if (!USE_FIREBASE || !db) return JSON.stringify({ error: 'Firebase not connected' });
+  try {
+    await db.collection('dailyDigests').doc(dateStr).set({
+      date: dateStr,
+      headline: headline,
+      body: body,
+      biggestMovers: biggestMovers,
+      leaderboard: leaderboard,
+      roasts: roasts,
+      generatedAt: new Date().toISOString()
+    });
+    _digestLoaded = false; // force reload on next view
+    return JSON.stringify({ success: true });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+
 async function loadDigestEntries() {
   if (!USE_FIREBASE || !db) return;
   try {
