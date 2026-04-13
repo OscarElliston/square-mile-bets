@@ -4749,48 +4749,6 @@ function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin()
 let _digestEntries = [];
 let _digestLoaded = false;
 
-// Helper: expose game state as JSON for scheduled task to read via Chrome console
-window._getGameDataForDigest = function() {
-  if (!S.players?.length) return JSON.stringify({ error: 'No players' });
-  const data = {
-    players: S.players.map((p, i) => ({
-      name: p.name,
-      picks: p.picks,
-      names: p.names,
-      allocations: p.allocations,
-      startShares: p.startShares,
-      portfolioValue: p.picks.reduce((sum, sym) => {
-        const v = stockValueGBP(p, sym);
-        return sum + (v !== null ? v : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
-      }, 0)
-    })),
-    startPrices: S.startPrices,
-    currencies: S.currencies,
-    gameActive: Object.keys(S.startPrices || {}).length > 0
-  };
-  return JSON.stringify(data);
-};
-
-// Helper: write a digest entry to Firestore — called from Chrome console by scheduled task
-window._saveDigestEntry = async function(dateStr, headline, body, biggestMovers, leaderboard, roasts) {
-  if (!USE_FIREBASE || !db) return JSON.stringify({ error: 'Firebase not connected' });
-  try {
-    await db.collection('dailyDigests').doc(dateStr).set({
-      date: dateStr,
-      headline: headline,
-      body: body,
-      biggestMovers: biggestMovers,
-      leaderboard: leaderboard,
-      roasts: roasts,
-      generatedAt: new Date().toISOString()
-    });
-    _digestLoaded = false; // force reload on next view
-    return JSON.stringify({ success: true });
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
-  }
-};
-
 async function loadDigestEntries() {
   if (!USE_FIREBASE || !db) return;
   try {
@@ -4865,6 +4823,50 @@ function renderDigestFeed() {
   }).join('');
 }
 
+async function publishDigest() {
+  if (!USE_FIREBASE || !db) { toast('⚠️ Firebase not connected.'); return; }
+  const errEl = document.getElementById('digest-publish-error');
+  const date      = document.getElementById('digest-date')?.value.trim();
+  const headline  = document.getElementById('digest-headline')?.value.trim();
+  const body      = document.getElementById('digest-body')?.value.trim();
+  const movers    = document.getElementById('digest-movers')?.value.trim();
+  const leaderboard = document.getElementById('digest-leaderboard')?.value.trim();
+  const roasts    = document.getElementById('digest-roasts')?.value.trim();
+
+  if (!date)     { errEl.textContent = 'Please set a date.'; errEl.classList.remove('hidden'); return; }
+  if (!headline) { errEl.textContent = 'Please enter a headline.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+
+  try {
+    await db.collection('dailyDigests').doc(date).set({
+      date,
+      headline,
+      body: body || '',
+      biggestMovers: movers || '',
+      leaderboard: leaderboard || '',
+      roasts: roasts || '',
+      generatedAt: new Date().toISOString()
+    });
+    _digestLoaded = false; // force reload on next view
+    toast('✅ Digest published for ' + date);
+    clearDigestForm();
+  } catch (e) {
+    errEl.textContent = 'Failed to publish: ' + e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function clearDigestForm() {
+  document.getElementById('digest-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('digest-headline').value = '';
+  document.getElementById('digest-body').value = '';
+  document.getElementById('digest-movers').value = '';
+  document.getElementById('digest-leaderboard').value = '';
+  document.getElementById('digest-roasts').value = '';
+  const errEl = document.getElementById('digest-publish-error');
+  if (errEl) errEl.classList.add('hidden');
+}
+
 function renderAdminPanel() {
   const panel       = document.getElementById('admin-panel');
   const pricesLocked = Object.keys(S.startPrices || {}).length > 0;
@@ -4936,43 +4938,93 @@ function renderAdminPanel() {
       <div class="divider" style="margin:16px 0"></div>`;
   }
 
-  // ── Payment Status ────────────────────────────────────────
+  // ── Payment Status (collapsible) ────────────────────────────
   if (S.players && S.players.length > 0) {
+    const paidCount = S.players.filter((_, i) => S.payments?.[i] === true).length;
     html += `
       <div class="modal-section">
-        <div class="modal-section-title">💳 Payment Status</div>
-        <div class="modal-desc">Track who has paid their £10 entry fee.</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-          ${S.players.map((p, i) => {
-            const paid = S.payments?.[i] === true;
-            return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:${paid ? 'var(--green-bg)' : 'var(--red-bg)'};border:1px solid ${paid ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.2)'};border-radius:var(--radius);transition:background .15s">
-              <input type="checkbox" ${paid ? 'checked' : ''} onchange="togglePayment(${i}, this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;flex-shrink:0" />
-              <span style="font-size:13px;font-weight:600;flex:1;color:var(--text)">${esc(p.name)}</span>
-              <span style="font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;${paid ? 'color:var(--green)' : 'color:var(--red)'}">${paid ? '✓ PAID' : '✗ UNPAID'}</span>
-            </label>`;
-          }).join('')}
-        </div>
+        <details>
+          <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div class="modal-section-title" style="margin:0">💳 Payment Status</div>
+            <span style="font-size:11px;font-family:var(--mono);font-weight:700;color:var(--muted)">${paidCount}/${S.players.length} paid ▾</span>
+          </summary>
+          <div class="modal-desc" style="margin-top:8px">Track who has paid their £10 entry fee.</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            ${S.players.map((p, i) => {
+              const paid = S.payments?.[i] === true;
+              return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:${paid ? 'var(--green-bg)' : 'var(--red-bg)'};border:1px solid ${paid ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.2)'};border-radius:var(--radius);transition:background .15s">
+                <input type="checkbox" ${paid ? 'checked' : ''} onchange="togglePayment(${i}, this.checked)" style="accent-color:var(--green);width:16px;height:16px;cursor:pointer;flex-shrink:0" />
+                <span style="font-size:13px;font-weight:600;flex:1;color:var(--text)">${esc(p.name)}</span>
+                <span style="font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;${paid ? 'color:var(--green)' : 'color:var(--red)'}">${paid ? '✓ PAID' : '✗ UNPAID'}</span>
+              </label>`;
+            }).join('')}
+          </div>
+        </details>
       </div>
       <div class="divider" style="margin:16px 0"></div>`;
   }
 
-  // ── Edit Player Names ──────────────────────────────────────
+  // ── Edit Player Names (collapsible) ────────────────────────
   if (S.players && S.players.length > 0) {
     html += `
       <div class="modal-section">
-        <div class="modal-section-title">✏️ Player Names</div>
-        <div class="modal-desc">Edit any player's display name.</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-          ${S.players.map((p, i) => {
-            return `<div style="display:flex;align-items:center;gap:8px">
-              <input class="form-input" id="admin-name-${i}" value="${esc(p.name)}" style="flex:1;font-size:13px;padding:8px 10px" />
-              <button class="btn btn-secondary" onclick="adminSaveName(${i})" style="padding:7px 14px;font-size:11px;text-transform:none;letter-spacing:0;white-space:nowrap">Save</button>
-            </div>`;
-          }).join('')}
-        </div>
+        <details>
+          <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <div class="modal-section-title" style="margin:0">✏️ Player Names</div>
+            <span style="font-size:11px;font-family:var(--mono);font-weight:700;color:var(--muted)">${S.players.length} players ▾</span>
+          </summary>
+          <div class="modal-desc" style="margin-top:8px">Edit any player's display name.</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+            ${S.players.map((p, i) => {
+              return `<div style="display:flex;align-items:center;gap:8px">
+                <input class="form-input" id="admin-name-${i}" value="${esc(p.name)}" style="flex:1;font-size:13px;padding:8px 10px" />
+                <button class="btn btn-secondary" onclick="adminSaveName(${i})" style="padding:7px 14px;font-size:11px;text-transform:none;letter-spacing:0;white-space:nowrap">Save</button>
+              </div>`;
+            }).join('')}
+          </div>
+        </details>
       </div>
       <div class="divider" style="margin:16px 0"></div>`;
   }
+
+  // ── Publish Daily Digest ────────────────────────────────────
+  html += `
+    <div class="modal-section">
+      <div class="modal-section-title">📰 Publish Daily Digest</div>
+      <div class="modal-desc">Paste the AI-generated market commentary to publish to the Daily Digest feed.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+        <div>
+          <label class="form-label">Date</label>
+          <input class="form-input" id="digest-date" type="date" value="${new Date().toISOString().slice(0,10)}" />
+        </div>
+        <div>
+          <label class="form-label">Headline</label>
+          <input class="form-input" id="digest-headline" placeholder="e.g. CIFR Goes Parabolic While Monday.com Has Another Monday" />
+        </div>
+        <div>
+          <label class="form-label">Market Commentary</label>
+          <textarea class="form-input" id="digest-body" rows="5" placeholder="2-3 paragraphs of market commentary..." style="resize:vertical;font-family:inherit"></textarea>
+        </div>
+        <div>
+          <label class="form-label">Biggest Movers</label>
+          <textarea class="form-input" id="digest-movers" rows="4" placeholder="🟢 CIFR +8.2% — Bitcoin go brrr&#10;🔴 MNDY -4.1% — SaaSpocalypse strikes again" style="resize:vertical;font-family:inherit"></textarea>
+        </div>
+        <div>
+          <label class="form-label">Leaderboard Snapshot</label>
+          <textarea class="form-input" id="digest-leaderboard" rows="4" placeholder="🥇 Dave — £341.20 (+£41.20)&#10;🥈 Sophie — £329.85 (+£29.85)" style="resize:vertical;font-family:inherit"></textarea>
+        </div>
+        <div>
+          <label class="form-label">The Banter</label>
+          <textarea class="form-input" id="digest-roasts" rows="3" placeholder="Playful roasts and hype..." style="resize:vertical;font-family:inherit"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn btn-primary" onclick="publishDigest()" style="padding:9px 22px;font-size:13px;font-weight:700">📰 Publish Digest</button>
+          <button class="btn btn-secondary" onclick="clearDigestForm()">Clear</button>
+        </div>
+        <div id="digest-publish-error" class="error-box hidden" style="margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="divider" style="margin:16px 0"></div>`;
 
   // ── Danger zone (always visible) ─────────────────────────
   html += `
