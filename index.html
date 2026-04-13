@@ -4817,6 +4817,24 @@ function renderAdminPanel() {
       <div class="divider" style="margin:16px 0"></div>`;
   }
 
+  // ── Edit Player Names ──────────────────────────────────────
+  if (S.players && S.players.length > 0) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">✏️ Player Names</div>
+        <div class="modal-desc">Edit any player's display name.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          ${S.players.map((p, i) => {
+            return `<div style="display:flex;align-items:center;gap:8px">
+              <input class="form-input" id="admin-name-${i}" value="${esc(p.name)}" style="flex:1;font-size:13px;padding:8px 10px" />
+              <button class="btn btn-secondary" onclick="adminSaveName(${i})" style="padding:7px 14px;font-size:11px;text-transform:none;letter-spacing:0;white-space:nowrap">Save</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
   // ── Danger zone (always visible) ─────────────────────────
   html += `
     <div class="modal-section" style="margin-bottom:0">
@@ -4834,6 +4852,21 @@ async function togglePayment(idx, paid) {
   await save();
   renderAdminPanel();
   if (Object.keys(S.startPrices || {}).length > 0) renderDash();
+}
+
+async function adminSaveName(idx) {
+  if (!S.players?.[idx]) return;
+  const input = document.getElementById('admin-name-' + idx);
+  if (!input) return;
+  const newName = input.value.trim();
+  if (!newName) { toast('⚠️ Name cannot be empty.'); return; }
+  const oldName = S.players[idx].name;
+  S.players[idx].name = newName;
+  await save();
+  renderAdminPanel();
+  renderInlinePlayers();
+  if (Object.keys(S.startPrices || {}).length > 0) renderDash();
+  toast(`✅ Renamed "${oldName}" → "${newName}"`);
 }
 
 async function saveGameDates() {
