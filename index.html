@@ -1085,6 +1085,7 @@
       <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">🏆 Standings</button>
       <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">📊 All Stocks</button>
       <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">📈 Dashboard</button>
+      <button class="dash-tab" id="dt-btn-digest"   onclick="switchDashTab('digest')">📰 Daily Digest</button>
       <button class="dash-tab" id="dt-btn-alltime"  onclick="switchDashTab('alltime')">🌟 All-Time</button>
     </div>
 
@@ -1179,6 +1180,21 @@
           <canvas id="fund-chart" style="display:block;cursor:crosshair"></canvas>
         </div>
         <div class="chart-legend-custom" id="fund-legend"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB: DAILY DIGEST ── -->
+    <div id="dt-digest" class="hidden">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Daily Digest</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">AI-generated market commentary · updated after market close</div>
+          </div>
+        </div>
+        <div id="digest-feed" style="display:flex;flex-direction:column;gap:16px">
+          <div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">No daily digests yet. Updates appear here after market close each day.</div>
+        </div>
       </div>
     </div>
 
@@ -3408,13 +3424,14 @@ function updateProgress() {
 // ═══════════════════════════════════════════════════════════
 function switchDashTab(tab) {
   currentDashTab=tab;
-  ['standings','stocks','history','alltime'].forEach(t=>{
+  ['standings','stocks','history','digest','alltime'].forEach(t=>{
     document.getElementById('dt-'+t).classList.toggle('hidden',t!==tab);
     document.getElementById('dt-btn-'+t).classList.toggle('active',t===tab);
   });
   if (tab==='history') { initChart(); initFundChart(); }
   if (tab==='stocks')  renderStockLeaderboard();
   if (tab==='alltime') renderAllTimeLeaderboard();
+  if (tab==='digest')  renderDigestFeed();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4725,6 +4742,86 @@ function openAdmin() {
 }
 function closeAdmin() { hide('admin-overlay'); }
 function closeAdminIfOutside(e) { if(e.target.id==='admin-overlay') closeAdmin(); }
+
+// ═══════════════════════════════════════════════════════════
+//  DAILY DIGEST — NEWS FEED
+// ═══════════════════════════════════════════════════════════
+let _digestEntries = [];
+let _digestLoaded = false;
+
+async function loadDigestEntries() {
+  if (!USE_FIREBASE || !db) return;
+  try {
+    const snap = await db.collection('dailyDigests')
+      .orderBy('date', 'desc')
+      .limit(30)
+      .get();
+    _digestEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _digestLoaded = true;
+  } catch (e) {
+    console.warn('Failed to load digests:', e);
+  }
+}
+
+function renderDigestFeed() {
+  const feed = document.getElementById('digest-feed');
+  if (!feed) return;
+
+  if (!_digestLoaded) {
+    feed.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">Loading digests…</div>';
+    loadDigestEntries().then(() => renderDigestFeed());
+    return;
+  }
+
+  if (!_digestEntries.length) {
+    feed.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">No daily digests yet. Updates appear here after market close each day.</div>';
+    return;
+  }
+
+  feed.innerHTML = _digestEntries.map(entry => {
+    const dateStr = entry.date || 'Unknown date';
+    const displayDate = (() => {
+      try {
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      } catch { return dateStr; }
+    })();
+
+    // Parse sections from the entry
+    const headline = entry.headline || 'Market Update';
+    const body = entry.body || '';
+    const leaderboard = entry.leaderboard || '';
+    const biggestMovers = entry.biggestMovers || '';
+    const roasts = entry.roasts || '';
+
+    return `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);font-family:var(--heading);line-height:1.3">${esc(headline)}</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:3px">${esc(displayDate)}</div>
+          </div>
+          <span style="font-size:20px;flex-shrink:0">📰</span>
+        </div>
+        ${body ? `<div style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-line;margin-bottom:12px">${esc(body)}</div>` : ''}
+        ${biggestMovers ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Biggest Movers</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line">${esc(biggestMovers)}</div>
+          </div>` : ''}
+        ${leaderboard ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Leaderboard Snapshot</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line">${esc(leaderboard)}</div>
+          </div>` : ''}
+        ${roasts ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">The Banter</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line">${esc(roasts)}</div>
+          </div>` : ''}
+      </div>`;
+  }).join('');
+}
 
 function renderAdminPanel() {
   const panel       = document.getElementById('admin-panel');
