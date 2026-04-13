@@ -1133,7 +1133,16 @@
           <canvas id="portfolio-chart" style="display:block;cursor:crosshair"></canvas>
           <div id="chart-tooltip"></div>
         </div>
-        <div class="chart-legend-custom" id="chart-legend"></div>
+        <div id="chart-legend-controls" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div id="chart-group-btns" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;text-transform:none;letter-spacing:0" onclick="chartGroupSelect('all')">All Players</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;text-transform:none;letter-spacing:0" onclick="chartGroupSelect('boardroom')">👔 Boardroom (Top 10)</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;text-transform:none;letter-spacing:0" onclick="chartGroupSelect('middle')">💼 Middle Management</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;text-transform:none;letter-spacing:0" onclick="chartGroupSelect('interns')">📋 Interns (Bottom 10)</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;text-transform:none;letter-spacing:0" onclick="chartGroupSelect('none')">Clear All</button>
+          </div>
+          <div class="chart-legend-custom" id="chart-legend"></div>
+        </div>
       </div>
 
       <div style="margin:28px 0 0">
@@ -1143,8 +1152,10 @@
           <div class="section-title" style="margin-bottom:0">Portfolio Breakdown by Stock</div>
           <span style="font-size:11px;color:var(--dim);font-family:var(--mono)">bars show each stock's contribution · hover for detail</span>
         </div>
-        <canvas id="breakdown-chart" style="display:block;width:100%"></canvas>
-        <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
+        <div id="breakdown-scroll-wrapper" style="overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative">
+          <canvas id="breakdown-chart" style="display:block"></canvas>
+          <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
+        </div>
       </div>
 
       <!-- ── SMB FUND vs BENCHMARKS ── -->
@@ -1513,7 +1524,7 @@ function toggleTheme() {
   try { if (typeof myChart !== 'undefined' && myChart) myChart.draw(); } catch(e) {}
   try { if (typeof myFundChart !== 'undefined' && myFundChart) myFundChart.draw(); } catch(e) {}
   // Redraw breakdown chart if visible
-  try { if (typeof renderBreakdownChart === 'function') renderBreakdownChart(); } catch(e) {}
+  try { if (typeof renderStackedBarChart === 'function') renderStackedBarChart(); } catch(e) {}
 }
 
 // Restore toggle thumb visual on load
@@ -3916,12 +3927,15 @@ class LineChart {
     this.datasets.forEach((ds,i)=>{
       if (this.hidden.has(i)) return;
       const j0=Math.max(0,vs-1), j1=Math.min(ds.data.length-1,ve+1);
-      ctx.beginPath(); ctx.strokeStyle=ds.color; ctx.lineWidth=2.5;
+      const isDashed = ds.label === 'Fund Average';
+      if (isDashed) ctx.setLineDash([8, 4]);
+      ctx.beginPath(); ctx.strokeStyle=ds.color; ctx.lineWidth=isDashed ? 3 : 2.5;
       for (let j=j0; j<=j1; j++) {
         const x=this._xS(j,p), y=this._yS(ds.data[j],p,r);
         j===j0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
       }
       ctx.stroke();
+      if (isDashed) ctx.setLineDash([]);
     });
 
     // Hover crosshair + dots
@@ -4070,12 +4084,46 @@ function parseHex(hex) {
   return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
 }
 
+function wrapText(ctx, text, maxWidth, maxLines) {
+  // Split text into lines that fit within maxWidth, up to maxLines
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+      if (lines.length >= maxLines) break;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines.length < maxLines) {
+    lines.push(line);
+  } else if (line && lines.length >= maxLines) {
+    // Truncate last line if needed
+    let last = lines[lines.length - 1];
+    const remaining = last + ' ' + line;
+    if (ctx.measureText(remaining).width > maxWidth) {
+      // Truncate with ellipsis
+      let truncated = last;
+      for (let i = line.length; i > 0; i--) {
+        truncated = last + ' ' + line.slice(0, i) + '…';
+        if (ctx.measureText(truncated).width <= maxWidth) break;
+      }
+      lines[lines.length - 1] = truncated;
+    } else {
+      lines[lines.length - 1] = remaining;
+    }
+  }
+  return lines;
+}
+
 function renderStackedBarChart() {
   const canvas = document.getElementById('breakdown-chart');
   if (!canvas || !S.players?.length) return;
 
-  // Each segment = current GBP value of that stock position
-  // Total = portfolioValueGBP — reference line at £300 (starting pot)
   const playerData = S.players.map((p, pidx) => {
     const stocks = p.picks.map((sym, j) => {
       const svGBP = stockValueGBP(p, sym);
@@ -4090,71 +4138,71 @@ function renderStackedBarChart() {
 
   if (!playerData.length) return;
 
-  // Sort ascending — smallest portfolio on the left
   playerData.sort((a, b) => a.total - b.total);
 
-  // Y-axis: 0 → max total + padding
   const maxTotal = Math.max(...playerData.map(d => d.total));
   const yMax = Math.max(320, maxTotal + Math.max(15, maxTotal * 0.12));
   const yMin = 0;
   const yRange = yMax - yMin;
 
-  // Canvas sizing (hi-DPI)
+  // Horizontal scroll: ensure minimum column width per player
+  const minColW = 70;
+  const wrapper = document.getElementById('breakdown-scroll-wrapper');
+  const containerW = (wrapper ? wrapper.clientWidth : canvas.parentElement?.clientWidth) || 700;
+
   const dpr = window.devicePixelRatio || 1;
-  const cssW = canvas.offsetWidth || 700;
-  const cssH = 300;
+  const padL = 44, padR = 16, padT = 24, padB = 62; // Extra padB for wrapped labels
+  const naturalChartW = containerW - padL - padR;
+  const naturalColW = naturalChartW / playerData.length;
+  const needsScroll = naturalColW < minColW;
+  const colW = needsScroll ? minColW : naturalColW;
+  const cssW = needsScroll ? (padL + padR + colW * playerData.length) : containerW;
+  const cssH = 320;
+
+  canvas.style.width = cssW + 'px';
   canvas.style.height = cssH + 'px';
-  canvas.width  = cssW * dpr;
+  canvas.width = cssW * dpr;
   canvas.height = cssH * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
   const W = cssW, H = cssH;
 
-  const padL=44, padR=16, padT=24, padB=38;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
-  const colW   = chartW / playerData.length;
-  const barW   = Math.min(60, colW * 0.62);
-  const yPos   = val => padT + chartH * (1 - (val - yMin) / yRange);
+  const barW = Math.min(60, colW * 0.62);
+  const yPos = val => padT + chartH * (1 - (val - yMin) / yRange);
 
-  // Background
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0f1b35';
   ctx.fillRect(0, 0, W, H);
 
-  // Theme-aware colors for canvas
   const _cs = getComputedStyle(document.documentElement);
-  const _gridCol  = _cs.getPropertyValue('--border2').trim() || '#1e2d4d';
+  const _gridCol = _cs.getPropertyValue('--border2').trim() || '#1e2d4d';
   const _labelCol = _cs.getPropertyValue('--muted').trim() || '#566a8a';
   const _accentCol = _cs.getPropertyValue('--accent').trim() || '#f97316';
 
-  // Grid lines + y-axis labels
   const ticks = 5;
   for (let i = 0; i <= ticks; i++) {
     const val = yMin + (yRange * i / ticks);
-    const y   = yPos(val);
-    ctx.strokeStyle = _gridCol; ctx.lineWidth = 0.5; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    const y = yPos(val);
+    ctx.strokeStyle = _gridCol; ctx.lineWidth = 0.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = _labelCol; ctx.font = '10px monospace'; ctx.textAlign = 'right';
-    ctx.fillText('£' + val.toFixed(0), padL-4, y+3.5);
+    ctx.fillText('£' + val.toFixed(0), padL - 4, y + 3.5);
   }
 
-  // Reference line at 300 (starting value)
   const refY = yPos(300);
-  ctx.strokeStyle = _accentCol + '99'; ctx.lineWidth = 1; ctx.setLineDash([5,4]);
-  ctx.beginPath(); ctx.moveTo(padL, refY); ctx.lineTo(W-padR, refY); ctx.stroke();
+  ctx.strokeStyle = _accentCol + '99'; ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(padL, refY); ctx.lineTo(W - padR, refY); ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = _accentCol + 'CC'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
-  ctx.fillText('£300 start', padL+4, refY-4);
+  ctx.fillText('£300 start', padL + 4, refY - 4);
 
-  // Store bar hit areas for tooltip
   canvas._barAreas = [];
 
-  // Draw bars
-  playerData.forEach(({p, pidx, stocks, total}, i) => {
-    const cx   = padL + colW * (i + 0.5);
-    const {r,g,b} = parseHex(PLAYER_COLORS[pidx % PLAYER_COLORS.length]);
-    // Sort segments: most valuable at bottom, least at top
+  playerData.forEach(({ p, pidx, stocks, total }, i) => {
+    const cx = padL + colW * (i + 0.5);
+    const { r, g, b } = parseHex(PLAYER_COLORS[pidx % PLAYER_COLORS.length]);
     const sortedStocks = [...stocks].sort((a, b) => (b.g ?? -Infinity) - (a.g ?? -Infinity));
     let stackY = yPos(0);
 
@@ -4163,34 +4211,34 @@ function renderStackedBarChart() {
       const segH = (s.value / yRange) * chartH;
       const segY = stackY - segH;
       ctx.fillStyle = `rgba(${r},${g},${b},${1 - j * 0.27})`;
-      ctx.fillRect(cx - barW/2, segY, barW, segH);
-      // Thin separator between segments
+      ctx.fillRect(cx - barW / 2, segY, barW, segH);
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(cx - barW/2, segY, barW, 1);
+      ctx.fillRect(cx - barW / 2, segY, barW, 1);
       stackY = segY;
     });
 
-    // Total label above bar
     const topY = yPos(total);
     ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = total >= ALLOC_TOTAL ? (_cs.getPropertyValue('--green').trim()||'#4ade80') : (_cs.getPropertyValue('--red').trim()||'#f87171');
+    ctx.fillStyle = total >= ALLOC_TOTAL ? (_cs.getPropertyValue('--green').trim() || '#4ade80') : (_cs.getPropertyValue('--red').trim() || '#f87171');
     ctx.fillText('£' + total.toFixed(0), cx, topY - 5);
 
-    // Player name
-    ctx.fillStyle = _labelCol; ctx.font = '11px monospace'; ctx.textAlign = 'center';
-    const lbl = p.name.length > 9 ? p.name.slice(0,8)+'…' : p.name;
-    ctx.fillText(lbl, cx, H - padB + 16);
+    // Player name — wrap up to 3 lines
+    ctx.fillStyle = _labelCol; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    const labelMaxW = colW - 6;
+    const lines = wrapText(ctx, p.name, labelMaxW, 3);
+    const lineH = 12;
+    const labelStartY = H - padB + 14;
+    lines.forEach((line, li) => {
+      ctx.fillText(line, cx, labelStartY + li * lineH);
+    });
 
-    // Hit area for tooltip
-    canvas._barAreas.push({ x1: cx - colW/2, x2: cx + colW/2, p, pidx, stocks, total });
+    canvas._barAreas.push({ x1: cx - colW / 2, x2: cx + colW / 2, p, pidx, stocks, total });
   });
 
-
-  // Attach tooltip listeners (once per render — safe to reassign)
   canvas.onmousemove = (e) => {
-    const rect   = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const tip    = document.getElementById('breakdown-tooltip');
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left) * (W / rect.width);
+    const tip = document.getElementById('breakdown-tooltip');
     if (!tip) return;
     const hit = (canvas._barAreas || []).find(a => mouseX >= a.x1 && mouseX <= a.x2);
     if (!hit) { tip.style.display = 'none'; return; }
@@ -4198,9 +4246,8 @@ function renderStackedBarChart() {
     const rows = hit.stocks.map(s => {
       if (s.value === null) return '';
       const alloc = hit.p.allocations?.[hit.p.picks.indexOf(s.sym)] ?? 100;
-      const diff  = s.value - alloc;
-      const col   = diff >= 0 ? 'color:var(--green)' : 'color:var(--red)';
-      const gStr  = `${diff >= 0 ? '+' : '−'}£${Math.abs(diff).toFixed(2)}`;
+      const diff = s.value - alloc;
+      const col = diff >= 0 ? 'color:var(--green)' : 'color:var(--red)';
       return `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:4px">
         <span style="color:var(--muted);font-size:11px">${esc(s.name)} <span style="color:var(--dim)">(£${alloc})</span></span>
         <span style="font-family:var(--mono);font-weight:700;${col}">${fmtGBP(s.value)}</span>
@@ -4215,12 +4262,14 @@ function renderStackedBarChart() {
         <span style="color:var(--muted);font-size:11px">Portfolio value</span>
         <span style="font-family:var(--mono);font-weight:700;color:${totalCol}">${fmtGBP(hit.total)} <span style="font-size:10px">(${fmtGBP(gainGBP, true)})</span></span>
       </div>`;
-    // Position tooltip — flip left if near right edge
     const tipW = 210;
-    const offsetX = (e.clientX - rect.left + tipW + 16 > rect.width) ? -tipW - 8 : 16;
-    tip.style.display   = 'block';
-    tip.style.left      = (e.clientX - rect.left + offsetX) + 'px';
-    tip.style.top       = Math.max(0, e.clientY - rect.top - 20) + 'px';
+    const scrollLeft = wrapper ? wrapper.scrollLeft : 0;
+    const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : rect;
+    const tipX = e.clientX - wrapperRect.left + scrollLeft;
+    const offsetX = (tipX + tipW + 16 > W) ? -tipW - 8 : 16;
+    tip.style.display = 'block';
+    tip.style.left = (tipX + offsetX) + 'px';
+    tip.style.top = Math.max(0, e.clientY - rect.top - 20) + 'px';
   };
   canvas.onmouseleave = () => {
     const tip = document.getElementById('breakdown-tooltip');
@@ -4247,6 +4296,15 @@ function initChart() {
       });
       return { label: p.name, data, color: PLAYER_COLORS[i % PLAYER_COLORS.length] };
     });
+    // Add Fund Average dataset (average of all players at each time point)
+    if (datasets.length) {
+      const avgData = datasets[0].data.map((_, di) => {
+        const vals = datasets.map(ds => ds.data[di]).filter(v => v != null);
+        return vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)) : 0;
+      });
+      datasets.push({ label: 'Fund Average', data: avgData, color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316' });
+    }
+
     myChart = new LineChart('portfolio-chart');
     myChart.setData(labels, datasets);
     buildChartLegend(S.players);
@@ -4344,24 +4402,116 @@ function initChart() {
     return { label: p.name, data, color: PLAYER_COLORS[i % PLAYER_COLORS.length] };
   });
 
+  // Add Fund Average dataset (average of all players at each time point)
+  if (datasets.length) {
+    const avgData = datasets[0].data.map((_, di) => {
+      const vals = datasets.map(ds => ds.data[di]).filter(v => v != null);
+      return vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)) : 0;
+    });
+    datasets.push({ label: 'Fund Average', data: avgData, color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316' });
+  }
+
   myChart = new LineChart('portfolio-chart');
   myChart.setData(labels, datasets);
   buildChartLegend(S.players);
   renderStackedBarChart();
 }
 
+// Leaderboard ranking helper — returns array of player indices sorted by current portfolio value (best first)
+function getLeaderboardRanking() {
+  if (!S.players?.length) return [];
+  return S.players.map((p, i) => {
+    const total = p.picks.reduce((sum, sym) => {
+      const v = stockValueGBP(p, sym);
+      return sum + (v !== null ? v : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
+    }, 0);
+    return { idx: i, total };
+  }).sort((a, b) => b.total - a.total).map(x => x.idx);
+}
+
 function buildChartLegend(playerList) {
-  document.getElementById('chart-legend').innerHTML=playerList.map((p,i)=>`
-    <div class="legend-item" id="li-${i}" onclick="toggleDataset(${i})">
-      <div class="legend-dot" style="background:${PLAYER_COLORS[i%PLAYER_COLORS.length]}"></div>
+  if (!myChart) return;
+  const fundAvgIdx = myChart.datasets.length - 1; // Fund Average is always last dataset
+  const isFundHidden = myChart.hidden.has(fundAvgIdx);
+
+  let html = '';
+
+  // Fund Average checkbox first
+  html += `<label class="legend-item" id="li-${fundAvgIdx}" style="cursor:pointer;user-select:none">
+    <input type="checkbox" ${isFundHidden ? '' : 'checked'} onchange="toggleDataset(${fundAvgIdx})"
+      style="margin:0;accent-color:var(--accent);cursor:pointer" />
+    <div class="legend-dot" style="background:var(--accent);border:1px dashed var(--accent)"></div>
+    <span style="font-weight:700">Fund Average</span>
+  </label>`;
+
+  // Individual player checkboxes
+  playerList.forEach((p, i) => {
+    const isHidden = myChart.hidden.has(i);
+    html += `<label class="legend-item${isHidden ? ' faded' : ''}" id="li-${i}" style="cursor:pointer;user-select:none">
+      <input type="checkbox" ${isHidden ? '' : 'checked'} onchange="toggleDataset(${i})"
+        style="margin:0;accent-color:${PLAYER_COLORS[i % PLAYER_COLORS.length]};cursor:pointer" />
+      <div class="legend-dot" style="background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}"></div>
       <span>${esc(p.name)}</span>
-    </div>`).join('');
+    </label>`;
+  });
+
+  document.getElementById('chart-legend').innerHTML = html;
 }
 
 function toggleDataset(idx) {
   if (!myChart) return;
   myChart.toggle(idx);
-  document.getElementById('li-'+idx)?.classList.toggle('faded', myChart.hidden.has(idx));
+  // Update checkbox and faded state
+  const li = document.getElementById('li-' + idx);
+  if (li) {
+    const cb = li.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = !myChart.hidden.has(idx);
+    li.classList.toggle('faded', myChart.hidden.has(idx));
+  }
+}
+
+function chartGroupSelect(group) {
+  if (!myChart || !S.players?.length) return;
+  const playerCount = S.players.length;
+  const fundAvgIdx = myChart.datasets.length - 1;
+  const ranking = getLeaderboardRanking(); // array of player indices, best first
+
+  // Determine which player indices to show
+  let showIndices = new Set();
+
+  if (group === 'all') {
+    for (let i = 0; i < playerCount; i++) showIndices.add(i);
+  } else if (group === 'none') {
+    // Show nothing (empty set)
+  } else if (group === 'boardroom') {
+    ranking.slice(0, 10).forEach(i => showIndices.add(i));
+  } else if (group === 'middle') {
+    // Middle positions: if 24 players, positions 6-15 (0-indexed: 5-14 in ranking)
+    const start = Math.max(0, Math.floor(playerCount / 2) - 5);
+    const end = Math.min(playerCount, start + 10);
+    ranking.slice(start, end).forEach(i => showIndices.add(i));
+  } else if (group === 'interns') {
+    ranking.slice(Math.max(0, ranking.length - 10)).forEach(i => showIndices.add(i));
+  }
+
+  // Apply: hide all players first, then show selected ones
+  for (let i = 0; i < playerCount; i++) {
+    if (showIndices.has(i)) {
+      myChart.hidden.delete(i);
+    } else {
+      myChart.hidden.add(i);
+    }
+  }
+
+  // Always show Fund Average line unless "none"
+  if (group === 'none') {
+    myChart.hidden.add(fundAvgIdx);
+  } else {
+    myChart.hidden.delete(fundAvgIdx);
+  }
+
+  myChart.draw();
+  buildChartLegend(S.players);
 }
 
 // ═══════════════════════════════════════════════════════════
