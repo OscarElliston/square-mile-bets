@@ -3422,19 +3422,17 @@ async function refreshPrices() {
     if (Object.keys(S.startPrices).length && isTradingDay) {
       if (!S.priceHistory) S.priceHistory = {};
       if (!S.fxHistory)    S.fxHistory    = {};
-      if (!S.priceHistory[todayKey]) {
-        S.priceHistory[todayKey] = {};
-        stockSyms.forEach(s => { if (prices[s]) S.priceHistory[todayKey][s] = prices[s].price; });
-        // Also snapshot benchmark index prices for the fund chart
-        BENCHMARK_TICKERS.forEach(b => { if (prices[b]) S.priceHistory[todayKey][b] = prices[b].price; });
-        // Snapshot FX rates too
-        const fxSyms = getFXSymbols();
-        if (fxSyms.length) {
-          S.fxHistory[todayKey] = {};
-          fxSyms.forEach(s => { if (prices[s]) S.fxHistory[todayKey][s] = prices[s].price; });
-        }
-        save(); // fire-and-forget — persist to Firebase
+      // Always overwrite today's snapshot with the latest prices so the chart
+      // reflects the most recent data (cron at 21:30 captures final close).
+      S.priceHistory[todayKey] = {};
+      stockSyms.forEach(s => { if (prices[s]) S.priceHistory[todayKey][s] = prices[s].price; });
+      BENCHMARK_TICKERS.forEach(b => { if (prices[b]) S.priceHistory[todayKey][b] = prices[b].price; });
+      const fxSyms = getFXSymbols();
+      if (fxSyms.length) {
+        S.fxHistory[todayKey] = {};
+        fxSyms.forEach(s => { if (prices[s]) S.fxHistory[todayKey][s] = prices[s].price; });
       }
+      save(); // fire-and-forget — persist to Firebase
     }
     if (isGameOver()) {
       setDot('stale');
@@ -4342,11 +4340,12 @@ function initChart() {
   const fxHistory = S.fxHistory || {};
   const allFXSnaps = {...fxHistory};
 
-  // Inject start-of-game FX snapshot using current live prices as fallback
-  const startFXSnap = {};
-  getFXSymbols().forEach(fx => {
-    if (prices[fx]?.price) startFXSnap[fx] = prices[fx].price;
-  });
+  // Use the FX rates stored at lock time for the start baseline (guarantees £300 start).
+  // Fall back to live FX only if startFX was never saved (legacy games).
+  const startFXSnap = S.startFX ? {...S.startFX} : {};
+  if (!Object.keys(startFXSnap).length) {
+    getFXSymbols().forEach(fx => { if (prices[fx]?.price) startFXSnap[fx] = prices[fx].price; });
+  }
   if (Object.keys(startFXSnap).length) allFXSnaps['0000-00-00'] = startFXSnap;
 
   // Always inject a guaranteed "Game Start" baseline using the exact locked startPrices.
@@ -4589,11 +4588,13 @@ function initFundChart() {
     BENCHMARK_TICKERS.forEach(b => { if (prices[b]) allSnapshots[todayKey][b] = prices[b].price; });
   }
 
-  // FX snapshots — used when converting S&P to GBP terms
+  // FX snapshots — use stored lock-time FX for baseline (guarantees index=100 at start)
   const allFXSnaps = {...fxHistory};
-  const liveFXSnap = {};
-  getFXSymbols().forEach(fx => { if (prices[fx]?.price) liveFXSnap[fx] = prices[fx].price; });
-  if (Object.keys(liveFXSnap).length) allFXSnaps['0000-00-00'] = liveFXSnap;
+  const startFXSnap = S.startFX ? {...S.startFX} : {};
+  if (!Object.keys(startFXSnap).length) {
+    getFXSymbols().forEach(fx => { if (prices[fx]?.price) startFXSnap[fx] = prices[fx].price; });
+  }
+  if (Object.keys(startFXSnap).length) allFXSnaps['0000-00-00'] = startFXSnap;
 
   // Baseline snapshot at game start
   const startSnap = {};
@@ -4746,6 +4747,7 @@ function renderAdminPanel() {
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
           <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
           <button class="btn btn-secondary" onclick="lockStartPrices()">🔒 Lock Prices Only</button>
+          ${!S.startFX || !Object.keys(S.startFX).length ? '<button class="btn btn-secondary" onclick="migrateStartFX()" style="background:var(--accent);color:#fff">📐 Fix Chart Baseline</button>' : ''}
         </div>
       </div>
       <div class="divider" style="margin:16px 0"></div>`;
@@ -4876,6 +4878,26 @@ async function saveGameDates() {
   renderDash();
 }
 
+async function migrateStartFX() {
+  // One-time migration: save FX rates so charts start at exactly £300/100.
+  // Does NOT touch startPrices, startShares, or any game data.
+  if (S.startFX && Object.keys(S.startFX).length) {
+    toast('ℹ️ startFX already saved — no migration needed.');
+    return;
+  }
+  try {
+    const fxSyms = getFXSymbols();
+    if (!fxSyms.length) { toast('ℹ️ No FX pairs needed (all GBP stocks).'); return; }
+    const fxData = await fetchPrices(fxSyms);
+    S.startFX = {};
+    fxSyms.forEach(fx => { if (fxData[fx]?.price) S.startFX[fx] = fxData[fx].price; });
+    await save();
+    toast('✅ Start FX rates saved. Charts will now start at exactly £300.');
+    myChart = null; myFundChart = null;
+    if (currentDashTab === 'history') { initChart(); initFundChart(); }
+  } catch(e) { toast('❌ Failed: ' + e.message); }
+}
+
 async function lockStartPrices() {
   if (!confirm('Overwrite start prices with today\'s current prices?\n\nThis will recalculate each player\'s share count based on their allocations and the new prices.')) return;
   try {
@@ -4889,11 +4911,15 @@ async function lockStartPrices() {
     S.currencies = {};
     syms.forEach(s => { if (p[s]?.currency) S.currencies[s] = p[s].currency; });
 
-    // Fetch FX rates
+    // Fetch FX rates and store them as the baseline for chart calculations
     const fxSyms = getFXSymbols();
     const fxData = fxSyms.length ? await fetchPrices(fxSyms) : {};
     Object.assign(p, fxData);
     prices = p;
+
+    // Save the FX rates at lock time so charts always start at exactly £300 / 100
+    S.startFX = {};
+    fxSyms.forEach(fx => { if (fxData[fx]?.price) S.startFX[fx] = fxData[fx].price; });
 
     // Recompute startShares using current prices + allocations
     S.players.forEach(player => {
