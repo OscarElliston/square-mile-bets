@@ -4737,6 +4737,19 @@ function renderAdminPanel() {
     </div>
     <div class="divider" style="margin:16px 0"></div>`;
 
+  // ── Fix Chart Baseline (one-time migration) ──────────────
+  if (!notStarted && (!S.startFX || !Object.keys(S.startFX).length)) {
+    html += `
+      <div class="modal-section">
+        <div class="modal-section-title">📐 Fix Chart Baseline</div>
+        <div class="modal-desc">One-time fix: saves the current FX rates so charts start at exactly £300 and 100. Does not change any game data.</div>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" onclick="migrateStartFX()" style="padding:9px 22px;font-size:13px;font-weight:700">📐 Fix Chart Baseline</button>
+        </div>
+      </div>
+      <div class="divider" style="margin:16px 0"></div>`;
+  }
+
   // ── Start Game / Lock prices ─────────────────────────────
   // Only show before the game has started
   if (notStarted) {
