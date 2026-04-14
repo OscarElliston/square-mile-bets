@@ -4378,6 +4378,8 @@ function initChart() {
 
   const datasets = S.players.map((p, i) => {
     const data = sortedDates.map(date => {
+      // The start baseline is always exactly £300 by definition
+      if (date === '0000-00-00') return 300;
       const snap   = allSnapshots[date];
       const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
       const total  = p.picks.reduce((sum, sym) => {
@@ -4616,6 +4618,8 @@ function initFundChart() {
 
   // Fund: average portfolio value in GBP, indexed to 100 at start
   const fundData = sortedDates.map(date => {
+    // Start baseline is always exactly 100 by definition
+    if (date === '0000-00-00') return 100;
     const snap   = allSnapshots[date];
     const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
     const total  = S.players.reduce((psum, p) => {
@@ -4647,6 +4651,8 @@ function initFundChart() {
     if (!startPrice) return null;
     const isFTSE = sym === '^FTSE'; // FTSE is in GBP already; S&P is in USD
     const data = sortedDates.map(date => {
+      // Start baseline is always exactly 100 by definition
+      if (date === '0000-00-00') return 100;
       const snap   = allSnapshots[date];
       const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
       const raw    = snap?.[sym];
@@ -4737,19 +4743,6 @@ function renderAdminPanel() {
     </div>
     <div class="divider" style="margin:16px 0"></div>`;
 
-  // ── Fix Chart Baseline (one-time migration) ──────────────
-  if (!notStarted && (!S.startFX || !Object.keys(S.startFX).length)) {
-    html += `
-      <div class="modal-section">
-        <div class="modal-section-title">📐 Fix Chart Baseline</div>
-        <div class="modal-desc">One-time fix: saves the current FX rates so charts start at exactly £300 and 100. Does not change any game data.</div>
-        <div style="margin-top:8px">
-          <button class="btn btn-primary" onclick="migrateStartFX()" style="padding:9px 22px;font-size:13px;font-weight:700">📐 Fix Chart Baseline</button>
-        </div>
-      </div>
-      <div class="divider" style="margin:16px 0"></div>`;
-  }
-
   // ── Start Game / Lock prices ─────────────────────────────
   // Only show before the game has started
   if (notStarted) {
@@ -4760,7 +4753,6 @@ function renderAdminPanel() {
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
           <button class="btn btn-primary" onclick="startGameManually()" style="padding:9px 22px;font-size:13px;font-weight:700">🚀 Start Game</button>
           <button class="btn btn-secondary" onclick="lockStartPrices()">🔒 Lock Prices Only</button>
-          ${!S.startFX || !Object.keys(S.startFX).length ? '<button class="btn btn-secondary" onclick="migrateStartFX()" style="background:var(--accent);color:#fff">📐 Fix Chart Baseline</button>' : ''}
         </div>
       </div>
       <div class="divider" style="margin:16px 0"></div>`;
@@ -4889,26 +4881,6 @@ async function saveGameDates() {
   toast('✅ Dates updated.');
   closeAdmin();
   renderDash();
-}
-
-async function migrateStartFX() {
-  // One-time migration: save FX rates so charts start at exactly £300/100.
-  // Does NOT touch startPrices, startShares, or any game data.
-  if (S.startFX && Object.keys(S.startFX).length) {
-    toast('ℹ️ startFX already saved — no migration needed.');
-    return;
-  }
-  try {
-    const fxSyms = getFXSymbols();
-    if (!fxSyms.length) { toast('ℹ️ No FX pairs needed (all GBP stocks).'); return; }
-    const fxData = await fetchPrices(fxSyms);
-    S.startFX = {};
-    fxSyms.forEach(fx => { if (fxData[fx]?.price) S.startFX[fx] = fxData[fx].price; });
-    await save();
-    toast('✅ Start FX rates saved. Charts will now start at exactly £300.');
-    myChart = null; myFundChart = null;
-    if (currentDashTab === 'history') { initChart(); initFundChart(); }
-  } catch(e) { toast('❌ Failed: ' + e.message); }
 }
 
 async function lockStartPrices() {
