@@ -3646,6 +3646,45 @@ function renderWinnerBanner(sorted) {
   if (wasHidden && !_confettiFired) { _confettiFired = true; fireConfetti(); }
 }
 
+// Calculate previous-day rankings from the most recent priceHistory snapshot
+function getPreviousDayRanking() {
+  const history = S.priceHistory || {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  // Get all dates before today, sorted descending
+  const prevDates = Object.keys(history).filter(d => d < todayKey).sort().reverse();
+  if (!prevDates.length) return null; // Day 1 — no previous data
+
+  const prevDate = prevDates[0];
+  const snap = history[prevDate];
+  const fxSnap = (S.fxHistory || {})[prevDate] || {};
+
+  // Calculate each player's portfolio value using the previous snapshot
+  const ranked = S.players.map((p, idx) => {
+    const total = p.picks.reduce((sum, sym, j) => {
+      const shares = p.startShares?.[sym];
+      const raw = snap?.[sym];
+      if (!shares || !raw) return sum + (p.allocations?.[j] ?? 100);
+      const cur = S.currencies?.[sym] || 'USD';
+      let priceGBP;
+      if (cur === 'GBP') priceGBP = raw;
+      else if (cur === 'GBp') priceGBP = raw / 100;
+      else {
+        const fxKey = 'GBP' + cur + '=X';
+        const fxRate = fxSnap[fxKey] ?? prices[fxKey]?.price;
+        priceGBP = fxRate ? raw / fxRate : null;
+      }
+      return sum + (priceGBP !== null ? shares * priceGBP : (p.allocations?.[j] ?? 100));
+    }, 0);
+    return { origIdx: idx, pv: total };
+  });
+
+  ranked.sort((a, b) => b.pv - a.pv);
+  // Return a map of origIdx → previous rank (1-based)
+  const rankMap = {};
+  ranked.forEach((r, i) => { rankMap[r.origIdx] = i + 1; });
+  return rankMap;
+}
+
 function renderDash() {
   const sorted = S.players.map((p, idx) => ({
     ...p,
@@ -3666,10 +3705,27 @@ function renderDash() {
 }
 
 function renderLeaderboard(sorted) {
+  const prevRanking = getPreviousDayRanking();
   document.getElementById('leaderboard').innerHTML = sorted.map((p, i) => {
+    const currentRank = i + 1;
     const rankEl = i < 3
       ? `<span style="font-size:24px">${MEDALS[i]}</span>`
       : `<span style="font-size:14px;font-weight:700;color:var(--dim)">#${i+1}</span>`;
+
+    // Position change arrow
+    let posChangeEl = '';
+    if (prevRanking) {
+      const prevRank = prevRanking[p.origIdx];
+      if (prevRank != null) {
+        const diff = prevRank - currentRank; // positive = moved up
+        if (diff > 0) {
+          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#16a34a;font-family:var(--mono);margin-left:4px">▲${diff}</span>`;
+        } else if (diff < 0) {
+          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#dc2626;font-family:var(--mono);margin-left:4px">▼${Math.abs(diff)}</span>`;
+        }
+      }
+    }
+
     const gainEl = p.pv !== null
       ? `<div class="lb-gain-wrap">
            <div class="lb-gain ${gainCls(p.pg)}">${fmtGBP(p.pv)}</div>
@@ -3678,7 +3734,7 @@ function renderLeaderboard(sorted) {
       : `<div class="lb-gain waiting">Waiting…</div>`;
     const rowCls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
     return `<div class="lb-row ${rowCls}">
-      <div class="lb-rank">${rankEl}</div>
+      <div class="lb-rank">${rankEl}${posChangeEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         ${playerAvatar(p, 30)}
         <div style="min-width:0">
