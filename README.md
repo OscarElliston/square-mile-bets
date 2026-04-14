@@ -1,21 +1,19 @@
 # Square Mile Bets
 
-A multiplayer fantasy finance game for groups of friends. Each player picks three stocks at the start of a season, and the leaderboard tracks everyone's portfolio performance in real time. At the end of the season, final standings are archived to an all-time Medal Table.
-
-Built as a single-page app — no framework, no build step. Deployed on Vercel with Firebase Firestore for shared state and Google Auth for player identity.
+A multiplayer stock-picking game where players each invest a virtual £300 across three stocks and compete to build the best-performing portfolio. Built as a lightweight single-page app deployed on Vercel with Firebase Firestore for persistence.
 
 Live at **[square-mile-bets.vercel.app](https://square-mile-bets.vercel.app)**
 
 ---
 
-## How it works
+## How It Works
 
-1. The admin opens the app for the first time and sets a start date and season length
-2. Players visit the link and sign in with Google to submit their name and three stock picks
+1. The admin sets a start date and game length
+2. Players visit the link and sign in with Google to submit their name, three stock picks, and how they want to allocate their £300 pot (min £50, max £150 per pick; must total exactly £300)
 3. When everyone is ready, the admin locks current prices as the baseline and starts the game
-4. Prices update automatically every 5 minutes during market hours; a daily snapshot is saved by a cron job each weekday evening
-5. The leaderboard, stock rankings, portfolio chart and breakdown are visible to anyone — no login required to view
-6. At season end the admin archives results to the Medal Table, then resets for the next round
+4. Prices update automatically every 5 minutes during market hours; a daily closing snapshot is saved by a cron job each weekday at 9:30pm UTC
+5. The leaderboard, stock rankings, charts and player cards are visible to anyone — no login required to view
+6. At season end the player with the highest portfolio value wins
 
 ---
 
@@ -23,26 +21,91 @@ Live at **[square-mile-bets.vercel.app](https://square-mile-bets.vercel.app)**
 
 | Layer | Technology |
 |---|---|
-| Frontend | Vanilla HTML/CSS/JS — single `index.html` |
+| Frontend | Vanilla HTML / CSS / JS — three files, no framework, no build step |
 | Database | Firebase Firestore (real-time sync across all browsers) |
 | Auth | Firebase Google Sign-In |
-| Price data | Yahoo Finance (via Vercel serverless function) |
+| Price data | Yahoo Finance v8 API |
 | Hosting | Vercel |
 | Cron | Vercel cron job — daily snapshot at 9:30pm UTC, Mon–Fri |
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
-index.html          Main app — all UI, game logic and chart rendering
+index.html          HTML shell — structure, modals, layout
+styles.css          All styling (dark theme default + FT light theme)
+app.js              Application logic — data loading, charts, UI rendering
 api/
   quote.js          Serverless function — fetches live prices from Yahoo Finance
   search.js         Serverless function — proxies Yahoo Finance ticker autocomplete
-  snapshot.js       Serverless function — saves daily price snapshot to Firestore
-vercel.json         Cron schedule config
+  snapshot.js       Serverless cron function — saves daily closing prices + FX rates to Firestore
+  game-data.js      Serverless function — returns full game state + calculated values as JSON
+vercel.json         Vercel config (rewrites, cron schedule)
 favicon.png         App icon
 ```
+
+---
+
+## Features
+
+**Live Leaderboard**
+- Ranked by current portfolio value (£), refreshed every 5 minutes
+- Position change arrows (▲▼) showing daily rank movement vs previous close
+- Confetti when you're in first place
+
+**Player Cards**
+- Individual stock breakdowns with day change and total performance
+- Current value and gain/loss per position
+
+**Charts**
+- Portfolio Value Over Time (£) — tracks each player's portfolio with a fixed £300 baseline
+- Fund vs Benchmarks — compares the group average against FTSE 100 and S&P 500, indexed to 100
+
+**Stock Leaderboard**
+- Every pick ranked by total % return with visual performance bars
+
+**Multi-Currency Support**
+- Any Yahoo Finance global stock, automatically converted to GBP via live cross-rate pairs
+- UK stocks priced in GBX (pence) automatically divided by 100
+- FX rates locked at game start for accurate baseline calculations
+
+**Themes**
+- Dark theme (default) and FT-style light theme toggle
+
+**Admin Panel**
+- Manage players, edit picks and allocations
+- Lock start prices and configure game dates
+- Google sign-in with admin email whitelist
+
+**Access Model**
+- Anyone can view the leaderboard without an account
+- Google sign-in required to join or submit picks
+- Settings panel visible to admin only
+
+---
+
+## Data Flow
+
+1. **Admin locks start prices** — saves `startPrices`, `startShares`, `startFX`, and `currencies` to Firestore
+2. **Daily cron** (`/api/snapshot`) runs at 9:30pm UTC on weekdays, fetching closing prices from Yahoo Finance and writing them to `priceHistory` and `fxHistory` in Firestore
+3. **Frontend** loads game state from Firestore on page load, fetches live intraday prices from Yahoo Finance, and overwrites today's snapshot so prices stay current throughout the day
+4. **Game data API** (`/api/game-data`) provides a JSON endpoint with calculated portfolio values, leaderboard, and per-stock performance — useful for generating daily digest summaries externally
+
+---
+
+## Firestore Structure
+
+All game state lives in a single document at `squaremile/game`:
+
+- `players` — array of player objects (name, picks, allocations, startShares)
+- `startPrices` — locked prices at game start
+- `startFX` — locked FX rates at game start
+- `currencies` — ticker-to-currency mapping
+- `priceHistory` — `{ "2025-07-01": { "AAPL": 195.2, ... }, ... }`
+- `fxHistory` — `{ "2025-07-01": { "GBPUSD=X": 1.27, ... }, ... }`
+- `startDate` / `endDate` — game period
+- `gameName` — display name
 
 ---
 
@@ -50,28 +113,15 @@ favicon.png         App icon
 
 ### 1. Firebase
 
-Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
+Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com):
 
 - Enable **Firestore** (Native mode)
 - Enable **Authentication → Google** sign-in
 - Add your Vercel deployment domain to **Authentication → Settings → Authorised domains**
 
-Copy your project config (Project Settings → Your apps → Web app) and paste it into `index.html`:
+### 2. Admin Access
 
-```js
-const FIREBASE_CONFIG = {
-  apiKey:            "...",
-  authDomain:        "...",
-  projectId:         "...",
-  storageBucket:     "...",
-  messagingSenderId: "...",
-  appId:             "..."
-};
-```
-
-### 2. Admin access
-
-Edit the `ADMIN_EMAILS` array in `index.html` to include your Google account email. Only listed addresses can access Settings, start the game, and end seasons.
+Edit the `ADMIN_EMAILS` array in `app.js` to include your Google account email:
 
 ```js
 const ADMIN_EMAILS = ['you@gmail.com'];
@@ -79,69 +129,26 @@ const ADMIN_EMAILS = ['you@gmail.com'];
 
 ### 3. Deploy to Vercel
 
-Push the repo to GitHub and import it as a new Vercel project. No build command or output directory is needed — Vercel detects the serverless functions in `/api` automatically.
+Push the repo to GitHub and import it as a new Vercel project. No build command or output directory needed — Vercel serves the static files and detects the serverless functions in `/api` automatically.
 
 Add one environment variable in the Vercel dashboard:
 
 | Variable | Value |
 |---|---|
-| `FIREBASE_API_KEY` | Your Firebase `apiKey` from the config above |
+| `FIREBASE_API_KEY` | Your Firebase `apiKey` |
 
-The cron job in `vercel.json` runs daily at 9:30pm UTC and requires a Vercel Hobby plan or above.
-
----
-
-## Features
-
-**Submission**
-- Players sign in with Google and submit their name and three stock picks
-- Live ticker search powered by Yahoo Finance autocomplete
-- Category keywords (e.g. "electric cars", "AI", "UK stocks") surface themed suggestions instantly
-- Duplicate pick detection across all players in real time
-- Admin can edit or remove any player's picks before the game starts
-
-**Live game**
-- Leaderboard sorted by portfolio return, refreshed every 5 minutes
-- Per-player portfolio cards with individual stock performance and daily change %
-- All Stocks tab ranking every pick across all players with a visual performance bar
-- Dashboard tab with a portfolio value chart (rebased to 100 at start) and a stacked bar breakdown by stock
-- Prices sync in real time across all open browsers via Firestore
-
-**Season end**
-- Winner banner with confetti fires when the game ends
-- Admin archives final standings to the Medal Table from the Settings panel
-- Medal Table tracks gold, silver and bronze counts per player across all seasons, sortable by any column
-- All previous season results stored and browsable
-
-**Access model**
-- Anyone can view the leaderboard without an account
-- Google sign-in required to join or submit picks
-- Settings panel and Start Game button visible to the admin only
+The cron job in `vercel.json` requires a Vercel Hobby plan or above.
 
 ---
 
-## Supported tickers
+## Supported Tickers
 
-Any equity or ETF available on Yahoo Finance, including:
+Any equity or ETF available on Yahoo Finance — globally. The currency is detected automatically and all portfolio values are converted to GBP in real time.
 
-- **US stocks and ETFs** — S&P 500, NASDAQ, major ETFs
-- **London Stock Exchange** — use the `.L` suffix (e.g. `BP.L`, `HSBA.L`, `AZN.L`)
-
----
-
-## Demo mode
-
-If no Firebase config is provided the app runs in demo mode with simulated data for 10 players across a full season — useful for testing the UI without any setup.
-
----
-
-## Firestore data structure
-
-```
-squaremile/game          Active game state (players, picks, start prices, price history)
-seasons/{id}             Archived season results
-players/{uid}            All-time player stats (gold, silver, bronze, avg return)
-```
+- **US stocks and ETFs** — priced in USD, converted at live GBPUSD rate
+- **London Stock Exchange** — `.L` suffix (e.g. `BP.L`, `HSBA.L`); prices in GBX, auto-divided by 100
+- **European stocks** — Euronext, Xetra, etc.; priced in EUR, converted via GBPEUR
+- **Any other exchange** Yahoo Finance covers — the app fetches the relevant `GBP{currency}=X` pair on demand
 
 ---
 
