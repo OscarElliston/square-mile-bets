@@ -16,47 +16,9 @@
  *   etc.
  */
 
-// ── Robust Yahoo Finance helpers ────────────────────────────────────────────
-
-const YF_HOSTS = [
-  'query2.finance.yahoo.com',
-  'query1.finance.yahoo.com',
-];
-
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-];
-
-function randomUA() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-async function fetchSearchRobust(path) {
-  const maxRounds = 2;
-  for (let round = 0; round < maxRounds; round++) {
-    if (round > 0) await sleep(500);
-    for (const host of YF_HOSTS) {
-      try {
-        const r = await fetch(`https://${host}${path}`, {
-          headers: { 'User-Agent': randomUA() },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (r.ok) return await r.json();
-        if (r.status === 429) continue;
-      } catch { /* next host */ }
-    }
-  }
-  return null;
-}
-
-// ── Handler ─────────────────────────────────────────────────────────────────
+const YF_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
 
 const ALLOWED_TYPES = new Set(['EQUITY', 'ETF', 'MUTUALFUND']);
 
@@ -65,11 +27,11 @@ export default async function handler(req, res) {
   if (!q || !q.trim()) return res.status(200).json({ results: [] });
 
   try {
-    const data = await fetchSearchRobust(
-      `/v1/finance/search?q=${encodeURIComponent(q.trim())}&quotesCount=10&newsCount=0&listsCount=0&enableFuzzyQuery=false`
-    );
-    if (!data) return res.status(200).json({ results: [] });
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q.trim())}&quotesCount=10&newsCount=0&listsCount=0&enableFuzzyQuery=false`;
+    const r = await fetch(url, { headers: YF_HEADERS });
+    if (!r.ok) return res.status(200).json({ results: [] });
 
+    const data = await r.json();
     const results = (data?.quotes || [])
       .filter(item => item.symbol && ALLOWED_TYPES.has(item.quoteType))
       .map(item => ({

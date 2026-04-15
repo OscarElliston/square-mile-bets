@@ -13,42 +13,9 @@
 const PROJECT_ID = 'square-mile-bets';
 const DOC_URL    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/squaremile/game`;
 
-// ── Yahoo Finance spark endpoint (all tickers in one request) ───────────────
-
-const YF_HOSTS = [
-  'query2.finance.yahoo.com',
-  'query1.finance.yahoo.com',
-];
-
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
-];
-
-function randomUA() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-async function fetchSpark(symbols) {
-  const joined = symbols.map(s => encodeURIComponent(s)).join(',');
-  const path = `/v8/finance/spark?symbols=${joined}&range=1d&interval=1d`;
-  for (const host of YF_HOSTS) {
-    try {
-      const r = await fetch(`https://${host}${path}`, {
-        headers: { 'User-Agent': randomUA() },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (r.ok) return await r.json();
-    } catch { /* try next host */ }
-  }
-  return null;
-}
+const YF_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
 
 // ── Firestore REST helpers ──────────────────────────────────────────────────
 
@@ -68,32 +35,28 @@ function parseValue(v) {
   return null;
 }
 
-// ── Price fetching (spark batches of 20 — max Yahoo allows per request) ─────
-
-const SPARK_BATCH = 20;
-const SPARK_DELAY = 300;
+// ── Price fetching via Yahoo Finance v8 ─────────────────────────────────────
 
 async function fetchPrices(tickers) {
   const prices = {};
-  for (let i = 0; i < tickers.length; i += SPARK_BATCH) {
-    if (i > 0) await sleep(SPARK_DELAY);
-    const batch = tickers.slice(i, i + SPARK_BATCH);
-    const data = await fetchSpark(batch);
-    if (!data) continue;
-    for (const sym of batch) {
-      const d = data[sym];
-      if (d?.close?.length) {
-        const price = d.close[d.close.length - 1];
-        if (price != null) {
-          prices[sym] = {
-            price,
-            previousClose: d.chartPreviousClose || null,
-            currency: null  // spark doesn't return currency — use Firestore currencies
-          };
-        }
+  await Promise.all(tickers.map(async sym => {
+    try {
+      const r = await fetch(
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
+        { headers: YF_HEADERS }
+      );
+      if (!r.ok) return;
+      const data = await r.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (meta?.regularMarketPrice) {
+        prices[sym] = {
+          price: meta.regularMarketPrice,
+          previousClose: meta.chartPreviousClose || meta.previousClose || null,
+          currency: meta.currency || null
+        };
       }
-    }
-  }
+    } catch { /* skip */ }
+  }));
   return prices;
 }
 
