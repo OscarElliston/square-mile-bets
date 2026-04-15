@@ -97,7 +97,7 @@ document.addEventListener('click', e => {
 // Works for stocks, ETFs, and FX cross-rate pairs (e.g. GBPUSD=X)
 async function fetchPrices(symbols) {
   const res = await fetch('/api/quote?symbols=' + encodeURIComponent(symbols.join(',')),
-                          { signal: AbortSignal.timeout(45000) });
+                          { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   const out = {};
