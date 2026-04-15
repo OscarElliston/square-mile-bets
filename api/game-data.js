@@ -71,26 +71,33 @@ function parseValue(v) {
   return null;
 }
 
-// ── Price fetching (uses robust multi-host fetcher) ─────────────────────────
+// ── Price fetching (batched to avoid Yahoo rate limits) ──────────────────────
+
+const BATCH_SIZE = 8;
+const BATCH_DELAY = 300;
 
 async function fetchPrices(tickers) {
   const prices = {};
-  await Promise.all(tickers.map(async sym => {
-    try {
-      const data = await fetchChartRobust(
-        `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
-      );
-      if (!data) return;
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) {
-        prices[sym] = {
-          price: meta.regularMarketPrice,
-          previousClose: meta.chartPreviousClose || meta.previousClose || null,
-          currency: meta.currency || null
-        };
-      }
-    } catch { /* skip */ }
-  }));
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+    if (i > 0) await sleep(BATCH_DELAY);
+    const batch = tickers.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(async sym => {
+      try {
+        const data = await fetchChartRobust(
+          `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
+        );
+        if (!data) return;
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (meta?.regularMarketPrice) {
+          prices[sym] = {
+            price: meta.regularMarketPrice,
+            previousClose: meta.chartPreviousClose || meta.previousClose || null,
+            currency: meta.currency || null
+          };
+        }
+      } catch { /* skip */ }
+    }));
+  }
   return prices;
 }
 

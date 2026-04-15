@@ -62,6 +62,40 @@ async function fetchChartRobust(path) {
   return null;
 }
 
+// ── Batched fetching (avoids Yahoo rate limits on large symbol lists) ────────
+
+const BATCH_SIZE = 8;    // fetch 8 tickers at a time
+const BATCH_DELAY = 300; // 300ms pause between batches
+
+async function fetchAllInBatches(symList) {
+  const results = [];
+  for (let i = 0; i < symList.length; i += BATCH_SIZE) {
+    if (i > 0) await sleep(BATCH_DELAY);
+    const batch = symList.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(async sym => {
+      try {
+        const data = await fetchChartRobust(
+          `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
+        );
+        if (!data) return null;
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (!meta?.regularMarketPrice) return null;
+
+        const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+        return {
+          symbol:                     sym,
+          regularMarketPrice:         meta.regularMarketPrice,
+          shortName:                  meta.shortName || meta.longName || meta.symbol || sym,
+          regularMarketChangePercent: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0,
+          currency:                   meta.currency || 'USD',
+        };
+      } catch { return null; }
+    }));
+    results.push(...batchResults.filter(Boolean));
+  }
+  return results;
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -69,27 +103,7 @@ export default async function handler(req, res) {
   if (!symbols) return res.status(400).json({ error: 'symbols required' });
 
   const symList = symbols.split(',').map(s => s.trim()).filter(Boolean);
-  const results = [];
-
-  await Promise.all(symList.map(async sym => {
-    try {
-      const data = await fetchChartRobust(
-        `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
-      );
-      if (!data) return;
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta?.regularMarketPrice) return;
-
-      const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
-      results.push({
-        symbol:                     sym,
-        regularMarketPrice:         meta.regularMarketPrice,
-        shortName:                  meta.shortName || meta.longName || meta.symbol || sym,
-        regularMarketChangePercent: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0,
-        currency:                   meta.currency || 'USD',
-      });
-    } catch { /* skip */ }
-  }));
+  const results = await fetchAllInBatches(symList);
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.status(200).json({ quoteResponse: { result: results, error: null } });

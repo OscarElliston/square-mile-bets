@@ -87,20 +87,27 @@ function toFsValue(v) {
   return { nullValue: null };
 }
 
-// ── Price fetching (uses robust multi-host fetcher) ─────────────────────────
+// ── Price fetching (batched to avoid Yahoo rate limits) ──────────────────────
+
+const BATCH_SIZE = 8;
+const BATCH_DELAY = 300;
 
 async function fetchPrices(tickers) {
   const snapshot = {};
-  await Promise.all(tickers.map(async sym => {
-    try {
-      const data = await fetchChartRobust(
-        `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
-      );
-      if (!data) return;
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) snapshot[sym] = meta.regularMarketPrice;
-    } catch { /* skip */ }
-  }));
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+    if (i > 0) await sleep(BATCH_DELAY);
+    const batch = tickers.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(async sym => {
+      try {
+        const data = await fetchChartRobust(
+          `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
+        );
+        if (!data) return;
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (meta?.regularMarketPrice) snapshot[sym] = meta.regularMarketPrice;
+      } catch { /* skip */ }
+    }));
+  }
   return snapshot;
 }
 
