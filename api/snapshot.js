@@ -15,9 +15,45 @@
 const PROJECT_ID = 'square-mile-bets';
 const DOC_URL    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/squaremile/game`;
 
-const YF_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-};
+// ── Robust Yahoo Finance helpers ────────────────────────────────────────────
+
+const YF_HOSTS = [
+  'query2.finance.yahoo.com',
+  'query1.finance.yahoo.com',
+];
+
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+];
+
+function randomUA() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function fetchChartRobust(path) {
+  const maxRounds = 2;
+  for (let round = 0; round < maxRounds; round++) {
+    if (round > 0) await sleep(1000);
+    for (const host of YF_HOSTS) {
+      try {
+        const r = await fetch(`https://${host}${path}`, {
+          headers: { 'User-Agent': randomUA() },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (r.ok) return await r.json();
+        if (r.status === 429) continue;
+      } catch { /* next host */ }
+    }
+  }
+  return null;
+}
 
 // ── Firestore REST helpers ────────────────────────────────────────────────────
 
@@ -51,18 +87,16 @@ function toFsValue(v) {
   return { nullValue: null };
 }
 
-// ── Price fetching via Yahoo Finance v8 (all tickers, including FX) ──────────
+// ── Price fetching (uses robust multi-host fetcher) ─────────────────────────
 
 async function fetchPrices(tickers) {
   const snapshot = {};
   await Promise.all(tickers.map(async sym => {
     try {
-      const r = await fetch(
-        `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
-        { headers: YF_HEADERS }
+      const data = await fetchChartRobust(
+        `/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`
       );
-      if (!r.ok) return;
-      const data = await r.json();
+      if (!data) return;
       const meta = data?.chart?.result?.[0]?.meta;
       if (meta?.regularMarketPrice) snapshot[sym] = meta.regularMarketPrice;
     } catch { /* skip */ }
