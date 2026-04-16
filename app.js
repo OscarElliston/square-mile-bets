@@ -1,40 +1,40 @@
 // ═══════════════════════════════════════════════════════════
-//  THEME TOGGLE
+//  THEME TOGGLE [DISABLED - Phase 1 removal]
 // ═══════════════════════════════════════════════════════════
-(function initTheme() {
-  const saved = localStorage.getItem('smb-theme');
-  if (saved === 'ft') document.documentElement.setAttribute('data-theme', 'ft');
-})();
+// (function initTheme() {
+//   const saved = localStorage.getItem('smb-theme');
+//   if (saved === 'ft') document.documentElement.setAttribute('data-theme', 'ft');
+// })();
 
-function toggleTheme() {
-  const html = document.documentElement;
-  const thumb = document.getElementById('theme-thumb');
-  const isFT = html.getAttribute('data-theme') === 'ft';
-  if (isFT) {
-    html.removeAttribute('data-theme');
-    if (thumb) { thumb.textContent = '$'; thumb.className = 'theme-toggle-thumb dark'; }
-    localStorage.setItem('smb-theme', 'dark');
-  } else {
-    html.setAttribute('data-theme', 'ft');
-    if (thumb) { thumb.textContent = '\u00A3'; thumb.className = 'theme-toggle-thumb ft'; }
-    localStorage.setItem('smb-theme', 'ft');
-  }
-  // Redraw charts so canvas picks up new theme colors
-  try { if (typeof myChart !== 'undefined' && myChart) myChart.draw(); } catch(e) {}
-  try { if (typeof myFundChart !== 'undefined' && myFundChart) myFundChart.draw(); } catch(e) {}
-  // Redraw breakdown chart if visible
-  try { if (typeof renderStackedBarChart === 'function') renderStackedBarChart(); } catch(e) {}
-}
+// function toggleTheme() {
+//   const html = document.documentElement;
+//   const thumb = document.getElementById('theme-thumb');
+//   const isFT = html.getAttribute('data-theme') === 'ft';
+//   if (isFT) {
+//     html.removeAttribute('data-theme');
+//     if (thumb) { thumb.textContent = '$'; thumb.className = 'theme-toggle-thumb dark'; }
+//     localStorage.setItem('smb-theme', 'dark');
+//   } else {
+//     html.setAttribute('data-theme', 'ft');
+//     if (thumb) { thumb.textContent = '\u00A3'; thumb.className = 'theme-toggle-thumb ft'; }
+//     localStorage.setItem('smb-theme', 'ft');
+//   }
+//   // Redraw charts so canvas picks up new theme colors
+//   try { if (typeof myChart !== 'undefined' && myChart) myChart.draw(); } catch(e) {}
+//   try { if (typeof myFundChart !== 'undefined' && myFundChart) myFundChart.draw(); } catch(e) {}
+//   // Redraw breakdown chart if visible
+//   try { if (typeof renderStackedBarChart === 'function') renderStackedBarChart(); } catch(e) {}
+// }
 
-// Restore toggle thumb visual on load
-document.addEventListener('DOMContentLoaded', function() {
-  const saved = localStorage.getItem('smb-theme');
-  const thumb = document.getElementById('theme-thumb');
-  if (saved === 'ft' && thumb) {
-    thumb.textContent = '\u00A3';
-    thumb.className = 'theme-toggle-thumb ft';
-  }
-});
+// // Restore toggle thumb visual on load
+// document.addEventListener('DOMContentLoaded', function() {
+//   const saved = localStorage.getItem('smb-theme');
+//   const thumb = document.getElementById('theme-thumb');
+//   if (saved === 'ft' && thumb) {
+//     thumb.textContent = '\u00A3';
+//     thumb.className = 'theme-toggle-thumb ft';
+//   }
+// });
 
 // ═══════════════════════════════════════════════════════════
 //  CONSTANTS
@@ -2211,6 +2211,12 @@ function renderDash() {
   renderLeaderboard(sorted);
   renderCards(sorted);
   renderStackedBarChart();
+
+  // Hide separate cards section — picks now shown in expandable leaderboard rows
+  const cardsSection = document.getElementById('cards-grid');
+  const cardsSectionTitle = cardsSection?.previousElementSibling;
+  if (cardsSection) cardsSection.style.display = 'none';
+  if (cardsSectionTitle) cardsSectionTitle.style.display = 'none';
 }
 
 function renderLeaderboard(sorted) {
@@ -2228,9 +2234,9 @@ function renderLeaderboard(sorted) {
       if (prevRank != null) {
         const diff = prevRank - currentRank; // positive = moved up
         if (diff > 0) {
-          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#16a34a;font-family:var(--mono);margin-left:4px">▲${diff}</span>`;
+          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#16a34a;font-family:var(--mono);margin-left:0">▲${diff}</span>`;
         } else if (diff < 0) {
-          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#dc2626;font-family:var(--mono);margin-left:4px">▼${Math.abs(diff)}</span>`;
+          posChangeEl = `<span style="font-size:11px;font-weight:700;color:#dc2626;font-family:var(--mono);margin-left:0">▼${Math.abs(diff)}</span>`;
         }
       }
     }
@@ -2242,7 +2248,37 @@ function renderLeaderboard(sorted) {
          </div>`
       : `<div class="lb-gain waiting">Waiting…</div>`;
     const rowCls = i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : '';
-    return `<div class="lb-row ${rowCls}">
+
+    // Add win/loss tinting classes
+    const tintCls = p.pg > 0 ? 'positive' : p.pg < 0 ? 'negative' : '';
+
+    // Add highlighted class for current signed-in user
+    const isMe = currentUser && p.name && currentUser.displayName &&
+      p.name.toLowerCase() === currentUser.displayName.toLowerCase();
+    const meCls = isMe ? 'highlighted' : '';
+
+    // Build expandable picks section
+    const expandPicks = p.picks.map((sym, j) => {
+      const svGBP = stockValueGBP(p, sym);
+      const alloc = p.allocations?.[j] ?? 100;
+      const data = prices[sym];
+      const d1 = data?.change1d;
+      const label = (p.names && p.names[j]) || data?.name || sym;
+      const dayLabel = d1 != null
+        ? `<span class="day-gain ${d1 >= 0 ? 'green' : 'red'}">${d1 >= 0 ? '+' : ''}${d1.toFixed(2)}% today</span>` : '';
+      return `<div class="asset-row">
+        <div>
+          <div class="asset-name-label">${esc(label)}</div>
+          <div class="asset-ticker muted">${esc(sym)}</div>
+        </div>
+        <div class="asset-right">
+          <div class="asset-gain ${gainCls(svGBP !== null ? svGBP - alloc : null)}">${svGBP !== null ? fmtGBP(svGBP) : '—'}</div>
+          ${dayLabel}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="lb-row ${rowCls} ${tintCls} ${meCls}" onclick="toggleExpand(${i})" style="animation-delay:${i * 0.03}s">
       <div class="lb-rank">${rankEl}${posChangeEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         ${playerAvatar(p, 30)}
@@ -2252,8 +2288,14 @@ function renderLeaderboard(sorted) {
         </div>
       </div>
       ${gainEl}
-    </div>`;
+    </div>
+    <div class="lb-expand" id="lb-expand-${i}">${expandPicks}</div>`;
   }).join('');
+}
+
+function toggleExpand(idx) {
+  const el = document.getElementById('lb-expand-' + idx);
+  if (el) el.classList.toggle('open');
 }
 
 function renderCards(sorted) {
@@ -2329,14 +2371,13 @@ function renderStockLeaderboard() {
     });
   });
   all.sort((a,b)=>(b.gain??-999)-(a.gain??-999));
-  const maxAbs=Math.max(1,...all.map(s=>Math.abs(s.gain??0)));
 
   if (!all.length) {
     document.getElementById('stock-leaderboard').innerHTML = `<div class="empty-state"><div class="icon">📊</div>Prices not yet loaded — refresh to fetch latest data.</div>`;
     return;
   }
   document.getElementById('stock-leaderboard').innerHTML=all.map((s,i)=>{
-    const isPos=s.gain>=0, barW=(Math.abs(s.gain??0)/maxAbs)*46;
+    const isPos=s.gain>=0;
     const dayHtml = s.day!=null
       ? `<div class="slb-pct ${s.day>=0?'green':'red'}" style="font-size:11px">${s.day>=0?'+':''}${s.day.toFixed(2)}%</div>`
       : `<div class="slb-pct muted">—</div>`;
@@ -2344,10 +2385,6 @@ function renderStockLeaderboard() {
       <div class="slb-rank">${i+1}</div>
       <div class="slb-ticker ${isPos?'green':'red'}">${esc(s.sym)}</div>
       <div class="slb-name">${esc(s.name)}</div>
-      <div class="slb-bar-wrap">
-        <div class="slb-bar-mid"></div>
-        <div class="slb-bar ${isPos?'pos':'neg'}" style="width:${barW}%"></div>
-      </div>
       <div class="slb-pct ${isPos?'green':'red'}">${fmt(s.gain)}</div>
       ${dayHtml}
       <div class="slb-player">${esc(s.player)}</div>
