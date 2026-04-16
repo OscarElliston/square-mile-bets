@@ -3633,11 +3633,11 @@ async function resetEverything() {
 // ═══════════════════════════════════════════════════════════
 let toastTimer;
 function toast(msg) {
-  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  const el=document.getElementById('toast'); if (!el) return; el.textContent=msg; el.classList.add('show');
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
 }
-function show(id) { document.getElementById(id).classList.remove('hidden'); }
-function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function show(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+function hide(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
 function esc(s) { const d=document.createElement('div'); d.textContent=s||'–'; return d.innerHTML; }
 
 // ═══════════════════════════════════════════════════════════
