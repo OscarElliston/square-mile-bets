@@ -6,6 +6,10 @@
  * performance. Used by Cowork to generate daily digests without
  * needing to scrape the frontend.
  *
+ * Query params:
+ *   ?since=YYYY-MM-DD  — optional; calculates periodChangePct from
+ *                         the snapshot on that date (uses priceHistory)
+ *
  * Env vars required:
  *   FIREBASE_API_KEY  — Firebase Web API key
  */
@@ -60,6 +64,26 @@ async function fetchPrices(tickers) {
   return prices;
 }
 
+// ── Find closest available snapshot date ────────────────────────────────────
+
+function findClosestDate(priceHistory, targetDate) {
+  // priceHistory is keyed by date strings like "2026-04-10"
+  const dates = Object.keys(priceHistory).sort();
+  if (!dates.length) return null;
+
+  // If exact date exists, use it
+  if (priceHistory[targetDate]) return targetDate;
+
+  // Otherwise find the closest date on or before the target
+  let closest = null;
+  for (const d of dates) {
+    if (d <= targetDate) closest = d;
+    else break;
+  }
+  // If nothing on or before, use the earliest available
+  return closest || dates[0];
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -74,6 +98,9 @@ export default async function handler(req, res) {
   const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
   if (!FIREBASE_API_KEY) return res.status(500).json({ error: 'FIREBASE_API_KEY not set' });
 
+  // Optional: period start date for multi-day change calculation
+  const sinceParam = req.query.since || null;
+
   try {
     // 1. Read game state from Firestore
     const stateRes = await fetch(`${DOC_URL}?key=${FIREBASE_API_KEY}`);
@@ -87,8 +114,17 @@ export default async function handler(req, res) {
     const endDate     = parseValue(fields.endDate);
     const currencies  = parseValue(fields.currencies)   || {};
     const fxHistory   = parseValue(fields.fxHistory)    || {};
+    const priceHistory = parseValue(fields.priceHistory) || {};
 
     if (!players.length) throw new Error('No players found');
+
+    // Resolve the "since" snapshot date
+    let sinceDate = null;
+    let sinceSnapshot = null;
+    if (sinceParam && Object.keys(priceHistory).length) {
+      sinceDate = findClosestDate(priceHistory, sinceParam);
+      sinceSnapshot = sinceDate ? priceHistory[sinceDate] : null;
+    }
 
     // 2. Collect all unique tickers
     const allTickers = [...new Set(players.flatMap(p =>
@@ -131,12 +167,12 @@ export default async function handler(req, res) {
         let currentValue = amount;
         let pctChange    = 0;
         let dayChangePct = 0;
+        let periodChangePct = null;
 
         if (sp && cp) {
           // Handle FX conversion for non-GBP stocks
           let fxStart = 1, fxNow = 1;
           if (cur !== 'GBP' && cur !== 'GBp') {
-            // Use latest FX rate for both (simplified — matches app logic)
             fxNow = fxRates[cur] || 1;
             fxStart = fxNow; // app uses same rate for start and current
           }
@@ -148,9 +184,15 @@ export default async function handler(req, res) {
           currentValue = amount * (currentGBP / startGBP);
           pctChange    = ((currentGBP / startGBP) - 1) * 100;
           dayChangePct = prevCl ? ((cp - prevCl) / prevCl) * 100 : 0;
+
+          // Period change: compare current price against the "since" snapshot
+          if (sinceSnapshot && sinceSnapshot[ticker]) {
+            const sincePrice = sinceSnapshot[ticker];
+            periodChangePct = ((cp - sincePrice) / sincePrice) * 100;
+          }
         }
 
-        stockPerformances.push({
+        const stockEntry = {
           ticker,
           player: p.name,
           amount,
@@ -159,19 +201,46 @@ export default async function handler(req, res) {
           dayChangePct: +dayChangePct.toFixed(2),
           price: cp || null,
           currency: cur
-        });
+        };
+        if (periodChangePct !== null) {
+          stockEntry.periodChangePct = +periodChangePct.toFixed(2);
+        }
+        stockPerformances.push(stockEntry);
 
-        return {
+        const pickEntry = {
           ticker,
           amount,
           currentValue: +currentValue.toFixed(2),
           totalChangePct: +pctChange.toFixed(2),
           dayChangePct: +dayChangePct.toFixed(2)
         };
+        if (periodChangePct !== null) {
+          pickEntry.periodChangePct = +periodChangePct.toFixed(2);
+        }
+        return pickEntry;
       });
 
       const totalValue = picks.reduce((s, pk) => s + pk.currentValue, 0);
-      return {
+
+      // Calculate period portfolio change if we have a since snapshot
+      let periodPortfolioPct = null;
+      if (sinceSnapshot) {
+        // Calculate what the portfolio was worth at the since date
+        const sinceValue = picks.reduce((s, pk) => {
+          const ticker = pk.ticker;
+          const sincePrice = sinceSnapshot[ticker];
+          const sp = startPrices[ticker];
+          if (sincePrice && sp) {
+            return s + pk.amount * (sincePrice / sp);
+          }
+          return s + pk.amount; // no snapshot = assume no change
+        }, 0);
+        if (sinceValue > 0) {
+          periodPortfolioPct = ((totalValue - sinceValue) / sinceValue) * 100;
+        }
+      }
+
+      const entry = {
         rank: 0,
         name: p.name,
         picks,
@@ -179,6 +248,10 @@ export default async function handler(req, res) {
         totalGain: +(totalValue - 300).toFixed(2),
         totalPct: +(((totalValue / 300) - 1) * 100).toFixed(1)
       };
+      if (periodPortfolioPct !== null) {
+        entry.periodPct = +periodPortfolioPct.toFixed(2);
+      }
+      return entry;
     });
 
     // Sort by total value descending and assign ranks
@@ -192,7 +265,7 @@ export default async function handler(req, res) {
     const avgValue = leaderboard.reduce((s, p) => s + p.totalValue, 0) / leaderboard.length;
     const today = new Date().toISOString().slice(0, 10);
 
-    return res.status(200).json({
+    const response = {
       success: true,
       fetchedAt: new Date().toISOString(),
       game: {
@@ -212,7 +285,18 @@ export default async function handler(req, res) {
       topStocks: stockPerformances.slice(0, 10),
       bottomStocks: stockPerformances.slice(-10).reverse(),
       allStocks: stockPerformances
-    });
+    };
+
+    // Include period metadata if since was requested
+    if (sinceDate) {
+      response.period = {
+        since: sinceDate,
+        requestedSince: sinceParam,
+        today
+      };
+    }
+
+    return res.status(200).json(response);
 
   } catch (err) {
     console.error('[game-data] error:', err.message);
