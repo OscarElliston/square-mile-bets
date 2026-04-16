@@ -1918,7 +1918,10 @@ function allSymbols() { return [...new Set(S.players.flatMap(p=>p.picks))]; }
 async function refreshPrices() {
   if (isDemoMode) return;
   if (refreshTimer) clearTimeout(refreshTimer);
-  setDot('stale'); show('loading-state'); hide('dash-content'); hide('error-state');
+  setDot('stale'); hide('error-state');
+  // Only show loading overlay if we have no existing data — otherwise keep stale data visible
+  const hasExistingData = Object.keys(prices || {}).length > 0;
+  if (!hasExistingData) { show('loading-state'); hide('dash-content'); }
   const stockSyms = allSymbols();
   if (!stockSyms.length) { hide('loading-state'); return; }
   try {
