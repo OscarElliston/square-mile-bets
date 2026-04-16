@@ -137,20 +137,20 @@
     /* Progress */
     .progress-section { margin-bottom:22px; }
     .progress-header  { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
-    .progress-label   { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); font-family:'Inter', sans-serif; }
+    .progress-label   { font-size:13px; font-weight:700; text-transform:none; letter-spacing:0; color:var(--muted); font-family:var(--heading); }
     .progress-days    { font-size:10px; color:var(--muted); font-family:'Inter', sans-serif; }
     .progress-track   { height:3px; background:var(--surface2); border-radius:0; overflow:hidden; }
     .progress-fill    { height:100%; background:linear-gradient(90deg,var(--accent),#C84B6B); border-radius:0; transition:width .5s ease; }
 
     /* Dashboard tabs — sticky & styled */
     .dash-tabs { display:flex; gap:2px; margin-bottom:24px; width:100%; border-bottom:1px solid var(--border2); position:sticky; top:52px; z-index:9; background:var(--bg); padding-top:8px; }
-    .dash-tab  { padding:7px 18px; border-radius:0; font-size:10px; font-weight:700; cursor:pointer; color:var(--muted); border:none; background:transparent; transition:all .15s; letter-spacing:.08em; text-transform:uppercase; font-family:'Inter', sans-serif; border-bottom:2px solid transparent; margin-bottom:-1px; }
+    .dash-tab  { padding:7px 18px; border-radius:0; font-size:13px; font-weight:700; cursor:pointer; color:var(--muted); border:none; background:transparent; transition:all .15s; letter-spacing:.02em; text-transform:none; font-family:var(--heading); border-bottom:2px solid transparent; margin-bottom:-1px; }
     .dash-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(158,47,80,.04); }
     .dash-tab:not(.active):hover { color:var(--text); background:rgba(0,0,0,.03); }
 
     /* Section title */
-    .section-title { font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; color:var(--accent); margin-bottom:13px; font-family:var(--heading); display:flex; align-items:center; gap:8px; }
-    .section-title::before { content:''; display:inline-block; width:2px; height:10px; background:var(--accent); flex-shrink:0; border-radius:1px; }
+    .section-title { font-size:15px; font-weight:700; text-transform:none; letter-spacing:0; color:var(--accent); margin-bottom:13px; font-family:var(--heading); display:flex; align-items:center; gap:8px; }
+    .section-title::before { content:''; display:inline-block; width:2px; height:14px; background:var(--accent); flex-shrink:0; border-radius:1px; }
 
     /* Leaderboard */
     .lb-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:24px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
@@ -227,21 +227,21 @@
 
     /* ── STOCK LEADERBOARD ── */
     .slb-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-    .slb-head { display:grid; grid-template-columns:36px 60px 1fr 72px 72px 90px; gap:10px; padding:9px 18px; border-bottom:1px solid var(--border); background:var(--surface2); }
+    .slb-head { display:grid; grid-template-columns:36px 60px 1fr 72px 72px 120px; gap:10px; padding:9px 18px; border-bottom:1px solid var(--border); background:var(--surface2); }
     .slb-head span { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-family:var(--mono); }
-    .slb-row  { display:grid; grid-template-columns:36px 60px 1fr 72px 72px 90px; gap:10px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--border); transition:background .1s; }
+    .slb-row  { display:grid; grid-template-columns:36px 60px 1fr 72px 72px 120px; gap:10px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--border); transition:background .1s; }
     .slb-row:last-child { border-bottom:none; }
     .slb-row:hover { background:var(--surface2); }
     .slb-rank   { font-size:11px; font-weight:700; color:var(--dim); font-family:var(--mono); }
     .slb-ticker { font-family:var(--mono); font-size:12px; font-weight:800; letter-spacing:.05em; color:var(--accent); }
-    .slb-name   { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .slb-name   { font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--heading); font-weight:600; }
     .slb-bar-wrap { display:none; }
     .slb-bar-mid  { display:none; }
     .slb-bar      { display:none; }
     .slb-bar.pos  { display:none; }
     .slb-bar.neg  { display:none; }
     .slb-pct    { font-size:12px; font-weight:700; text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; }
-    .slb-player { font-size:11px; color:var(--muted); font-family:var(--mono); }
+    .slb-player { font-size:11px; color:var(--muted); font-family:var(--mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
     /* ── CHART ── */
     .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 18px 14px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
@@ -330,7 +330,7 @@
 
     /* Responsive */
     @media (max-width:700px) {
-      .slb-head, .slb-row { grid-template-columns:24px 44px minmax(0,1fr) 50px 50px minmax(0,60px); gap:5px; padding:8px 10px; }
+      .slb-head, .slb-row { grid-template-columns:24px 44px minmax(0,1fr) 50px 50px minmax(0,72px); gap:5px; padding:8px 10px; }
       .slb-name { min-width:0; }
       .slb-player { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     }
@@ -401,7 +401,7 @@
       .cards-grid { grid-template-columns:1fr; }
       .grid-2   { grid-template-columns:1fr; }
       .dash-tabs { width:100%; }
-      .dash-tab  { flex:1; padding:8px 12px; font-size:11px; }
+      .dash-tab  { flex:1; padding:8px 12px; font-size:12px; }
       .join-panel { padding:14px 12px; }
       .countdown-num { font-size:24px; }
       .countdown-unit { min-width:40px; }
