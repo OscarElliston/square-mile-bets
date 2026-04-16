@@ -2213,6 +2213,8 @@ function renderDash() {
   renderLeaderboard(sorted);
   renderCards(sorted);
   renderStackedBarChart();
+  // Render sparklines after DOM is populated
+  requestAnimationFrame(() => renderSparklines());
 
   // Hide separate cards section — picks now shown in expandable leaderboard rows
   const cardsSection = document.getElementById('cards-grid');
@@ -2280,6 +2282,44 @@ function renderLeaderboard(sorted) {
       </div>`;
     }).join('');
 
+    // Portfolio sparkline canvas (rendered after DOM insert)
+    const sparklineEl = `<canvas class="sparkline-portfolio sparkline-desktop" data-player-idx="${p.origIdx}" style="width:72px;height:28px;flex-shrink:0;border-radius:3px"></canvas>`;
+
+    // Expanded view: portfolio sparkline (wider, for mobile) + stock sparklines
+    const expandSparkHeader = `<div class="expand-spark-header">
+      <canvas class="sparkline-portfolio sparkline-expand" data-player-idx="${p.origIdx}" style="width:100%;height:36px;border-radius:4px"></canvas>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono)">Portfolio trend</div>
+    </div>`;
+
+    const expandPicksWithSpark = p.picks.map((sym, j) => {
+      const svGBP = stockValueGBP(p, sym);
+      const alloc = p.allocations?.[j] ?? 100;
+      const data = prices[sym];
+      const d1 = data?.change1d;
+      const label = (p.names && p.names[j]) || data?.name || sym;
+      const totalPct = svGBP !== null ? (((svGBP - alloc) / alloc) * 100) : null;
+      const totalLabel = totalPct !== null
+        ? `<span class="${totalPct >= 0 ? 'green' : 'red'}" style="font-size:10px;font-family:var(--mono)">${totalPct >= 0 ? '+' : ''}${totalPct.toFixed(1)}% total</span>` : '';
+      const dayLabel = d1 != null
+        ? `<span class="day-gain ${d1 >= 0 ? 'green' : 'red'}">${d1 >= 0 ? '+' : ''}${d1.toFixed(2)}% today</span>` : '';
+      return `<div class="asset-row">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+          <canvas class="sparkline-stock" data-sym="${esc(sym)}" style="width:48px;height:24px;flex-shrink:0;border-radius:3px"></canvas>
+          <div style="min-width:0">
+            <div class="asset-name-label">${esc(label)}</div>
+            <div class="asset-ticker muted">${esc(sym)}</div>
+          </div>
+        </div>
+        <div class="asset-right">
+          <div class="asset-gain ${gainCls(svGBP !== null ? svGBP - alloc : null)}">${svGBP !== null ? fmtGBP(svGBP) : '—'}</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+            ${totalLabel}
+            ${dayLabel}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
     return `<div class="lb-row ${rowCls} ${tintCls} ${meCls}" onclick="toggleExpand(${i})" style="animation-delay:${i * 0.03}s">
       <div class="lb-rank">${rankEl}${posChangeEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -2289,15 +2329,46 @@ function renderLeaderboard(sorted) {
           <div class="lb-picks muted">${p.picks.map(esc).join(' · ')}</div>
         </div>
       </div>
+      ${sparklineEl}
       ${gainEl}
     </div>
-    <div class="lb-expand" id="lb-expand-${i}">${expandPicks}</div>`;
+    <div class="lb-expand" id="lb-expand-${i}">
+      ${expandSparkHeader}
+      <div class="expand-header" style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 6px;font-family:var(--heading)">${esc(p.name.split(' ')[0])}'s Picks</div>
+      ${expandPicksWithSpark}
+    </div>`;
   }).join('');
 }
 
 function toggleExpand(idx) {
   const el = document.getElementById('lb-expand-' + idx);
-  if (el) el.classList.toggle('open');
+  if (el) {
+    el.classList.toggle('open');
+    // Render sparklines inside this expand panel (they need DOM dimensions)
+    if (el.classList.contains('open')) {
+      requestAnimationFrame(() => {
+        el.querySelectorAll('.sparkline-portfolio, .sparkline-stock').forEach(canvas => {
+          if (canvas.classList.contains('sparkline-portfolio')) {
+            const pidx = parseInt(canvas.dataset.playerIdx);
+            const p = S.players[pidx];
+            if (p) {
+              const hist = getPlayerPortfolioHistory(p);
+              if (hist.length >= 2) drawSparkline(canvas, hist, { baseline: ALLOC_TOTAL });
+            }
+          } else if (canvas.classList.contains('sparkline-stock')) {
+            const sym = canvas.dataset.sym;
+            if (sym) {
+              const hist = getStockPriceHistory(sym);
+              if (hist.length >= 2) drawSparkline(canvas, hist, { baseline: hist[0] });
+            }
+          }
+        });
+      });
+    }
+    // Toggle expanded class on the parent row
+    const row = el.previousElementSibling;
+    if (row) row.classList.toggle('expanded', el.classList.contains('open'));
+  }
 }
 
 function renderCards(sorted) {
@@ -2392,6 +2463,182 @@ function renderStockLeaderboard() {
       <div class="slb-player">${esc(s.player)}</div>
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPARKLINES — Tiny inline canvas charts
+// ═══════════════════════════════════════════════════════════
+
+// Draw a sparkline on a canvas element.  points = array of numbers.
+// opts: { width, height, color, fillColor, lineWidth, baseline }
+function drawSparkline(canvas, points, opts = {}) {
+  if (!canvas || !points || points.length < 2) {
+    if (canvas) { canvas.style.display = 'none'; }
+    return;
+  }
+  canvas.style.display = 'block';
+  const W = opts.width || canvas.clientWidth || 72;
+  const H = opts.height || canvas.clientHeight || 28;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 2, bottom: 2, left: 1, right: 1 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+  const minV = Math.min(...points);
+  const maxV = Math.max(...points);
+  const range = maxV - minV || 1;
+
+  const toX = i => pad.left + (i / (points.length - 1)) * cw;
+  const toY = v => pad.top + (1 - (v - minV) / range) * ch;
+
+  const lastVal = points[points.length - 1];
+  const firstVal = points[0];
+  const baseline = opts.baseline != null ? opts.baseline : firstVal;
+  const isPositive = lastVal >= baseline;
+  const lineColor = opts.color || (isPositive ? '#0D7680' : '#CC0000');
+  const fillColor = opts.fillColor || (isPositive ? 'rgba(13,118,128,.08)' : 'rgba(204,0,0,.06)');
+
+  // Fill area under the line
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(toX(i), toY(points[i]));
+  }
+  ctx.lineTo(toX(points.length - 1), H - pad.bottom);
+  ctx.lineTo(toX(0), H - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+
+  // Draw line
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(points[0]));
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(toX(i), toY(points[i]));
+  }
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = opts.lineWidth || 1.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // End dot
+  ctx.beginPath();
+  ctx.arc(toX(points.length - 1), toY(lastVal), 2, 0, Math.PI * 2);
+  ctx.fillStyle = lineColor;
+  ctx.fill();
+}
+
+// Build portfolio value history for a player (array of £ values per day)
+function getPlayerPortfolioHistory(p) {
+  if (isDemoMode) {
+    return TRADING_DAYS.map((_, day) => {
+      return p.picks.reduce((sum, sym) => {
+        const path   = PRICE_HISTORY[sym];
+        const shares = p.startShares?.[sym];
+        if (!path || !shares) return sum;
+        return sum + shares * (path[day] / DEMO_GBP_USD);
+      }, 0);
+    });
+  }
+
+  // Real game — use stored snapshots
+  const history = S.priceHistory || {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const allSnapshots = {...history};
+  if (Object.keys(prices || {}).length) {
+    allSnapshots[todayKey] = allSnapshots[todayKey] || {};
+    allSymbols().forEach(s => { if (prices[s]) allSnapshots[todayKey][s] = prices[s].price; });
+  }
+  const fxHistory = S.fxHistory || {};
+  const allFXSnaps = {...fxHistory};
+  const startFXSnap = S.startFX ? {...S.startFX} : {};
+  if (!Object.keys(startFXSnap).length) {
+    getFXSymbols().forEach(fx => { if (prices[fx]?.price) startFXSnap[fx] = prices[fx].price; });
+  }
+  if (Object.keys(startFXSnap).length) allFXSnaps['0000-00-00'] = startFXSnap;
+
+  const startSnap = {};
+  allSymbols().forEach(s => { if (S.startPrices[s]) startSnap[s] = S.startPrices[s]; });
+  allSnapshots['0000-00-00'] = startSnap;
+
+  const sortedDates = Object.keys(allSnapshots).sort().filter(d => {
+    if (d === '0000-00-00') return true;
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    return dow !== 0 && dow !== 6;
+  });
+
+  return sortedDates.map(date => {
+    if (date === '0000-00-00') return ALLOC_TOTAL;
+    const snap   = allSnapshots[date];
+    const fxSnap = allFXSnaps[date] || allFXSnaps['0000-00-00'] || {};
+    return p.picks.reduce((sum, sym) => {
+      const shares = p.startShares?.[sym];
+      const raw    = snap?.[sym];
+      if (!shares || !raw) return sum + (p.allocations?.[p.picks.indexOf(sym)] ?? 100);
+      const cur = S.currencies?.[sym] || 'USD';
+      let priceGBP;
+      if (cur === 'GBP')      priceGBP = raw;
+      else if (cur === 'GBp') priceGBP = raw / 100;
+      else {
+        const fxKey  = 'GBP' + cur + '=X';
+        const fxRate = fxSnap[fxKey] ?? prices[fxKey]?.price;
+        priceGBP = fxRate ? raw / fxRate : null;
+      }
+      return sum + (priceGBP !== null ? shares * priceGBP : (p.allocations?.[p.picks.indexOf(sym)] ?? 100));
+    }, 0);
+  });
+}
+
+// Build price history for a single stock (array of prices)
+function getStockPriceHistory(sym) {
+  if (isDemoMode) {
+    return PRICE_HISTORY[sym] || [];
+  }
+  const history = S.priceHistory || {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const allSnapshots = {...history};
+  if (prices[sym]) {
+    allSnapshots[todayKey] = allSnapshots[todayKey] || {};
+    allSnapshots[todayKey][sym] = prices[sym].price;
+  }
+  if (S.startPrices?.[sym]) {
+    allSnapshots['0000-00-00'] = allSnapshots['0000-00-00'] || {};
+    allSnapshots['0000-00-00'][sym] = S.startPrices[sym];
+  }
+  const sortedDates = Object.keys(allSnapshots).sort().filter(d => {
+    if (d === '0000-00-00') return true;
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    return dow !== 0 && dow !== 6;
+  });
+  return sortedDates.map(d => allSnapshots[d]?.[sym]).filter(v => v != null);
+}
+
+// Render all visible sparklines after leaderboard is built
+function renderSparklines() {
+  document.querySelectorAll('.sparkline-portfolio').forEach(canvas => {
+    const idx = parseInt(canvas.dataset.playerIdx);
+    const p = S.players[idx];
+    if (!p) return;
+    const hist = getPlayerPortfolioHistory(p);
+    if (hist.length >= 2) {
+      drawSparkline(canvas, hist, { baseline: ALLOC_TOTAL });
+    }
+  });
+  document.querySelectorAll('.sparkline-stock').forEach(canvas => {
+    const sym = canvas.dataset.sym;
+    if (!sym) return;
+    const hist = getStockPriceHistory(sym);
+    if (hist.length >= 2) {
+      drawSparkline(canvas, hist, { baseline: hist[0] });
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
