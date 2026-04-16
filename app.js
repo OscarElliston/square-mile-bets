@@ -580,8 +580,10 @@ const STOCK_DEFS = {
 };
 
 const PLAYER_COLORS = [
-  '#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa',
-  '#38bdf8','#fb923c','#f472b6','#a3e635','#818cf8',
+  '#9E2F50','#0D7680','#D4880F','#2E5FA1','#C13B2A','#1A8F5C',
+  '#7B3FA0','#E07020','#0C6B9E','#A8244A','#3D8B35','#8C5E1A',
+  '#5A3EC4','#CC4470','#177A7A','#B86B00','#4266D9','#D45B3A',
+  '#2D9470','#9B4FBB','#D99A16','#1E6EC7','#B53060','#42855B'
 ];
 
 // Returns an <img> for players with a Google photo, or a coloured initial circle otherwise.
@@ -602,8 +604,8 @@ function playerAvatar(p, size=26, style='') {
 // Benchmark tickers and their display metadata
 const BENCHMARK_TICKERS = ['^FTSE', '^GSPC'];
 const BENCHMARK_META = {
-  '^FTSE': { name: 'FTSE 100', color: '#06b6d4' },
-  '^GSPC': { name: 'S&P 500',  color: '#8b5cf6' },
+  '^FTSE': { name: 'FTSE 100', color: '#0D7680' },
+  '^GSPC': { name: 'S&P 500',  color: '#D4880F' },
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -2469,13 +2471,15 @@ class LineChart {
     const ctx=this.ctx, p=this._p(), r=this._yRange();
     const vs=this.vs, ve=this.ve;
     ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-    ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+    // White background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.font='11px Inter, SF Mono, Consolas, sans-serif';
 
-    // Theme-aware chart colors
-    const _cs = getComputedStyle(document.documentElement);
-    const _grid = _cs.getPropertyValue('--border2').trim() || '#1c2840';
-    const _lbl  = _cs.getPropertyValue('--muted').trim() || '#5a6e96';
-    const _dim  = _cs.getPropertyValue('--dim').trim() || '#3a4e72';
+    // FT theme chart colors
+    const _grid = '#E6D9CE';
+    const _lbl  = '#A69E97';
+    const _dim  = '#D4C4B0';
 
     // Y grid + labels — adaptive step size for finer gridlines
     const ySpan = r.mx - r.mn;
@@ -2495,7 +2499,7 @@ class LineChart {
 
     // X grid + labels (visible range only)
     const visLen=ve-vs+1, xStep=Math.max(1,Math.ceil(visLen/9));
-    ctx.font='12px -apple-system,BlinkMacSystemFont,sans-serif';
+    ctx.font='10px SF Mono, Consolas, monospace';
     for (let i=vs; i<=ve; i+=xStep) {
       const x=this._xS(i,p);
       ctx.strokeStyle=_grid; ctx.lineWidth=1;
@@ -2503,7 +2507,7 @@ class LineChart {
       ctx.fillStyle=_lbl; ctx.textAlign='center';
       ctx.fillText(this.labels[i], x, p.y+p.h+20);
     }
-    ctx.font='11px -apple-system,BlinkMacSystemFont,sans-serif';
+    ctx.font='10px SF Mono, Consolas, monospace';
 
     // Clip all drawn content to chart area
     ctx.save();
@@ -2516,8 +2520,8 @@ class LineChart {
       ctx.setLineDash([5,4]); ctx.strokeStyle=_dim; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p.x,y0); ctx.lineTo(p.x+p.w,y0); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle=_dim; ctx.textAlign='left'; ctx.font='10px sans-serif';
-      ctx.fillText('start', p.x+5, y0-5);
+      ctx.fillStyle='#A69E97'; ctx.textAlign='left'; ctx.font='9px SF Mono, Consolas, monospace';
+      ctx.fillText('£300 start', p.x+5, y0-5);
     }
 
     // Dataset lines (1 point buffer beyond view for clean clip)
@@ -2542,13 +2546,12 @@ class LineChart {
       ctx.setLineDash([3,3]); ctx.strokeStyle=_lbl; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,p.y); ctx.lineTo(x,p.y+p.h); ctx.stroke();
       ctx.setLineDash([]);
-      const _isFT = document.documentElement.getAttribute('data-theme') === 'ft';
       this.datasets.forEach((ds,i)=>{
         if (this.hidden.has(i)) return;
         const v=ds.data[this.hovered], ys=this._yS(v,p,r);
         ctx.beginPath(); ctx.fillStyle=ds.color;
         ctx.arc(x,ys,4.5,0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.strokeStyle=_isFT?'rgba(0,0,0,.15)':'rgba(255,255,255,.25)'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=1.5;
         ctx.arc(x,ys,4.5,0,Math.PI*2); ctx.stroke();
       });
     }
@@ -2654,18 +2657,31 @@ class LineChart {
       .map((ds,i)=>({name:ds.label,v:ds.data[idx],color:ds.color,i}))
       .filter(d=>!this.hidden.has(d.i))]
       .sort((a,b)=>b.v-a.v);
+    const needsScroll = sorted.length > 10;
+    const baseline = this.baseline !== undefined ? this.baseline : ALLOC_TOTAL;
     tip.innerHTML=`
-      <div style="font-size:11px;color:#5a6e96;font-weight:600;margin-bottom:8px">${this.labels[idx]}</div>
-      ${sorted.map(d=>`
-        <div style="display:flex;align-items:center;gap:7px;padding:2px 0">
+      <div style="font-weight:700;margin-bottom:6px;color:#1A1614;font-size:11px;text-transform:uppercase;letter-spacing:.04em">${this.labels[idx]}</div>
+      <div style="${needsScroll ? 'max-height:220px;overflow-y:auto;' : ''}">
+      ${sorted.map(d=>{
+        const nameShort = d.name.length > 16 ? d.name.split(' ')[0] : d.name;
+        return `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">
           <div style="width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0"></div>
-          <span style="font-size:12px;color:#9ca3af;flex:1;white-space:nowrap">${d.name}</span>
-          <span style="font-size:12px;font-weight:700;color:${d.v>=ALLOC_TOTAL?'#10b981':'#ef4444'}">£${d.v.toFixed(2)}</span>
-        </div>`).join('')}`;
+          <span style="flex:1;color:#1A1614;font-size:12px">${nameShort}</span>
+          <span style="font-family:var(--mono);font-size:11px;color:${d.v>=baseline?'#0D7680':'#CC0000'}">£${d.v.toFixed(2)}</span>
+        </div>`;
+      }).join('')}
+      </div>`;
     tip.style.display='block';
+    tip.style.background='#fff';
+    tip.style.border='1px solid #D4C4B0';
+    tip.style.borderRadius='6px';
+    tip.style.padding='10px 14px';
+    tip.style.boxShadow='0 4px 16px rgba(0,0,0,.12)';
+    tip.style.fontFamily='Inter, sans-serif';
+    tip.style.pointerEvents='auto';
     const rect=this.canvas.getBoundingClientRect();
     let lft=e.clientX-rect.left+16, top=Math.max(4,e.clientY-rect.top-24);
-    if (lft+185>rect.width) lft=e.clientX-rect.left-200;
+    if (lft+240>rect.width) lft=e.clientX-rect.left-250;
     tip.style.left=lft+'px'; tip.style.top=top+'px';
   }
 
@@ -2771,13 +2787,12 @@ function renderStackedBarChart() {
   const barW = Math.min(60, colW * 0.62);
   const yPos = val => padT + chartH * (1 - (val - yMin) / yRange);
 
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0f1b35';
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, W, H);
 
-  const _cs = getComputedStyle(document.documentElement);
-  const _gridCol = _cs.getPropertyValue('--border2').trim() || '#1e2d4d';
-  const _labelCol = _cs.getPropertyValue('--muted').trim() || '#566a8a';
-  const _accentCol = _cs.getPropertyValue('--accent').trim() || '#f97316';
+  const _gridCol = '#E6D9CE';
+  const _labelCol = '#A69E97';
+  const _accentCol = '#9E2F50';
 
   const ticks = 5;
   for (let i = 0; i <= ticks; i++) {
@@ -2786,7 +2801,7 @@ function renderStackedBarChart() {
     ctx.strokeStyle = _gridCol; ctx.lineWidth = 0.5; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = _labelCol; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#A69E97'; ctx.font = '9px SF Mono, Consolas, monospace'; ctx.textAlign = 'right';
     ctx.fillText('£' + val.toFixed(0), padL - 4, y + 3.5);
   }
 
@@ -2817,12 +2832,12 @@ function renderStackedBarChart() {
     });
 
     const topY = yPos(total);
-    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = total >= ALLOC_TOTAL ? (_cs.getPropertyValue('--green').trim() || '#4ade80') : (_cs.getPropertyValue('--red').trim() || '#f87171');
+    ctx.font = 'bold 10px SF Mono, Consolas, monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = total >= ALLOC_TOTAL ? '#0D7680' : '#CC0000';
     ctx.fillText('£' + total.toFixed(0), cx, topY - 5);
 
     // Player name — wrap up to 3 lines
-    ctx.fillStyle = _labelCol; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#6B5D54'; ctx.font = '10px Inter, sans-serif'; ctx.textAlign = 'center';
     const labelMaxW = colW - 6;
     const lines = wrapText(ctx, p.name, labelMaxW, 3);
     const lineH = 12;
@@ -2901,7 +2916,7 @@ function initChart() {
         const vals = datasets.map(ds => ds.data[di]).filter(v => v != null);
         return vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)) : 0;
       });
-      datasets.push({ label: 'Fund Average', data: avgData, color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316' });
+      datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
     }
 
     myChart = new LineChart('portfolio-chart');
@@ -2920,8 +2935,8 @@ function initChart() {
     canvas.width  = canvas.offsetWidth  || 900;
     canvas.height = canvas.offsetHeight || 440;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#3a4e72';
-    ctx.font = '15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    ctx.fillStyle = '#6B5D54';
+    ctx.font = '15px Inter, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Lock start prices first (⚙ → Lock Current Prices) to enable the chart.', canvas.width/2, canvas.height/2);
     return;
@@ -2968,7 +2983,7 @@ function initChart() {
     canvas.width  = canvas.offsetWidth  || 900;
     canvas.height = canvas.offsetHeight || 440;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#3a4e72'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#6B5D54'; ctx.font = '15px Inter, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('Prices loading…', canvas.width/2, canvas.height/2);
     return;
   }
@@ -3010,7 +3025,7 @@ function initChart() {
       const vals = datasets.map(ds => ds.data[di]).filter(v => v != null);
       return vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)) : 0;
     });
-    datasets.push({ label: 'Fund Average', data: avgData, color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316' });
+    datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
   }
 
   myChart = new LineChart('portfolio-chart');
@@ -3031,49 +3046,62 @@ function getLeaderboardRanking() {
   }).sort((a, b) => b.total - a.total).map(x => x.idx);
 }
 
+function checkSvg(checked, color) {
+  if (checked) {
+    return `<div style="width:16px;height:16px;border-radius:3px;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5.5L4 7.5L8 3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>`;
+  }
+  return `<div style="width:16px;height:16px;border-radius:3px;border:2px solid ${color};flex-shrink:0;opacity:0.5"></div>`;
+}
+
 function buildChartLegend(playerList) {
   if (!myChart) return;
-  const fundAvgIdx = myChart.datasets.length - 1; // Fund Average is always last dataset
+  const fundAvgIdx = myChart.datasets.length - 1;
   const isFundHidden = myChart.hidden.has(fundAvgIdx);
 
-  let html = '';
-
   // Fund Average checkbox first
-  html += `<label class="legend-item" id="li-${fundAvgIdx}" style="cursor:pointer;user-select:none">
-    <input type="checkbox" ${isFundHidden ? '' : 'checked'} onchange="toggleDataset(${fundAvgIdx})"
-      style="margin:0;accent-color:var(--accent);cursor:pointer" />
-    <div class="legend-dot" style="background:var(--accent);border:1px dashed var(--accent)"></div>
-    <span style="font-weight:700">Fund Average</span>
-  </label>`;
+  let html = `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;padding:3px 0;font-weight:700;${isFundHidden ? 'opacity:0.4;' : ''}" onclick="toggleDataset(${fundAvgIdx})" id="li-${fundAvgIdx}">
+    ${checkSvg(!isFundHidden, '#1A1614')}
+    <div style="width:12px;height:0;border-top:2px dashed #1A1614;flex-shrink:0"></div>
+    <span style="color:var(--text)">Fund Average</span>
+  </div>`;
 
   // Individual player checkboxes
   playerList.forEach((p, i) => {
     const isHidden = myChart.hidden.has(i);
-    html += `<label class="legend-item${isHidden ? ' faded' : ''}" id="li-${i}" style="cursor:pointer;user-select:none">
-      <input type="checkbox" ${isHidden ? '' : 'checked'} onchange="toggleDataset(${i})"
-        style="margin:0;accent-color:${PLAYER_COLORS[i % PLAYER_COLORS.length]};cursor:pointer" />
-      <div class="legend-dot" style="background:${PLAYER_COLORS[i % PLAYER_COLORS.length]}"></div>
-      <span>${esc(p.name)}</span>
-    </label>`;
+    const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+    const isMe = (p.name === currentUser?.displayName);
+    html += `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;padding:3px 0;${isMe ? 'font-weight:700;' : ''}${isHidden ? 'opacity:0.4;' : ''}" onclick="toggleDataset(${i})" id="li-${i}">
+      ${checkSvg(!isHidden, color)}
+      <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+    </div>`;
   });
 
-  document.getElementById('chart-legend').innerHTML = html;
+  const el = document.getElementById('chart-legend');
+  if (el) el.innerHTML = html;
 }
 
 function toggleDataset(idx) {
   if (!myChart) return;
   myChart.toggle(idx);
-  // Update checkbox and faded state
-  const li = document.getElementById('li-' + idx);
-  if (li) {
-    const cb = li.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = !myChart.hidden.has(idx);
-    li.classList.toggle('faded', myChart.hidden.has(idx));
-  }
+  // Rebuild legend to update SVG checkboxes
+  buildChartLegend(S.players);
 }
 
 function chartGroupSelect(group) {
   if (!myChart || !S.players?.length) return;
+  // Highlight active group button
+  document.querySelectorAll('#chart-group-btns button').forEach(b => {
+    b.style.background = '';
+    b.style.color = '';
+    b.style.borderColor = '';
+  });
+  if (event && event.target) {
+    event.target.style.background = 'var(--accent)';
+    event.target.style.color = '#fff';
+    event.target.style.borderColor = 'var(--accent)';
+  }
   const playerCount = S.players.length;
   const fundAvgIdx = myChart.datasets.length - 1;
   const ranking = getLeaderboardRanking(); // array of player indices, best first
@@ -3154,7 +3182,7 @@ function initFundChart() {
     }).filter(Boolean);
 
     const datasets = [
-      { label: 'SMB Fund', data: fundData, color: '#f97316' },
+      { label: 'SMB Fund', data: fundData, color: '#9E2F50' },
       ...benchDatasets,
     ];
 
@@ -3173,8 +3201,8 @@ function initFundChart() {
     canvas.width  = canvas.offsetWidth || 900;
     canvas.height = 260;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#3a4e72';
-    ctx.font = '14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    ctx.fillStyle = '#6B5D54';
+    ctx.font = '14px Inter, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Lock start prices to enable the fund chart.', canvas.width / 2, 130);
     return;
@@ -3273,7 +3301,7 @@ function initFundChart() {
   }).filter(Boolean);
 
   const datasets = [
-    { label: 'SMB Fund', data: fundData, color: '#f97316' },
+    { label: 'SMB Fund', data: fundData, color: '#9E2F50' },
     ...benchDatasets,
   ];
 
@@ -3286,17 +3314,19 @@ function initFundChart() {
 function buildFundChartLegend(datasets) {
   const el = document.getElementById('fund-legend');
   if (!el) return;
-  el.innerHTML = datasets.map((ds, i) => `
-    <div class="legend-item" id="fli-${i}" onclick="toggleFundDataset(${i})">
-      <div class="legend-dot" style="background:${ds.color}"></div>
-      <span>${esc(ds.label)}</span>
-    </div>`).join('');
+  el.innerHTML = datasets.map((ds, i) => {
+    const isHidden = myFundChart?.hidden?.has(i);
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-family:Inter,sans-serif;cursor:pointer;padding:3px 0;${isHidden ? 'opacity:0.4;' : ''}" onclick="toggleFundDataset(${i})" id="fli-${i}">
+      ${checkSvg(!isHidden, ds.color)}
+      <span style="color:var(--text);font-weight:${ds.label==='SMB Fund' ? 700 : 400}">${esc(ds.label)}</span>
+    </div>`;
+  }).join('');
 }
 
 function toggleFundDataset(idx) {
   if (!myFundChart) return;
   myFundChart.toggle(idx);
-  document.getElementById('fli-' + idx)?.classList.toggle('faded', myFundChart.hidden.has(idx));
+  buildFundChartLegend(myFundChart.datasets);
 }
 
 
