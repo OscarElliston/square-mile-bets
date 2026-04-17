@@ -21,6 +21,21 @@ const YF_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
+// Upper bound on how long we'll wait for a single Yahoo Finance request
+const YF_TIMEOUT_MS = 5000;
+
+// Fetch wrapper with timeout — aborts the request if Yahoo takes too long,
+// so the serverless function doesn't block on a hung upstream.
+async function fetchWithTimeout(url, options = {}, timeoutMs = YF_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Firestore REST helpers ──────────────────────────────────────────────────
 
 function parseValue(v) {
@@ -45,7 +60,7 @@ async function fetchPrices(tickers) {
   const prices = {};
   await Promise.all(tickers.map(async sym => {
     try {
-      const r = await fetch(
+      const r = await fetchWithTimeout(
         `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
         { headers: YF_HEADERS }
       );
@@ -59,7 +74,7 @@ async function fetchPrices(tickers) {
           currency: meta.currency || null
         };
       }
-    } catch { /* skip */ }
+    } catch { /* skip — request timed out or failed */ }
   }));
   return prices;
 }
@@ -84,6 +99,19 @@ function findClosestDate(priceHistory, targetDate) {
   return closest || dates[0];
 }
 
+// Build a {currency -> GBP-per-unit} map from a single fxHistory snapshot.
+// fxHistory stores pairs like "GBPUSD=X" -> priceInForeign; invert to get GBP-per-foreign-unit.
+function fxRatesFromSnapshot(fxSnapshot) {
+  const rates = {};
+  if (!fxSnapshot) return rates;
+  for (const [pair, price] of Object.entries(fxSnapshot)) {
+    if (typeof price !== 'number' || price <= 0) continue;
+    const m = /^GBP([A-Z]{3})=X$/.exec(pair);
+    if (m) rates[m[1]] = 1 / price;
+  }
+  return rates;
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -94,6 +122,10 @@ export default async function handler(req, res) {
 
   // CORS — allow any origin (public game data)
   res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Cache on Vercel's edge for 60s, allow 10 min stale-while-revalidate.
+  // Game data moves slowly (price changes are smoothed by the frontend's own 5-min refresh loop).
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=600');
 
   const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
   if (!FIREBASE_API_KEY) return res.status(500).json({ error: 'FIREBASE_API_KEY not set' });
@@ -118,12 +150,18 @@ export default async function handler(req, res) {
 
     if (!players.length) throw new Error('No players found');
 
-    // Resolve the "since" snapshot date
+    // Resolve the "since" snapshot date — used for period (multi-day) calculations
     let sinceDate = null;
     let sinceSnapshot = null;
+    let sinceFxSnapshot = null;
     if (sinceParam && Object.keys(priceHistory).length) {
       sinceDate = findClosestDate(priceHistory, sinceParam);
       sinceSnapshot = sinceDate ? priceHistory[sinceDate] : null;
+      // Historical FX for the same date (fall back to closest-date-or-before if missing)
+      if (sinceDate && Object.keys(fxHistory).length) {
+        const fxDate = fxHistory[sinceDate] ? sinceDate : findClosestDate(fxHistory, sinceDate);
+        sinceFxSnapshot = fxDate ? fxHistory[fxDate] : null;
+      }
     }
 
     // 2. Collect all unique tickers
@@ -151,6 +189,8 @@ export default async function handler(req, res) {
         fxRates[c] = 1 / fxPrices[pair].price; // convert: 1 foreign unit = X GBP
       }
     }
+    // Historical FX rates at the "since" snapshot date (falls back to current rates if missing)
+    const sinceFxRates = fxRatesFromSnapshot(sinceFxSnapshot);
 
     // 5. Calculate portfolio values and stock performances
     const stockPerformances = [];
@@ -185,10 +225,20 @@ export default async function handler(req, res) {
           pctChange    = ((currentGBP / startGBP) - 1) * 100;
           dayChangePct = prevCl ? ((cp - prevCl) / prevCl) * 100 : 0;
 
-          // Period change: compare current price against the "since" snapshot
+          // Period change: compare current price against the "since" snapshot.
+          // Convert BOTH endpoints to GBP — use historical FX for the "since" side
+          // when we have it, else fall back to current FX.
           if (sinceSnapshot && sinceSnapshot[ticker]) {
             const sincePrice = sinceSnapshot[ticker];
-            periodChangePct = ((cp - sincePrice) / sincePrice) * 100;
+            let fxAtSince = 1;
+            if (cur !== 'GBP' && cur !== 'GBp') {
+              fxAtSince = sinceFxRates[cur] || fxRates[cur] || 1;
+            }
+            const sinceGBP   = (sincePrice / divisor) * (cur !== 'GBP' && cur !== 'GBp' ? fxAtSince : 1);
+            const currentGBP2 = (cp / divisor) * (cur !== 'GBP' && cur !== 'GBp' ? fxNow : 1);
+            if (sinceGBP > 0) {
+              periodChangePct = ((currentGBP2 - sinceGBP) / sinceGBP) * 100;
+            }
           }
         }
 
@@ -222,21 +272,20 @@ export default async function handler(req, res) {
 
       const totalValue = picks.reduce((s, pk) => s + pk.currentValue, 0);
 
-      // Calculate period portfolio change if we have a since snapshot
+      // Calculate period portfolio change if we have a since snapshot.
+      // Aggregate the per-stock period change (already FX-corrected), weighted by amount.
       let periodPortfolioPct = null;
       if (sinceSnapshot) {
-        // Calculate what the portfolio was worth at the since date
-        const sinceValue = picks.reduce((s, pk) => {
-          const ticker = pk.ticker;
-          const sincePrice = sinceSnapshot[ticker];
-          const sp = startPrices[ticker];
-          if (sincePrice && sp) {
-            return s + pk.amount * (sincePrice / sp);
+        let weighted = 0;
+        let weightTotal = 0;
+        for (const pk of picks) {
+          if (typeof pk.periodChangePct === 'number') {
+            weighted   += pk.periodChangePct * pk.amount;
+            weightTotal += pk.amount;
           }
-          return s + pk.amount; // no snapshot = assume no change
-        }, 0);
-        if (sinceValue > 0) {
-          periodPortfolioPct = ((totalValue - sinceValue) / sinceValue) * 100;
+        }
+        if (weightTotal > 0) {
+          periodPortfolioPct = weighted / weightTotal;
         }
       }
 
