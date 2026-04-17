@@ -19,6 +19,19 @@ const YF_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
+const YF_TIMEOUT_MS = 5000;
+
+// Fetch wrapper with timeout — aborts the request if Yahoo takes too long.
+async function fetchWithTimeout(url, options = {}, timeoutMs = YF_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Firestore REST helpers ────────────────────────────────────────────────────
 
 function parseValue(v) {
@@ -57,7 +70,7 @@ async function fetchPrices(tickers) {
   const snapshot = {};
   await Promise.all(tickers.map(async sym => {
     try {
-      const r = await fetch(
+      const r = await fetchWithTimeout(
         `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`,
         { headers: YF_HEADERS }
       );
@@ -65,7 +78,7 @@ async function fetchPrices(tickers) {
       const data = await r.json();
       const meta = data?.chart?.result?.[0]?.meta;
       if (meta?.regularMarketPrice) snapshot[sym] = meta.regularMarketPrice;
-    } catch { /* skip */ }
+    } catch { /* skip — request timed out or failed */ }
   }));
   return snapshot;
 }
