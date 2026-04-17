@@ -591,14 +591,27 @@ const PLAYER_COLORS = [
 function playerAvatar(p, size=26, style='') {
   const sz = `width:${size}px;height:${size}px;border-radius:50%;flex-shrink:0;`;
   if (p.photoURL) {
-    return `<img src="${esc(p.photoURL)}" style="${sz}object-fit:cover;border:1.5px solid rgba(255,255,255,.12);${style}" onerror="this.outerHTML=playerAvatar({name:'${esc(p.name)}'},${size},'${style}')" />`;
+    // Name/size/style are passed via data-* attributes (HTML-escaped) and read
+    // back by replacePlayerAvatar — this avoids injecting user text into a JS string.
+    return `<img src="${esc(p.photoURL)}" style="${sz}object-fit:cover;border:1.5px solid rgba(255,255,255,.12);${style}" data-pa-name="${esc(p.name||'')}" data-pa-size="${size}" data-pa-style="${esc(style)}" onerror="replacePlayerAvatar(this)" />`;
   }
   // Deterministic colour from name
   const idx = [...(p.name||'')].reduce((a,c)=>a+c.charCodeAt(0),0) % PLAYER_COLORS.length;
   const bg  = PLAYER_COLORS[idx] || '#60a5fa';
   const fs  = Math.max(9, Math.floor(size * 0.42));
   const initial = (p.name||'?')[0].toUpperCase();
-  return `<span style="${sz}background:${bg};display:inline-flex;align-items:center;justify-content:center;font-size:${fs}px;font-weight:800;color:#fff;font-family:var(--mono);${style}">${initial}</span>`;
+  return `<span style="${sz}background:${bg};display:inline-flex;align-items:center;justify-content:center;font-size:${fs}px;font-weight:800;color:#fff;font-family:var(--mono);${style}">${esc(initial)}</span>`;
+}
+
+// Avatar image load-failure handler — swaps in the initial-letter fallback.
+// Reads from data-* attributes so untrusted player names never flow into a JS literal.
+function replacePlayerAvatar(img) {
+  try {
+    const name  = img.dataset.paName || '';
+    const size  = parseInt(img.dataset.paSize, 10) || 26;
+    const style = img.dataset.paStyle || '';
+    img.outerHTML = playerAvatar({ name }, size, style);
+  } catch (e) { /* swallow — a broken avatar just stays broken */ }
 }
 
 // Benchmark tickers and their display metadata
@@ -670,6 +683,7 @@ let prices        = {};
 let isDemoMode    = false;
 let adminUnlocked = false;
 let refreshTimer  = null;
+let realtimeUnsub = null;  // stored so we can unsubscribe the Firestore listener
 let myChart     = null;
 let myFundChart = null;
 let currentDashTab = 'standings';
@@ -712,10 +726,16 @@ async function loadFromFirebase() {
   } catch(e) { console.error('Firebase load error:', e); return false; }
 }
 
-// Real-time listener — pushes updates to all connected browsers instantly
+// Real-time listener — pushes updates to all connected browsers instantly.
+// Stores the unsubscribe function so repeated calls don't stack up listeners.
 function startRealtimeSync() {
   if (!USE_FIREBASE) return;
-  db.collection('squaremile').doc('game').onSnapshot(snapshot => {
+  // Tear down any previous subscription before opening a new one
+  if (typeof realtimeUnsub === 'function') {
+    try { realtimeUnsub(); } catch (e) { /* ignore */ }
+    realtimeUnsub = null;
+  }
+  realtimeUnsub = db.collection('squaremile').doc('game').onSnapshot(snapshot => {
     if (!snapshot.exists) return;
     const incoming = snapshot.data();
     const changed =
@@ -742,6 +762,18 @@ function startRealtimeSync() {
     }
   });
 }
+
+// Clean up the Firestore listener on page unload so it doesn't linger in bfcache.
+window.addEventListener('beforeunload', () => {
+  if (typeof realtimeUnsub === 'function') {
+    try { realtimeUnsub(); } catch (e) { /* ignore */ }
+    realtimeUnsub = null;
+  }
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 //  INIT
@@ -1018,8 +1050,8 @@ function renderDropdown(id, results, categoryLabel) {
     : '';
   dd.innerHTML = labelHtml + results.map((r, i) =>
     `<div class="ac-item" data-idx="${i}" data-sym="${esc(r.sym)}" data-name="${esc(r.name)}"
-          onmousedown="confirmSelection('${id}','${esc(r.sym)}','${esc(r.name)}',true)"
-          onmouseover="acHover('${id}',${i})">
+          onmousedown="confirmSelection('${esc(id)}', this.dataset.sym, this.dataset.name, true)"
+          onmouseover="acHover('${esc(id)}',${i})">
        <span class="ac-sym">${esc(r.sym)}</span>
        <span class="ac-cname">${esc(r.name)}</span>
        ${r.ex ? `<span class="ac-ex">${esc(r.ex)}</span>` : ''}
@@ -2910,13 +2942,13 @@ class LineChart {
     const needsScroll = sorted.length > 10;
     const baseline = this.baseline !== undefined ? this.baseline : ALLOC_TOTAL;
     tip.innerHTML=`
-      <div style="font-weight:700;margin-bottom:6px;color:#1A1614;font-size:11px;text-transform:uppercase;letter-spacing:.04em">${this.labels[idx]}</div>
+      <div style="font-weight:700;margin-bottom:6px;color:#1A1614;font-size:11px;text-transform:uppercase;letter-spacing:.04em">${esc(this.labels[idx])}</div>
       <div style="${needsScroll ? 'max-height:220px;overflow-y:auto;' : ''}">
       ${sorted.map(d=>{
         const nameShort = d.name.length > 16 ? d.name.split(' ')[0] : d.name;
         return `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">
           <div style="width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0"></div>
-          <span style="flex:1;color:#1A1614;font-size:12px">${nameShort}</span>
+          <span style="flex:1;color:#1A1614;font-size:12px">${esc(nameShort)}</span>
           <span style="font-family:var(--mono);font-size:11px;color:${d.v>=baseline?'#0D7680':'#CC0000'}">£${d.v.toFixed(2)}</span>
         </div>`;
       }).join('')}
