@@ -22,13 +22,26 @@ const YF_HEADERS = {
 
 const ALLOWED_TYPES = new Set(['EQUITY', 'ETF', 'MUTUALFUND']);
 
+const YF_TIMEOUT_MS = 5000;
+
+// Fetch wrapper with timeout — aborts the request if Yahoo takes too long.
+async function fetchWithTimeout(url, options = {}, timeoutMs = YF_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function handler(req, res) {
   const { q } = req.query;
   if (!q || !q.trim()) return res.status(200).json({ results: [] });
 
   try {
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q.trim())}&quotesCount=10&newsCount=0&listsCount=0&enableFuzzyQuery=false`;
-    const r = await fetch(url, { headers: YF_HEADERS });
+    const r = await fetchWithTimeout(url, { headers: YF_HEADERS });
     if (!r.ok) return res.status(200).json({ results: [] });
 
     const data = await r.json();
@@ -44,6 +57,8 @@ export default async function handler(req, res) {
       .slice(0, 8);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
+    // Ticker lookup results are stable — cache for a day
+    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
     res.status(200).json({ results });
   } catch {
     res.status(200).json({ results: [] });
