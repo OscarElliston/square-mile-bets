@@ -9,6 +9,11 @@
  * Query params:
  *   ?since=YYYY-MM-DD  — optional; calculates periodChangePct from
  *                         the snapshot on that date (uses priceHistory)
+ *   ?history=true      — optional; adds a top-level `history` object
+ *                         with daily portfolio totals per player,
+ *                         matching the logic in app.js
+ *                         (getPlayerPortfolioHistory). Used by the
+ *                         digest card renderer for sparklines.
  *
  * Env vars required:
  *   FIREBASE_API_KEY  — Firebase Web API key
@@ -112,6 +117,104 @@ function fxRatesFromSnapshot(fxSnapshot) {
   return rates;
 }
 
+// ── Portfolio history builder ───────────────────────────────────────────────
+// Matches app.js `getPlayerPortfolioHistory` so sparklines in the card
+// are identical to what players see on the live site.
+//
+// Algorithm:
+//   1. Build an "all snapshots" map = priceHistory ∪ today's live prices ∪ sentinel "0000-00-00".
+//   2. Build an "all FX snapshots" map similarly; "0000-00-00" uses today's FX (bootstrap).
+//   3. Sort dates; keep the sentinel; drop Saturdays and Sundays.
+//   4. For each player and each date, sum shares × priceInGBP across their picks.
+//      Missing shares or missing price → fall back to the allocation amount (default 100).
+//   5. The sentinel date always returns the baseline (sum of allocations), which is
+//      conventionally £300 but may differ per player if allocations are non-default.
+function buildPortfolioHistory(players, priceHistory, fxHistory, startPrices, currencies, livePrices, fxPrices, startDate) {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const SENTINEL = '0000-00-00';
+
+  // 1. Merge in today's live prices under today's date.
+  const allSnapshots = { ...priceHistory };
+  if (Object.keys(livePrices || {}).length) {
+    allSnapshots[todayKey] = { ...(allSnapshots[todayKey] || {}) };
+    for (const [sym, info] of Object.entries(livePrices)) {
+      if (info?.price != null) allSnapshots[todayKey][sym] = info.price;
+    }
+  }
+  // Sentinel uses startPrices (actual data isn't used by the value calc — it short-circuits
+  // to the allocation baseline — but we still set it so the sentinel date appears in the sort).
+  allSnapshots[SENTINEL] = { ...startPrices };
+
+  // 2. Merge in today's live FX into the FX history, and bootstrap the sentinel.
+  const allFXSnaps = { ...fxHistory };
+  const liveFxSnap = {};
+  for (const [pair, info] of Object.entries(fxPrices || {})) {
+    if (info?.price != null) liveFxSnap[pair] = info.price;
+  }
+  if (Object.keys(liveFxSnap).length) {
+    allFXSnaps[todayKey] = { ...(allFXSnaps[todayKey] || {}), ...liveFxSnap };
+    // Site uses the current FX rates as the starting FX bootstrap (see app.js L2596-2600).
+    if (!allFXSnaps[SENTINEL]) allFXSnaps[SENTINEL] = { ...liveFxSnap };
+  }
+
+  // 3. Sort dates; exclude weekends (Sat/Sun) except for the sentinel.
+  const sortedDates = Object.keys(allSnapshots).sort().filter(d => {
+    if (d === SENTINEL) return true;
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    return dow !== 0 && dow !== 6;
+  });
+
+  // 4. Compute each player's daily portfolio value.
+  const playerSeries = {};
+  for (const p of players) {
+    const picks    = p.picks || [];
+    const alloc    = p.allocations || {};
+    const shares   = p.startShares || {};
+
+    const baseline = picks.reduce((s, pk, idx) => {
+      const a = typeof pk === 'string'
+        ? (alloc[idx] ?? 100)
+        : (pk.amount ?? alloc[idx] ?? 100);
+      return s + a;
+    }, 0);
+
+    playerSeries[p.name] = sortedDates.map(date => {
+      if (date === SENTINEL) return +baseline.toFixed(2);
+      const snap   = allSnapshots[date] || {};
+      const fxSnap = allFXSnaps[date] || allFXSnaps[SENTINEL] || {};
+      const total = picks.reduce((sum, pk, idx) => {
+        const ticker = typeof pk === 'string' ? pk : pk.ticker;
+        const amount = typeof pk === 'string'
+          ? (alloc[idx] ?? 100)
+          : (pk.amount ?? alloc[idx] ?? 100);
+        const sh  = shares[ticker];
+        const raw = snap[ticker];
+        if (!sh || !raw) return sum + amount; // fall back to allocation if price missing
+        const cur = currencies[ticker] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP')      priceGBP = raw;
+        else if (cur === 'GBp') priceGBP = raw / 100;
+        else {
+          const fxKey  = 'GBP' + cur + '=X';
+          const fxRate = fxSnap[fxKey];
+          priceGBP = fxRate ? raw / fxRate : null;
+        }
+        return sum + (priceGBP != null ? sh * priceGBP : amount);
+      }, 0);
+      return +total.toFixed(2);
+    });
+  }
+
+  // Map the sentinel to the actual game start date for display (fall back to the string).
+  const displayDates = sortedDates.map(d => d === SENTINEL ? (startDate || d) : d);
+
+  return {
+    baseline: 300,
+    dates: displayDates,
+    players: playerSeries
+  };
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -132,6 +235,8 @@ export default async function handler(req, res) {
 
   // Optional: period start date for multi-day change calculation
   const sinceParam = req.query.since || null;
+  // Optional: include per-player daily portfolio history for sparklines
+  const includeHistory = req.query.history === 'true' || req.query.history === '1';
 
   try {
     // 1. Read game state from Firestore
@@ -343,6 +448,16 @@ export default async function handler(req, res) {
         requestedSince: sinceParam,
         today
       };
+    }
+
+    // Include portfolio history for sparklines if history=true was requested.
+    // This replicates app.js getPlayerPortfolioHistory so the digest card
+    // draws identical lines to what players see on the live site.
+    if (includeHistory) {
+      response.history = buildPortfolioHistory(
+        players, priceHistory, fxHistory, startPrices, currencies,
+        livePrices, fxPrices, startDate
+      );
     }
 
     return res.status(200).json(response);
