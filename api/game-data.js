@@ -141,9 +141,13 @@ function buildPortfolioHistory(players, priceHistory, fxHistory, startPrices, cu
       if (info?.price != null) allSnapshots[todayKey][sym] = info.price;
     }
   }
-  // Sentinel uses startPrices (actual data isn't used by the value calc — it short-circuits
-  // to the allocation baseline — but we still set it so the sentinel date appears in the sort).
-  allSnapshots[SENTINEL] = { ...startPrices };
+  // Sentinel uses startPrices as a synthetic £300 anchor for sparkline baselines.
+  // Skip it when priceHistory already has a real snapshot for startDate — otherwise
+  // the display dates array ends up with startDate duplicated (once from the sentinel,
+  // once from the real snapshot).
+  if (!priceHistory[startDate]) {
+    allSnapshots[SENTINEL] = { ...startPrices };
+  }
 
   // 2. Merge in today's live FX into the FX history, and bootstrap the sentinel.
   const allFXSnaps = { ...fxHistory };
