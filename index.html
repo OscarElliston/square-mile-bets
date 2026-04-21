@@ -435,15 +435,51 @@
     <!-- Game content — hidden until game starts -->
     <div id="game-content" class="hidden">
 
+    <!-- ══════════════════════════════════════
+         MASTHEAD (v3 — FT-inspired, collapses on scroll)
+         Shown only when game is live. Replaces the top .topbar.
+         Controls (refresh / settings / sign-in) are moved into
+         #mh-controls-slot by JS on init, so the same functions
+         and IDs keep working.
+    ══════════════════════════════════════ -->
+    <header class="masthead" id="masthead">
+      <div class="dateline">
+        <div class="dateline-left">
+          <span id="mh-date-str">—</span>
+          <span class="dateline-live">
+            <span class="live-dot mh-live-dot"></span>
+            <span id="mh-live-time">—</span>
+          </span>
+        </div>
+        <div class="dateline-controls" id="mh-controls-slot"></div>
+      </div>
+      <div class="wordmark-wrap">
+        <div class="wordmark wordmark-big">Square Mile Bets</div>
+        <div class="wordmark wordmark-small">Square Mile Bets</div>
+      </div>
+      <div class="tagline">
+        <div class="rule"></div>
+        <div class="text">Fortune favours the forecaster.</div>
+        <div class="rule"></div>
+      </div>
+
+      <!-- Ticker tape of player picks -->
+      <div class="tape" id="tape-wrap">
+        <div class="tape-track" id="tape-track">
+          <span class="tape-item"><span class="t-sym">Loading…</span></span>
+        </div>
+      </div>
+
+      <!-- Tabs — same IDs as before so switchDashTab still works -->
+      <nav class="dash-tabs">
+        <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">Front Page</button>
+        <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">Market</button>
+        <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">Charts</button>
+      </nav>
+    </header>
+
     <!-- Winner banner — shown only when game has ended -->
     <div id="winner-banner" class="hidden"></div>
-
-    <!-- Tabs -->
-    <div class="dash-tabs">
-      <button class="dash-tab active" id="dt-btn-standings" onclick="switchDashTab('standings')">The Table</button>
-      <button class="dash-tab" id="dt-btn-stocks"   onclick="switchDashTab('stocks')">The Market</button>
-      <button class="dash-tab" id="dt-btn-history"  onclick="switchDashTab('history')">The Charts</button>
-    </div>
 
     <!-- ── TAB: STANDINGS ── -->
     <div id="dt-standings">
@@ -455,6 +491,12 @@
         <div class="error-box" id="error-msg"></div>
       </div>
       <div id="dash-content" class="hidden">
+        <!-- Your Position — only rendered when signed in as a player -->
+        <div id="your-position-slot"></div>
+
+        <!-- Rank swap + big mover strip (2-col grid) -->
+        <div id="moments-slot"></div>
+
         <div class="section-title">The Table</div>
         <div class="lb-card" id="leaderboard"></div>
         <div class="section-title" style="margin-top:28px">Player Portfolios</div>
