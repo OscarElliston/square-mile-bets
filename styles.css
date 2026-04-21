@@ -551,18 +551,30 @@
     .masthead.scrolled .wordmark-small { opacity:1; }
     .masthead.scrolled .tagline { max-height:0; opacity:0; padding:0 24px; }
 
-    /* Ticker tape */
+    /* Ticker tape — slightly warmer/lighter than the tabs bar (#1A1614)
+       so the two dark strips read as distinct rows. A claret hairline
+       underneath seals the separation. */
     .masthead .tape {
-      background:#1A1614; color:var(--bg);
+      background:#2A211D; color:var(--bg);
       overflow:hidden;
       border-top:1px solid rgba(255,241,224,.08);
-      border-bottom:1px solid rgba(255,241,224,.08);
+      border-bottom:2px solid var(--accent);
+      transition:padding .3s cubic-bezier(.22,1,.36,1), border-bottom-width .2s ease;
     }
+    /* Compact (but visible) when scrolled — smaller text, tighter padding.
+       The claret hairline shrinks to 1px so it reads as a seam not a rule. */
+    .masthead.scrolled .tape { border-bottom-width:1px; }
+    .masthead.scrolled .tape-track {
+      padding:5px 0;
+      animation-duration:240s;
+    }
+    .masthead.scrolled .tape-item { font-size:11px; letter-spacing:.4px; gap:6px; }
     .masthead .tape-track {
       display:flex; gap:32px; padding:10px 0;
       white-space:nowrap;
-      animation:mh-marquee 90s linear infinite;
+      animation:mh-marquee 180s linear infinite;
       width:max-content;
+      transition:padding .3s cubic-bezier(.22,1,.36,1);
     }
     .masthead .tape:hover .tape-track { animation-play-state:paused; }
     @keyframes mh-marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
@@ -589,12 +601,12 @@
     .masthead .dash-tab {
       flex:1;
       background:none; border:none; cursor:pointer;
-      padding:18px 16px;
-      font-family:var(--heading); font-size:20px;
+      padding:11px 16px;
+      font-family:var(--heading); font-size:17px;
       color:rgba(255,241,224,.45);
       letter-spacing:.3px;
       position:relative;
-      transition:color .15s;
+      transition:color .15s, padding .3s cubic-bezier(.22,1,.36,1), font-size .3s cubic-bezier(.22,1,.36,1);
       border-right:1px solid rgba(255,241,224,.08);
       margin-bottom:0;
       text-transform:none;
@@ -608,11 +620,20 @@
     .masthead .dash-tab.active::after {
       content:''; position:absolute; bottom:0; left:50%;
       transform:translateX(-50%);
-      width:48px; height:3px; background:var(--accent);
+      width:44px; height:2px; background:var(--accent);
+      transition:width .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1);
     }
     .masthead .dash-tab:not(.active):hover {
       color:rgba(255,241,224,.7);
       background:transparent;
+    }
+    /* Compact further when the masthead is in its scrolled state */
+    .masthead.scrolled .dash-tab {
+      padding:7px 16px;
+      font-size:14px;
+    }
+    .masthead.scrolled .dash-tab.active::after {
+      width:32px; height:2px;
     }
 
     /* Your Position strip (signed-in only) */
@@ -674,8 +695,10 @@
     @media (max-width:540px) {
       .masthead .dateline { padding:8px 14px 5px; font-size:10px; letter-spacing:1px; }
       .masthead .dateline-left { gap:10px; }
-      .masthead .dash-tab { font-size:16px; padding:14px 8px; }
-      .masthead .dash-tab.active::after { width:36px; }
+      .masthead .dash-tab { font-size:15px; padding:10px 8px; }
+      .masthead .dash-tab.active::after { width:32px; }
+      .masthead.scrolled .dash-tab { font-size:13px; padding:6px 8px; }
+      .masthead.scrolled .dash-tab.active::after { width:26px; }
       .wordmark-wrap { height:clamp(48px, 13vw, 80px); }
       .wordmark-small { font-size:19px; }
       .masthead .tagline { padding:8px 20px 12px; }
