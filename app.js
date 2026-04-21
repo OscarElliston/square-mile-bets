@@ -861,6 +861,24 @@ function updateUserBadge() {
   const setupSigninPrompt = document.getElementById('setup-signin-prompt');
   if (addPlayerSection)  addPlayerSection.style.display  = currentUser ? '' : 'none';
   if (setupSigninPrompt) setupSigninPrompt.style.display = currentUser ? 'none' : '';
+
+  // v3: Refresh the Your Position strip whenever auth state changes so the
+  // signed-in player sees their rank (and it disappears on sign-out).
+  try {
+    if (typeof renderYourPosition === 'function' && _lastSortedSnapshot) {
+      renderYourPosition(_lastSortedSnapshot);
+    }
+  } catch (e) { /* no-op */ }
+  // Also re-apply highlighted styling on leaderboard rows.
+  try {
+    const myName = currentUser && currentUser.displayName ? currentUser.displayName.toLowerCase() : null;
+    document.querySelectorAll('.lb-row').forEach(row => {
+      const pidx = parseInt(row.dataset.playerIdx);
+      const p = S.players ? S.players[pidx] : null;
+      const isMe = myName && p && p.name && p.name.toLowerCase() === myName;
+      row.classList.toggle('highlighted', !!isMe);
+    });
+  } catch (e) { /* no-op */ }
 }
 
 // Gate any participatory action behind auth — shows sign-in modal if needed
@@ -1898,6 +1916,7 @@ function showDash() {
   if (isDemoMode) {
     hide('faq-section');
     show('game-content');
+    setupMasthead();
     setDot('live');
     document.getElementById('last-updated').textContent = 'Simulated data';
     hide('loading-state'); hide('error-state');
@@ -1907,6 +1926,7 @@ function showDash() {
     // Game already started — show tabs and fetch prices as normal
     hide('faq-section');
     show('game-content');
+    setupMasthead();
     refreshPrices();
   } else {
     // Game not yet started — hide game tabs, show pre-game view only
@@ -2244,10 +2264,12 @@ function renderDash() {
     if (b.pv === null) return -1;
     return b.pv - a.pv;   // sort by highest portfolio value
   });
+  _lastSortedSnapshot = sorted;
   renderWinnerBanner(sorted);
   renderLeaderboard(sorted);
   renderCards(sorted);
   renderStackedBarChart();
+  renderMhExtras(sorted);
   // Render sparklines after DOM is populated
   requestAnimationFrame(() => renderSparklines());
 
@@ -2355,7 +2377,7 @@ function renderLeaderboard(sorted) {
       </div>`;
     }).join('');
 
-    return `<div class="lb-row ${rowCls} ${tintCls} ${meCls}" onclick="toggleExpand(${i})" style="animation-delay:${i * 0.03}s">
+    return `<div class="lb-row ${rowCls} ${tintCls} ${meCls}" data-player-idx="${p.origIdx}" onclick="toggleExpand(${i})" style="animation-delay:${i * 0.03}s">
       <div class="lb-rank">${rankEl}${posChangeEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         ${playerAvatar(p, 30)}
@@ -4004,6 +4026,261 @@ function fireConfetti() {
     else { ctx.clearRect(0, 0, canvas.width, canvas.height); }
   }
   requestAnimationFrame(draw);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  V3 MASTHEAD / TAPE / YOUR POSITION / MOMENTS
+//  Added by the front-page redesign. Only activates once
+//  #game-content is visible (i.e. the game is live).
+// ═══════════════════════════════════════════════════════════
+
+let _mastheadReady = false;
+let _lastSortedSnapshot = null;
+
+function setupMasthead() {
+  if (_mastheadReady) return;
+  _mastheadReady = true;
+
+  // 1. Move existing topbar controls into the masthead dateline so the
+  //    refresh / settings / sign-in buttons keep their IDs and wiring.
+  const slot = document.getElementById('mh-controls-slot');
+  if (slot) {
+    const ids = ['live-status-wrap', 'signin-topbar-btn', 'user-badge', 'user-menu'];
+    // Refresh + settings don't have IDs — grab them by selector from the topbar
+    const topbar = document.querySelector('.topbar');
+    if (topbar) {
+      const refreshBtn = topbar.querySelector('button[onclick="refreshPrices()"]');
+      const adminBtn   = document.getElementById('admin-btn');
+      if (refreshBtn) slot.appendChild(refreshBtn);
+      if (adminBtn)   slot.appendChild(adminBtn);
+    }
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) slot.appendChild(el);
+    });
+  }
+
+  // 2. Install scroll listener with hysteresis to avoid slow-scroll flashing.
+  const masthead = document.getElementById('masthead');
+  if (masthead) {
+    let ticking = false;
+    const COLLAPSE_AT = 80;
+    const EXPAND_AT   = 30;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const isCollapsed = masthead.classList.contains('scrolled');
+        if (!isCollapsed && y > COLLAPSE_AT) masthead.classList.add('scrolled');
+        else if (isCollapsed && y < EXPAND_AT) masthead.classList.remove('scrolled');
+        ticking = false;
+      });
+      ticking = true;
+    });
+  }
+
+  // 3. Live clock + date in the dateline
+  updateMhClock();
+  setInterval(updateMhClock, 30_000);
+
+  // 4. Flag the body so CSS knows to hide the old .topbar + progress bar.
+  document.body.classList.add('game-live');
+}
+
+function updateMhClock() {
+  const timeEl = document.getElementById('mh-live-time');
+  const dateEl = document.getElementById('mh-date-str');
+  if (!timeEl || !dateEl) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  timeEl.textContent = `${hh}:${mm}`;
+  dateEl.textContent = now.toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  }).toUpperCase();
+}
+
+// Build a ticker-tape marquee from player picks. Uses S.players + prices
+// + S.startPrices to compute each ticker's total % change since game start.
+function renderMhTape() {
+  const track = document.getElementById('tape-track');
+  if (!track || !prices) return;
+  const seen = new Set();
+  const items = [];
+  for (const p of (S.players || [])) {
+    for (const sym of (p.picks || [])) {
+      if (seen.has(sym)) continue;
+      seen.add(sym);
+      // S.startPrices stores raw numbers. prices[sym] is an object with .price.
+      const startPx = S.startPrices?.[sym];
+      const curData = prices?.[sym];
+      const curPx   = curData && typeof curData === 'object' ? curData.price : curData;
+      if (startPx == null || curPx == null || !isFinite(startPx) || startPx === 0) continue;
+      const pct = ((curPx - startPx) / startPx) * 100;
+      if (!isFinite(pct)) continue;
+      items.push({ sym, pct });
+    }
+  }
+  if (!items.length) {
+    track.innerHTML = `<span class="tape-item"><span class="t-sym">Awaiting prices…</span></span>`;
+    return;
+  }
+  const itemHtml = ({ sym, pct }) => {
+    const cls   = pct > 0.1 ? 'up' : pct < -0.1 ? 'down' : 'flat';
+    const arrow = pct > 0.1 ? '▲' : pct < -0.1 ? '▼' : '◆';
+    const sign  = pct >= 0 ? '+' : '';
+    return `<span class="tape-item">
+      <span class="t-sym">${sym}</span>
+      <span class="t-pct ${cls}">${arrow}${sign}${pct.toFixed(1)}</span>
+    </span>`;
+  };
+  const once = items.map(itemHtml).join('');
+  track.innerHTML = once + once; // duplicate for seamless loop
+}
+
+// Your Position — only rendered when a signed-in user matches a player.
+function renderYourPosition(sorted) {
+  const slot = document.getElementById('your-position-slot');
+  if (!slot) return;
+  if (!currentUser || !currentUser.displayName) { slot.innerHTML = ''; return; }
+
+  const name = currentUser.displayName.toLowerCase();
+  const idx = (sorted || []).findIndex(p => p.name && p.name.toLowerCase() === name);
+  if (idx < 0) { slot.innerHTML = ''; return; }
+
+  const p = sorted[idx];
+  const rank = idx + 1;
+  const total = sorted.length;
+  const up = (p.pct || 0) >= 0;
+  const cls  = up ? 'pos' : 'neg';
+  const sign = up ? '+' : '';
+  const pv   = p.pv != null ? `£${p.pv.toFixed(2)}` : '—';
+
+  slot.innerHTML = `
+    <div class="your-position">
+      <div class="yp-row">
+        <div class="yp-left">
+          <div class="eyebrow">Your Position</div>
+          <div class="rank">No. ${rank}<span class="of">of ${total}</span></div>
+        </div>
+        <div class="yp-right">
+          <div class="pct ${cls}">${sign}${(p.pct ?? 0).toFixed(2)}%</div>
+          <div class="val">${pv}</div>
+        </div>
+      </div>
+      <button class="yp-btn" onclick="scrollToMyRow()">View my portfolio →</button>
+    </div>`;
+}
+
+// Smooth-scroll to the signed-in player's leaderboard row and open its
+// expand panel. Looks up the .lb-row by data-player-idx so the ordering
+// of leaderboard rows doesn't matter.
+function scrollToMyRow() {
+  if (!currentUser || !currentUser.displayName) return;
+  const name = currentUser.displayName.toLowerCase();
+  // Find the player in S.players to get their origIdx
+  const origIdx = S.players.findIndex(p => p.name && p.name.toLowerCase() === name);
+  if (origIdx < 0) return;
+  // Find the leaderboard row by origIdx (renderLeaderboard sets data attrs)
+  const row = document.querySelector(`.lb-row[data-player-idx="${origIdx}"]`);
+  if (!row) return;
+  const mh = document.getElementById('masthead');
+  const offset = (mh ? mh.getBoundingClientRect().height : 0) + 12;
+  const y = row.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top: y, behavior: 'smooth' });
+  // Open the expand panel after scroll settles
+  setTimeout(() => {
+    if (typeof toggleExpand === 'function' && !row.classList.contains('expanded')) {
+      // Prefer the existing toggleExpand if exposed; otherwise click the row
+      row.click();
+    } else if (!row.classList.contains('expanded')) {
+      row.click();
+    }
+  }, 450);
+}
+
+// Moments strip — rank swap (day-over-day) + biggest single-day mover.
+function renderMoments(sorted) {
+  const slot = document.getElementById('moments-slot');
+  if (!slot) return;
+
+  // ── Big mover ── biggest absolute day % change across all picked stocks.
+  // prices[sym] is an object with change1d (number) already computed in both
+  // demo mode (loadDemoData) and live mode (refreshPrices).
+  let topMover = null;
+  for (const sym of Object.keys(prices || {})) {
+    const data = prices[sym];
+    if (!data) continue;
+    const dayPct = data.change1d;
+    if (dayPct == null || !isFinite(dayPct)) continue;
+    // Only consider stocks someone actually picked
+    const picker = (S.players || []).find(p => (p.picks || []).includes(sym));
+    if (!picker) continue;
+    if (!topMover || Math.abs(dayPct) > Math.abs(topMover.pct)) {
+      topMover = { sym, pct: dayPct, player: picker.name };
+    }
+  }
+
+  // ── Rank swap ── compare yesterday's ranking vs today. Can return null
+  // on Day 1 (no priceHistory snapshots yet) so fall back to empty map.
+  const prevRankMap = (typeof getPreviousDayRanking === 'function')
+    ? (getPreviousDayRanking() || {}) : {};
+  let swap = null;
+  (sorted || []).forEach((p, i) => {
+    const newRank = i + 1;
+    const oldRank = prevRankMap[p.origIdx];
+    if (!oldRank) return;
+    const delta = oldRank - newRank; // positive = climbed
+    if (!swap || Math.abs(delta) > Math.abs(swap.delta)) {
+      swap = { name: p.name, delta, newRank, oldRank };
+    }
+  });
+
+  // ── Render ──
+  let rankSwapHtml = `
+    <div class="moment">
+      <div class="eyebrow">↻ Rank Swap</div>
+      <div class="headline" style="color:var(--dim)">No ranking changes today.</div>
+    </div>`;
+  if (swap && swap.delta !== 0) {
+    const dir = swap.delta > 0 ? 'climbs to' : 'slips to';
+    const first = (swap.name || '').split(' ')[0] || swap.name;
+    rankSwapHtml = `
+      <div class="moment">
+        <div class="eyebrow">↻ Rank Swap</div>
+        <div class="headline">${first} ${dir} No. ${swap.newRank}</div>
+        <div class="pct ${swap.delta > 0 ? 'pos' : 'neg'}">${swap.delta > 0 ? '+' : ''}${swap.delta}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:.6px">from No. ${swap.oldRank}</div>
+      </div>`;
+  }
+
+  let bigMoverHtml = `
+    <div class="moment">
+      <div class="eyebrow">◎ Big Mover</div>
+      <div class="headline" style="color:var(--dim)">No outsize moves today.</div>
+    </div>`;
+  if (topMover && Math.abs(topMover.pct) >= 1) {
+    const sign = topMover.pct >= 0 ? '+' : '';
+    const cls  = topMover.pct >= 0 ? 'pos' : 'neg';
+    const first = (topMover.player || '').split(' ')[0] || topMover.player;
+    bigMoverHtml = `
+      <div class="moment">
+        <div class="eyebrow">◎ Big Mover</div>
+        <div class="headline">${topMover.sym}${first ? ` (${first})` : ''}</div>
+        <div class="pct ${cls}">${sign}${topMover.pct.toFixed(1)}%</div>
+      </div>`;
+  }
+
+  slot.innerHTML = rankSwapHtml + bigMoverHtml;
+  slot.className = 'moments';
+}
+
+// Wrapper called at the end of renderDash() to refresh all v3 UI.
+// Safe to call even when the masthead isn't mounted (functions no-op).
+function renderMhExtras(sorted) {
+  try { renderMhTape(); } catch (e) { console.warn('tape render failed', e); }
+  try { renderYourPosition(sorted); } catch (e) { console.warn('YP render failed', e); }
+  try { renderMoments(sorted); } catch (e) { console.warn('moments render failed', e); }
 }
 
 // ═══════════════════════════════════════════════════════════
