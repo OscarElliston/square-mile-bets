@@ -473,3 +473,218 @@
     .pick-card-alloc { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
     .pick-card-alloc-label { font-size:11px; color:var(--muted); font-family:var(--mono); flex-shrink:0; }
     .pick-card-num { font-size:12px; font-weight:700; color:var(--accent); font-family:var(--heading); letter-spacing:0; margin-bottom:6px; text-transform:none; }
+
+    /* ═══════════════════════════════════════════════════════════
+       V3 MASTHEAD / TAPE / TABS / FRONT-PAGE STRIPS
+       Applies only inside #game-content when body.game-live is set.
+       Pre-game state (countdown/FAQ/inline-join) is unaffected.
+       ═══════════════════════════════════════════════════════════ */
+
+    /* When the masthead is active, hide the old .topbar + progress bar.
+       (Their roles are taken over by the masthead + ticker tape.) */
+    body.game-live .topbar { display:none !important; }
+    body.game-live .progress-section { display:none !important; }
+    /* Let the masthead run edge-to-edge by zeroing .main's side padding */
+    body.game-live .main { padding-left:0; padding-right:0; padding-top:0; max-width:none; }
+    /* Inner game-content children (except the masthead/winner) re-gain normal page padding */
+    body.game-live #game-content > :not(.masthead):not(#winner-banner) {
+      max-width:1140px; margin-left:auto; margin-right:auto; padding-left:18px; padding-right:18px;
+    }
+    body.game-live #winner-banner:not(.hidden) {
+      max-width:1140px; margin:16px auto; padding:0 18px;
+    }
+
+    /* Masthead — sticky container, collapses on scroll */
+    .masthead {
+      position:sticky; top:0; z-index:50;
+      background:var(--bg);
+      border-bottom:3px double var(--border);
+      margin-bottom:18px;
+    }
+
+    .masthead .dateline {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:9px 20px 7px;
+      border-bottom:1px solid var(--border);
+      font-family:var(--mono); font-size:11px; letter-spacing:1.2px;
+      color:var(--muted); text-transform:uppercase;
+      max-width:1140px; margin:0 auto;
+    }
+    .masthead .dateline-left { display:flex; align-items:center; gap:18px; min-width:0; overflow:hidden; white-space:nowrap; }
+    .masthead .dateline-live { display:flex; align-items:center; gap:6px; }
+    .masthead .mh-live-dot { width:8px; height:8px; }
+    .masthead .dateline-controls { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+    /* Tighten controls when they appear in the dateline */
+    .masthead .dateline-controls .btn { padding:4px 10px; font-size:10px; }
+    .masthead .dateline-controls .live-status,
+    .masthead .dateline-controls .last-updated { display:none; } /* masthead has its own clock */
+
+    /* Two-layer wordmark — cross-fade on collapse (GPU-friendly) */
+    .wordmark-wrap {
+      position:relative;
+      height:clamp(52px, 11vw, 96px);
+      transition:height .35s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
+    }
+    .wordmark {
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--heading); color:var(--text); line-height:1;
+      white-space:nowrap; padding:0 16px;
+      transition:opacity .25s ease;
+    }
+    .wordmark-big   { font-size:clamp(30px, 9vw, 76px); letter-spacing:1.5px; text-transform:uppercase; opacity:1; }
+    .wordmark-small { font-size:22px; letter-spacing:.3px; opacity:0; }
+
+    .masthead .tagline {
+      display:flex; align-items:center; justify-content:center; gap:14px;
+      padding:10px 24px 14px;
+      max-height:46px; opacity:1; overflow:hidden;
+      transition:max-height .3s cubic-bezier(.22,1,.36,1), opacity .2s ease, padding .3s cubic-bezier(.22,1,.36,1);
+    }
+    .masthead .tagline .rule { width:36px; height:1px; background:var(--border2); }
+    .masthead .tagline .text { font-family:var(--heading); font-style:italic; font-size:14px; color:var(--muted); letter-spacing:.5px; }
+
+    /* Collapsed state */
+    .masthead.scrolled .wordmark-wrap { height:40px; }
+    .masthead.scrolled .wordmark-big   { opacity:0; }
+    .masthead.scrolled .wordmark-small { opacity:1; }
+    .masthead.scrolled .tagline { max-height:0; opacity:0; padding:0 24px; }
+
+    /* Ticker tape */
+    .masthead .tape {
+      background:#1A1614; color:var(--bg);
+      overflow:hidden;
+      border-top:1px solid rgba(255,241,224,.08);
+      border-bottom:1px solid rgba(255,241,224,.08);
+    }
+    .masthead .tape-track {
+      display:flex; gap:32px; padding:10px 0;
+      white-space:nowrap;
+      animation:mh-marquee 90s linear infinite;
+      width:max-content;
+    }
+    .masthead .tape:hover .tape-track { animation-play-state:paused; }
+    @keyframes mh-marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .masthead .tape-item {
+      font-family:var(--mono); font-size:13px; font-weight:600;
+      letter-spacing:.6px;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .masthead .tape-item .t-sym { color:var(--bg); }
+    .masthead .tape-item .t-pct { font-weight:700; font-variant-numeric:tabular-nums; }
+    .masthead .tape-item .up   { color:#5EC5C9; }
+    .masthead .tape-item .down { color:#E88AA4; }
+    .masthead .tape-item .flat { color:var(--dim); }
+
+    /* New tab bar — overrides .dash-tabs styling when inside the masthead */
+    .masthead .dash-tabs {
+      background:#1A1614;
+      display:flex; gap:0;
+      margin:0; padding:0;
+      border-bottom:none;
+      position:static;
+      top:auto;
+    }
+    .masthead .dash-tab {
+      flex:1;
+      background:none; border:none; cursor:pointer;
+      padding:18px 16px;
+      font-family:var(--heading); font-size:20px;
+      color:rgba(255,241,224,.45);
+      letter-spacing:.3px;
+      position:relative;
+      transition:color .15s;
+      border-right:1px solid rgba(255,241,224,.08);
+      margin-bottom:0;
+      text-transform:none;
+    }
+    .masthead .dash-tab:last-child { border-right:none; }
+    .masthead .dash-tab.active {
+      color:var(--bg);
+      background:transparent;
+      border-bottom:none;
+    }
+    .masthead .dash-tab.active::after {
+      content:''; position:absolute; bottom:0; left:50%;
+      transform:translateX(-50%);
+      width:48px; height:3px; background:var(--accent);
+    }
+    .masthead .dash-tab:not(.active):hover {
+      color:rgba(255,241,224,.7);
+      background:transparent;
+    }
+
+    /* Your Position strip (signed-in only) */
+    .your-position {
+      padding:18px 20px;
+      border:1px solid var(--border);
+      background:var(--surface2);
+      border-radius:var(--radius);
+      margin-bottom:16px;
+    }
+    .yp-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .yp-left .eyebrow { font-family:var(--mono); font-size:10px; letter-spacing:1.6px; color:var(--accent); text-transform:uppercase; margin-bottom:6px; font-weight:700; }
+    .yp-left .rank { font-family:var(--heading); font-size:40px; line-height:1; display:flex; align-items:baseline; gap:8px; }
+    .yp-left .rank .of { font-size:18px; color:var(--muted); font-family:'Inter',sans-serif; font-weight:400; }
+    .yp-right { text-align:right; }
+    .yp-right .pct { font-family:var(--heading); font-size:40px; line-height:1; font-variant-numeric:tabular-nums; }
+    .yp-right .pct.pos { color:var(--green); }
+    .yp-right .pct.neg { color:var(--accent); }
+    .yp-right .val { font-family:var(--mono); font-size:13px; color:var(--muted); margin-top:4px; }
+    .yp-btn {
+      display:inline-block;
+      background:var(--accent); color:#fff;
+      border:none; padding:12px 18px; margin-top:14px;
+      font-family:var(--mono); font-size:11px;
+      letter-spacing:1.4px; text-transform:uppercase; font-weight:700;
+      cursor:pointer; border-radius:2px;
+    }
+    .yp-btn:hover { background:var(--accent2); }
+
+    /* Moments strip (rank swap + big mover) */
+    .moments {
+      display:grid; grid-template-columns:1fr 1fr;
+      border:1px solid var(--border); border-radius:var(--radius);
+      overflow:hidden;
+      margin-bottom:22px;
+    }
+    .moment { padding:16px 18px; background:var(--surface); }
+    .moment + .moment { border-left:1px solid var(--border); }
+    .moment .eyebrow {
+      font-family:var(--mono); font-size:10px; letter-spacing:1.6px;
+      color:var(--accent); text-transform:uppercase; font-weight:700;
+      margin-bottom:8px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .moment .headline {
+      font-family:var(--heading); font-size:22px; line-height:1.15;
+      color:var(--text); letter-spacing:-.2px;
+      margin-bottom:8px;
+      text-wrap:balance;
+    }
+    .moment .pct {
+      font-family:var(--heading); font-size:26px; line-height:1;
+      font-variant-numeric:tabular-nums;
+    }
+    .moment .pct.pos { color:var(--green); }
+    .moment .pct.neg { color:var(--accent); }
+
+    /* Mobile tweaks */
+    @media (max-width:540px) {
+      .masthead .dateline { padding:8px 14px 5px; font-size:10px; letter-spacing:1px; }
+      .masthead .dateline-left { gap:10px; }
+      .masthead .dash-tab { font-size:16px; padding:14px 8px; }
+      .masthead .dash-tab.active::after { width:36px; }
+      .wordmark-wrap { height:clamp(48px, 13vw, 80px); }
+      .wordmark-small { font-size:19px; }
+      .masthead .tagline { padding:8px 20px 12px; }
+      .masthead .tagline .text { font-size:12px; }
+      .yp-left .rank { font-size:32px; }
+      .yp-right .pct { font-size:30px; }
+      .moment .headline { font-size:17px; }
+      .moment .pct { font-size:22px; }
+      body.game-live #game-content > :not(.masthead):not(#winner-banner) {
+        padding-left:14px; padding-right:14px;
+      }
+    }
