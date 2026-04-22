@@ -76,7 +76,12 @@ async function fetchPrices(tickers) {
         prices[sym] = {
           price: meta.regularMarketPrice,
           previousClose: meta.chartPreviousClose || meta.previousClose || null,
-          currency: meta.currency || null
+          currency: meta.currency || null,
+          // Company name from Yahoo. longName is the full legal name
+          // (e.g. "Kioxia Holdings Corporation"); shortName is a shorter
+          // display form. We prefer longName and fall back to shortName
+          // so the digest never has to guess a name from the ticker.
+          name: meta.longName || meta.shortName || null
         };
       }
     } catch { /* skip — request timed out or failed */ }
@@ -354,6 +359,11 @@ export default async function handler(req, res) {
         const stockEntry = {
           ticker,
           player: p.name,
+          // Company name sourced from Yahoo chart meta (longName, falling
+          // back to shortName). Null when Yahoo didn't return one so the
+          // consumer can decide to display the bare ticker — digests MUST
+          // use this field verbatim rather than inferring names.
+          name: live?.name || null,
           amount,
           currentValue: +currentValue.toFixed(2),
           totalChangePct: +pctChange.toFixed(2),
