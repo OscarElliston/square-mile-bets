@@ -4060,23 +4060,51 @@ function setupMasthead() {
     });
   }
 
-  // 2. Install scroll listener with hysteresis to avoid slow-scroll flashing.
+  // 2. Use an IntersectionObserver watching a position-fixed sentinel to
+  //    toggle the collapsed state. The sentinel sits at an absolute
+  //    document y of 80px — its position does NOT depend on the masthead's
+  //    own height, so when the masthead shrinks on collapse the sentinel's
+  //    viewport intersection doesn't re-evaluate in a way that can loop.
+  //
+  //    The previous scroll-handler approach had a layout-shift feedback
+  //    loop: masthead collapse shrank it by ~60–80px, Chrome's scroll
+  //    anchoring would nudge scrollY to keep visuals stable, scrollY could
+  //    drop below the expand threshold, masthead would re-expand, scroll
+  //    anchoring would nudge again, and the header would flicker between
+  //    the two states. An absolute-positioned sentinel breaks that loop
+  //    because its document position is invariant.
   const masthead = document.getElementById('masthead');
-  if (masthead) {
-    let ticking = false;
-    const COLLAPSE_AT = 80;
-    const EXPAND_AT   = 30;
-    window.addEventListener('scroll', () => {
-      if (ticking) return;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const isCollapsed = masthead.classList.contains('scrolled');
-        if (!isCollapsed && y > COLLAPSE_AT) masthead.classList.add('scrolled');
-        else if (isCollapsed && y < EXPAND_AT) masthead.classList.remove('scrolled');
-        ticking = false;
-      });
-      ticking = true;
-    });
+  if (masthead && 'IntersectionObserver' in window) {
+    const COLLAPSE_AT = 80; // px from top of document
+
+    // Create (or reuse) the sentinel. Absolutely positioned so nothing in
+    // the flow can move it when the masthead's own height changes.
+    let sentinel = document.getElementById('mh-sentinel');
+    if (!sentinel) {
+      sentinel = document.createElement('div');
+      sentinel.id = 'mh-sentinel';
+      sentinel.setAttribute('aria-hidden', 'true');
+      sentinel.style.cssText = [
+        'position:absolute',
+        'top:' + COLLAPSE_AT + 'px',
+        'left:0',
+        'width:1px',
+        'height:1px',
+        'pointer-events:none',
+        'opacity:0'
+      ].join(';');
+      document.body.appendChild(sentinel);
+    }
+
+    const observer = new IntersectionObserver(entries => {
+      const entry = entries[0];
+      if (!entry) return;
+      // Sentinel visible → user near top → expanded state.
+      // Sentinel out of view (scrolled past) → collapsed state.
+      masthead.classList.toggle('scrolled', !entry.isIntersecting);
+    }, { threshold: [0] });
+
+    observer.observe(sentinel);
   }
 
   // 3. Live clock + date in the dateline
