@@ -24,7 +24,13 @@
 
     html { scroll-behavior:smooth; }
 
-    body { background:var(--bg); color:var(--text); font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height:100vh; line-height:1.5; }
+    /* overflow-anchor:none disables Chrome's scroll-anchoring on the body.
+       The masthead changes height when it toggles .scrolled, and scroll
+       anchoring tries to "preserve" viewport position by shifting the scroll
+       offset — which re-triggers the intersection observer and flickers
+       between collapsed/expanded states. Belt-and-braces alongside the
+       sentinel approach in setupMasthead(). */
+    body { background:var(--bg); color:var(--text); font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height:100vh; line-height:1.5; overflow-anchor:none; }
 
     ::-webkit-scrollbar { width:6px; height:6px; }
     ::-webkit-scrollbar-track { background:transparent; }
