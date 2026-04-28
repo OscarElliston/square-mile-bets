@@ -712,6 +712,8 @@ function load() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
     if (d) S = {...S,...d};
+    // Defensive: Firestore can return non-array values if the doc was hand-edited.
+    if (!Array.isArray(S.players)) S.players = [];
     return !!d && S.players.length > 0;
   } catch { return false; }
 }
@@ -722,12 +724,14 @@ async function loadFromFirebase() {
     const doc = await db.collection('squaremile').doc('game').get();
     if (!doc.exists || !doc.data().startDate) return false;
     S = {...S, ...doc.data()};
+    if (!Array.isArray(S.players)) S.players = [];
     return true;
   } catch(e) { console.error('Firebase load error:', e); return false; }
 }
 
 // Real-time listener — pushes updates to all connected browsers instantly.
 // Stores the unsubscribe function so repeated calls don't stack up listeners.
+let realtimeToken = 0;
 function startRealtimeSync() {
   if (!USE_FIREBASE) return;
   // Tear down any previous subscription before opening a new one
@@ -735,7 +739,11 @@ function startRealtimeSync() {
     try { realtimeUnsub(); } catch (e) { /* ignore */ }
     realtimeUnsub = null;
   }
+  // Token guards against late callbacks from a previous subscription
+  // overwriting newer state if startRealtimeSync is called again.
+  const myToken = ++realtimeToken;
   realtimeUnsub = db.collection('squaremile').doc('game').onSnapshot(snapshot => {
+    if (myToken !== realtimeToken) return; // a newer subscription has taken over
     if (!snapshot.exists) return;
     const incoming = snapshot.data();
     const changed =
@@ -744,6 +752,7 @@ function startRealtimeSync() {
     if (changed) {
       const wasLocked = Object.keys(S.startPrices || {}).length > 0;
       S = {...S, ...incoming};
+      if (!Array.isArray(S.players)) S.players = [];
       const nowLocked = Object.keys(S.startPrices || {}).length > 0;
       // If the game just started on another browser, reveal the game content
       if (!wasLocked && nowLocked) {
@@ -755,7 +764,12 @@ function startRealtimeSync() {
       }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
-      if (currentDashTab === 'history')  { myChart = null; myFundChart = null; initChart(); initFundChart(); }
+      if (currentDashTab === 'history')  {
+        if (myChart && myChart.destroy) myChart.destroy();
+        if (myFundChart && myFundChart.destroy) myFundChart.destroy();
+        myChart = null; myFundChart = null;
+        initChart(); initFundChart();
+      }
       updateJoinBtn();
       updateInlineJoinPanel();
       toast('🔄 Dashboard synced!');
@@ -1825,7 +1839,15 @@ async function startGameManually() {
         else {
           const fxKey  = 'GBP' + cur + '=X';
           const fxRate = fxData[fxKey]?.price;
-          priceGBP = fxRate ? rawPrice / fxRate : rawPrice; // fallback: treat as GBP
+          // Refuse to bake wrong startShares if FX is missing — abort the
+          // start instead so the operator can retry rather than locking in
+          // a price that's silently in the wrong currency.
+          if (!fxRate) {
+            console.error(`[startGame] missing FX for ${cur} (pair ${fxKey}); aborting`);
+            toast(`⚠️ Missing FX rate for ${cur}. Try again in a moment.`);
+            throw new Error(`Missing FX rate for ${cur}`);
+          }
+          priceGBP = rawPrice / fxRate;
         }
         const alloc           = (player.allocations?.[j] ?? 100);
         player.startShares[sym] = alloc / priceGBP;
@@ -1998,7 +2020,10 @@ async function refreshPrices() {
         S.fxHistory[todayKey] = {};
         fxSyms.forEach(s => { if (prices[s]) S.fxHistory[todayKey][s] = prices[s].price; });
       }
-      save(); // fire-and-forget — persist to Firebase
+      // Persist to Firebase. Fire-and-forget is fine here (refresh loop runs
+      // every 5 min) but we must not swallow the error silently — log it so
+      // a long-running outage shows up in the console.
+      save().catch(err => console.error('[refreshPrices] save failed:', err));
     }
     if (isGameOver()) {
       setDot('stale');
@@ -2011,7 +2036,11 @@ async function refreshPrices() {
     renderDash(); show('dash-content');
     renderStockLeaderboard();
     // Refresh fund chart if currently visible
-    if (currentDashTab === 'history') { myFundChart = null; initFundChart(); }
+    if (currentDashTab === 'history') {
+      if (myFundChart && myFundChart.destroy) myFundChart.destroy();
+      myFundChart = null;
+      initFundChart();
+    }
   } catch(e) {
     setDot('error');
     document.getElementById('last-updated').textContent='Failed to update';
@@ -2103,7 +2132,11 @@ function stockValueGBP(player, sym) {
     else {
       const fxKey  = 'GBP' + cur + '=X';
       const fxRate = prices[fxKey]?.price;
-      startGBP = fxRate ? startRaw / fxRate : startRaw; // treat as GBP if no FX
+      // If FX is missing we MUST NOT pretend the foreign price is GBP —
+      // a JPY price of 1000 would otherwise be displayed as £1000 instead of
+      // ~£5.50. Returning null causes the row to render "–" until FX recovers.
+      if (!fxRate) return null;
+      startGBP = startRaw / fxRate;
     }
     if (!startGBP) return null;
     shares = alloc / startGBP;
@@ -2486,6 +2519,35 @@ function renderCards(sorted) {
 // ═══════════════════════════════════════════════════════════
 //  RENDER — STOCK LEADERBOARD
 // ═══════════════════════════════════════════════════════════
+
+// Build a map of ticker → previous-day rank using the most recent priceHistory
+// snapshot before today. Mirrors getPreviousDayRanking() but for the stock
+// leaderboard. Returns null on day 1 (no prior snapshot) so callers can omit
+// the marker entirely.
+function getPreviousDayStockRanking() {
+  const history = S.priceHistory || {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const prevDates = Object.keys(history).filter(d => d < todayKey).sort().reverse();
+  if (!prevDates.length) return null;
+  const snap = history[prevDates[0]];
+  if (!snap) return null;
+
+  // Same set of tickers we rank today: every symbol any player picked.
+  // gainPct = (prevPrice - startPrice) / startPrice — currency cancels out
+  // because both legs are in the same native currency, so no FX needed.
+  const tickers = [...new Set(S.players.flatMap(p => p.picks))];
+  const ranked = tickers.map(sym => {
+    const start = S.startPrices?.[sym];
+    const prev  = snap[sym];
+    const g = (start && prev) ? ((prev - start) / start) * 100 : null;
+    return { sym, g };
+  });
+  ranked.sort((a, b) => (b.g ?? -Infinity) - (a.g ?? -Infinity));
+  const map = {};
+  ranked.forEach((r, i) => { map[r.sym] = i + 1; });
+  return map;
+}
+
 function renderStockLeaderboard() {
   const all=[];
   // Build sym→name lookup from stored player names (most reliable source)
@@ -2506,13 +2568,36 @@ function renderStockLeaderboard() {
     document.getElementById('stock-leaderboard').innerHTML = `<div class="empty-state"><div class="icon">📊</div>Prices not yet loaded — refresh to fetch latest data.</div>`;
     return;
   }
+
+  // Day-over-day rank movement. Same ticker can appear in multiple rows (when
+  // more than one player picked it); each instance gets the same arrow.
+  const prevStockRank = getPreviousDayStockRanking();
+
   document.getElementById('stock-leaderboard').innerHTML=all.map((s,i)=>{
     const isPos=s.gain>=0;
     const dayHtml = s.day!=null
       ? `<div class="slb-pct ${s.day>=0?'green':'red'}" style="font-size:11px">${s.day>=0?'+':''}${s.day.toFixed(2)}%</div>`
       : `<div class="slb-pct muted">—</div>`;
+
+    // Rank-movement marker (▲N moved up, ▼N moved down). Same styling as the
+    // player leaderboard so it reads consistently across tabs.
+    let moveEl = '';
+    const currentRank = i + 1;
+    if (prevStockRank) {
+      const prev = prevStockRank[s.sym];
+      if (prev != null) {
+        const diff = prev - currentRank; // positive = climbed
+        if (diff > 0) {
+          moveEl = `<span class="slb-move up">▲${diff}</span>`;
+        } else if (diff < 0) {
+          moveEl = `<span class="slb-move down">▼${Math.abs(diff)}</span>`;
+        }
+      }
+    }
+
     return `<div class="slb-row">
-      <div class="slb-rank">${i+1}</div>
+      <div class="slb-rank">${currentRank}</div>
+      <div class="slb-move-cell">${moveEl}</div>
       <div class="slb-ticker ${isPos?'green':'red'}">${esc(s.sym)}</div>
       <div class="slb-name">${esc(s.name)}</div>
       <div class="slb-pct ${isPos?'green':'red'}">${fmt(s.gain)}</div>
@@ -2704,7 +2789,15 @@ function renderSparklines() {
 class LineChart {
   constructor(canvasId, opts) {
     this.canvas   = document.getElementById(canvasId);
+    if (!this.canvas) {
+      console.warn(`[LineChart] canvas '${canvasId}' not found`);
+      return;
+    }
     this.ctx      = this.canvas.getContext('2d');
+    if (!this.ctx) {
+      console.warn(`[LineChart] could not get 2D context for '${canvasId}'`);
+      return;
+    }
     this.labels   = [];
     this.datasets = [];
     this.hidden   = new Set();
@@ -2719,7 +2812,19 @@ class LineChart {
     this.dragYPan0  = 0;
     this.dragDPP    = 1;  // data-units per pixel at drag start
     this._bindEvents();
-    window.addEventListener('resize', ()=>this._resize());
+    // Store the resize handler so destroy() can remove it. Without this,
+    // every time myChart was reassigned (tab switch, sync re-init) we leaked
+    // a window-level resize listener.
+    this._onResize = () => this._resize();
+    window.addEventListener('resize', this._onResize);
+  }
+
+  // Detach window-level listeners. Call before reassigning a chart variable.
+  destroy() {
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
+    }
   }
 
   setData(labels, datasets) {
@@ -3223,6 +3328,7 @@ function initChart() {
       datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
     }
 
+    if (myChart && myChart.destroy) myChart.destroy();
     myChart = new LineChart('portfolio-chart');
     myChart.setData(labels, datasets);
     buildChartLegend(S.players);
@@ -3332,6 +3438,7 @@ function initChart() {
     datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
   }
 
+  if (myChart && myChart.destroy) myChart.destroy();
   myChart = new LineChart('portfolio-chart');
   myChart.setData(labels, datasets);
   buildChartLegend(S.players);
@@ -3490,6 +3597,7 @@ function initFundChart() {
       ...benchDatasets,
     ];
 
+    if (myFundChart && myFundChart.destroy) myFundChart.destroy();
     myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
     myFundChart.baseline = 100;
     myFundChart.setData(labels, datasets);
@@ -3609,6 +3717,7 @@ function initFundChart() {
     ...benchDatasets,
   ];
 
+  if (myFundChart && myFundChart.destroy) myFundChart.destroy();
   myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
   myFundChart.baseline = 100;
   myFundChart.setData(labels, datasets);
@@ -4096,6 +4205,12 @@ function setupMasthead() {
       document.body.appendChild(sentinel);
     }
 
+    // Disconnect the previous observer if setupMasthead has run before
+    // (e.g. game just started, or hot-reload). Without this we'd leak an
+    // observer per call.
+    if (window.__mhObserver) {
+      try { window.__mhObserver.disconnect(); } catch (e) { /* ignore */ }
+    }
     const observer = new IntersectionObserver(entries => {
       const entry = entries[0];
       if (!entry) return;
@@ -4105,11 +4220,14 @@ function setupMasthead() {
     }, { threshold: [0] });
 
     observer.observe(sentinel);
+    window.__mhObserver = observer;
   }
 
-  // 3. Live clock + date in the dateline
+  // 3. Live clock + date in the dateline. Guard against stacking intervals
+  //    if setupMasthead is invoked more than once per session.
+  if (window.__mhClockInterval) clearInterval(window.__mhClockInterval);
   updateMhClock();
-  setInterval(updateMhClock, 30_000);
+  window.__mhClockInterval = setInterval(updateMhClock, 30_000);
 
   // 4. Flag the body so CSS knows to hide the old .topbar + progress bar.
   document.body.classList.add('game-live');
