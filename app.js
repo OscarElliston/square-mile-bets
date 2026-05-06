@@ -4495,23 +4495,50 @@ function updateMhClock() {
   }).toUpperCase();
 }
 
-// Slim progress bar across the top of the masthead. Updates the % fill
-// based on how far we are through the game window. Idempotent; safe to
-// call from any tick. Hides itself if dates aren't set yet.
+// Game-progress strip: populates the meta labels (Day X of Y · N days
+// remaining) and animates the bar fill. Day numbers count CALENDAR days,
+// not trading days — players think in calendar terms ("the game's a
+// quarter done"). Idempotent; safe to call from any tick.
 function updateMastheadProgress() {
-  const fill = document.getElementById('mh-progress-fill');
+  const fill   = document.getElementById('mh-progress-fill');
+  const dayEl  = document.getElementById('mh-progress-day');
+  const leftEl = document.getElementById('mh-progress-left');
   if (!fill) return;
-  if (!S.startDate || !S.endDate) { fill.style.width = '0%'; return; }
+
+  if (!S.startDate || !S.endDate) {
+    fill.style.width = '0%';
+    if (dayEl)  dayEl.textContent  = '';
+    if (leftEl) leftEl.textContent = '';
+    return;
+  }
+
   const start = new Date(S.startDate).getTime();
   const end   = new Date(S.endDate).getTime();
   const now   = Date.now();
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+
+  const totalDays = Math.max(1, Math.round((end   - start) / 864e5));
+  const sinceDays = Math.floor((now - start) / 864e5); // 0 on start day
+  const leftDays  = Math.max(0, Math.ceil((end - now) / 864e5));
   const pct = Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
+
   fill.style.width = pct.toFixed(2) + '%';
   fill.classList.toggle('complete', pct >= 100);
-  fill.title = pct >= 100
-    ? 'Game over'
-    : `Day ${Math.max(1, Math.ceil((now - start) / 864e5))} of ${Math.ceil((end - start) / 864e5)}`;
+
+  if (now < start) {
+    // Pre-game (shouldn't normally show — startCountdown handles this — but
+    // rendered defensively in case dates change while users are connected).
+    if (dayEl)  dayEl.textContent  = `Starts ${new Date(start).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
+    if (leftEl) leftEl.textContent = `${Math.ceil((start - now)/864e5)} days to go`;
+  } else if (pct >= 100) {
+    if (dayEl)  dayEl.textContent  = `Final · Day ${totalDays} of ${totalDays}`;
+    if (leftEl) leftEl.textContent = 'Game over';
+  } else {
+    // Day 1 = the start date itself.
+    const dayNum = Math.min(totalDays, sinceDays + 1);
+    if (dayEl)  dayEl.textContent  = `Day ${dayNum} of ${totalDays}`;
+    if (leftEl) leftEl.textContent = `${leftDays} day${leftDays === 1 ? '' : 's'} remaining`;
+  }
 }
 
 // Build a ticker-tape marquee from player picks. Uses S.players + prices

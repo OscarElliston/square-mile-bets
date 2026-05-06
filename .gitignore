@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Local working folder for proposed changes — copy files OUT of here to deploy.
+reviewed/
+
+# Local mockup / screenshot scratchpad
+previews/
+
+# Historical digest outputs (kept locally for reference, not deployed)
+digest-*.png
+digest-*.txt
+apology-*.txt
+
+# Local notes
+session-handoff-*.md
+SMB-handoff-*.md
+
+# Built skill bundle — source lives in daily-digest/, repackage with `zip`
+*.skill
+
+# Local IDE / harness files
+.claude/

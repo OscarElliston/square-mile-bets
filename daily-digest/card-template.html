@@ -1,0 +1,302 @@
+<!--
+  Square Mile Bets — digest card template (MOBILE-OPTIMISED at 820px wide).
+  Claude: fill in the bracketed placeholders with real values, then save as card.html.
+  Keep all markup/classes intact AND do NOT change the body width — the layout
+  is tuned for WhatsApp group display on phones. A wider card becomes unreadable
+  when compressed into a phone bubble.
+  For winners/losers/leaderboard rows, copy the example row pattern and repeat.
+-->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 820px;
+    background: #FFF1E0;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1A1614;
+    padding: 52px 56px 48px 56px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid #E6D9CE;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
+  .brand {
+    font-family: 'DM Serif Display', serif;
+    font-size: 52px;
+    color: #9E2F50;
+    letter-spacing: -0.6px;
+    line-height: 1;
+  }
+  .date {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: #A69E97;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+  }
+  .lede {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    line-height: 1.28;
+    color: #1A1614;
+    margin-bottom: 40px;
+    letter-spacing: -0.3px;
+  }
+  .lede .accent { color: #9E2F50; font-style: italic; }
+
+  .section-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #A69E97;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #E6D9CE;
+  }
+
+  .movers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 40px;
+  }
+  .mover-col h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #A69E97;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #E6D9CE;
+  }
+  .mover-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+  }
+  .mover-name {
+    font-size: 19px;
+    font-weight: 600;
+    color: #1A1614;
+    line-height: 1.2;
+  }
+  .mover-name .player {
+    color: #A69E97;
+    font-weight: 400;
+    font-size: 15px;
+    display: block;
+    margin-top: 3px;
+  }
+  .mover-pct {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    padding-left: 12px;
+  }
+  .pos { color: #0D7680; }
+  .neg { color: #9E2F50; }
+
+  .leaderboard { margin-bottom: 40px; }
+  .lb-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 120px 100px;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid #F0E4D7;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank {
+    font-family: 'DM Serif Display', serif;
+    font-size: 34px;
+    color: #A69E97;
+    letter-spacing: -0.3px;
+    line-height: 1;
+  }
+  .lb-rank.top { color: #9E2F50; }
+  .lb-rank .marker {
+    display: inline-block;
+    width: 7px;
+    height: 26px;
+    margin-right: 10px;
+    vertical-align: -3px;
+    border-radius: 2px;
+  }
+  .marker-gold   { background: #C99A3B; }
+  .marker-silver { background: #A7A7A7; }
+  .marker-bronze { background: #B06A2A; }
+  .lb-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: #1A1614;
+    letter-spacing: -0.2px;
+    line-height: 1.1;
+  }
+  .lb-picks {
+    font-size: 14px;
+    color: #A69E97;
+    display: block;
+    margin-top: 5px;
+    font-family: 'Inter', sans-serif;
+  }
+  .lb-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    text-align: right;
+    color: #1A1614;
+  }
+  .lb-pct {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    text-align: right;
+  }
+
+  .divider-bottom {
+    border-top: 2px solid #1A1614;
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .fund-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #A69E97;
+    margin-bottom: 4px;
+  }
+  .fund-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 44px;
+    color: #1A1614;
+    letter-spacing: -0.4px;
+    line-height: 1;
+  }
+  .fund-pct {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: #0D7680;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">Square Mile Bets</div>
+    <!-- DATE string e.g. "Midweek · 21–22 Apr" (uppercased by CSS). Keep compact. -->
+    <div class="date">[DATE_RANGE]</div>
+  </div>
+
+  <!--
+    LEDE: 1–2 short sentences of market colour. Wrap 1–2 punchy phrases
+    in <span class="accent">...</span> to highlight them (claret italic).
+  -->
+  <div class="lede">
+    [LEDE_HTML]
+  </div>
+
+  <div class="movers">
+    <div class="mover-col">
+      <h3>Winners</h3>
+      <!-- Repeat 4–5 winner rows. COMPANY = API `name` field (or bare ticker if null). Example row: -->
+      <div class="mover-row">
+        <div class="mover-name">[COMPANY]<span class="player">[PLAYER]</span></div>
+        <div class="mover-pct pos">+[X.X]%</div>
+      </div>
+    </div>
+    <div class="mover-col">
+      <h3>Losers</h3>
+      <!-- Repeat 4–5 loser rows. Note minus sign is U+2212, not a hyphen: -->
+      <div class="mover-row">
+        <div class="mover-name">[COMPANY]<span class="player">[PLAYER]</span></div>
+        <div class="mover-pct neg">−[X.X]%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <div class="section-title">Top of the table</div>
+    <!-- 3 rows: gold / silver / bronze markers. Picks joined by " · ". -->
+    <div class="lb-row">
+      <div class="lb-rank top"><span class="marker marker-gold"></span>1</div>
+      <div>
+        <div class="lb-name">[PLAYER_NAME]</div>
+        <span class="lb-picks">[COMPANY] · [COMPANY] · [COMPANY]</span>
+      </div>
+      <div class="lb-value">£[TOTAL]</div>
+      <div class="lb-pct pos">+[X.X]%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank top"><span class="marker marker-silver"></span>2</div>
+      <div>
+        <div class="lb-name">[PLAYER_NAME]</div>
+        <span class="lb-picks">[COMPANY] · [COMPANY] · [COMPANY]</span>
+      </div>
+      <div class="lb-value">£[TOTAL]</div>
+      <div class="lb-pct pos">+[X.X]%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank top"><span class="marker marker-bronze"></span>3</div>
+      <div>
+        <div class="lb-name">[PLAYER_NAME]</div>
+        <span class="lb-picks">[COMPANY] · [COMPANY] · [COMPANY]</span>
+      </div>
+      <div class="lb-value">£[TOTAL]</div>
+      <div class="lb-pct pos">+[X.X]%</div>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <div class="section-title">Bottom of the table</div>
+    <!-- 2 rows: rank 23, rank 24 (or whatever the bottom two are). Use .neg on lb-pct when negative. -->
+    <div class="lb-row">
+      <div class="lb-rank">23</div>
+      <div>
+        <div class="lb-name">[PLAYER_NAME]</div>
+        <span class="lb-picks">[COMPANY] · [COMPANY] · [COMPANY]</span>
+      </div>
+      <div class="lb-value">£[TOTAL]</div>
+      <div class="lb-pct neg">−[X.X]%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank">24</div>
+      <div>
+        <div class="lb-name">[PLAYER_NAME]</div>
+        <span class="lb-picks">[COMPANY] · [COMPANY] · [COMPANY]</span>
+      </div>
+      <div class="lb-value">£[TOTAL]</div>
+      <div class="lb-pct neg">−[X.X]%</div>
+    </div>
+  </div>
+
+  <div class="divider-bottom">
+    <div>
+      <div class="fund-label">Fund Average</div>
+      <div class="fund-value">£[FUND_VALUE]</div>
+    </div>
+    <!-- Use .pos or .neg depending on sign -->
+    <div class="fund-pct pos">+[X.XX]%</div>
+  </div>
+
+</body>
+</html>
