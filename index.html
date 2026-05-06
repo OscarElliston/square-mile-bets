@@ -572,17 +572,19 @@
         </div>
       </div>
 
-      <div style="margin:28px 0 0">
-      </div>
-      <div class="chart-card" style="position:relative">
+      <!-- ── DAILY RANK FLOW (bump chart) ── -->
+      <div style="margin:28px 0 0"></div>
+      <div class="chart-card">
         <div class="chart-card-header">
-          <div class="section-title" style="margin-bottom:0">Stock Breakdown</div>
-          <span style="font-size:11px;color:var(--dim);font-family:var(--mono)">bars show each stock's contribution · hover for detail</span>
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Daily Rank Flow</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">leaderboard position day by day · hover or tap a line · 1 = top of the table</div>
+          </div>
         </div>
-        <div id="breakdown-scroll-wrapper" style="overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative">
-          <canvas id="breakdown-chart" style="display:block"></canvas>
-          <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
+        <div class="chart-wrap" style="height:360px;position:relative">
+          <canvas id="rank-flow-chart" style="display:block;cursor:default"></canvas>
         </div>
+        <div class="chart-legend-custom" id="rank-flow-legend"></div>
       </div>
 
       <!-- ── SMB FUND vs BENCHMARKS ── -->
@@ -606,19 +608,17 @@
         <div class="chart-legend-custom" id="fund-legend"></div>
       </div>
 
-      <!-- ── DAILY RANK FLOW (bump chart) ── -->
+      <!-- ── STOCK BREAKDOWN ── -->
       <div style="margin:28px 0 0"></div>
-      <div class="chart-card">
+      <div class="chart-card" style="position:relative">
         <div class="chart-card-header">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">Daily Rank Flow</div>
-            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">leaderboard position day by day · 1 = top of the table</div>
-          </div>
+          <div class="section-title" style="margin-bottom:0">Stock Breakdown</div>
+          <span style="font-size:11px;color:var(--dim);font-family:var(--mono)">bars show each stock's contribution · hover for detail</span>
         </div>
-        <div class="chart-wrap" style="height:360px;position:relative">
-          <canvas id="rank-flow-chart" style="display:block"></canvas>
+        <div id="breakdown-scroll-wrapper" style="overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative">
+          <canvas id="breakdown-chart" style="display:block"></canvas>
+          <div id="breakdown-tooltip" style="display:none;position:absolute;background:var(--surface2,#1a2744);border:1px solid var(--border);border-radius:6px;padding:10px 14px;pointer-events:none;font-size:12px;width:210px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.4)"></div>
         </div>
-        <div class="chart-legend-custom" id="rank-flow-legend"></div>
       </div>
     </div>
 

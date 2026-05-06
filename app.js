@@ -3854,21 +3854,123 @@ if (typeof window !== 'undefined' && !window.__rankFlowResizeBound) {
   });
 }
 
+// Persistent state for the rank-flow chart so hover/click handlers can
+// re-draw without re-computing or re-binding listeners.
+const _rankFlowState = {
+  rows: null,         // [{ date, ranks: [...] }] from getDailyRankFlow()
+  geom: null,         // { cssW, cssH, m, plotW, plotH, N, xFor, yFor }
+  meIdx: -1,
+  lockedIdx: null,    // player index pinned by click/tap
+  hoverIdx: null,     // player index under cursor (desktop)
+  bound: false,       // listeners attached
+};
+
+// Hit-test: given an (x,y) in CSS pixels relative to the canvas, find the
+// closest player line within HIT_TOLERANCE_PX. Returns playerIdx or null.
+const HIT_TOLERANCE_PX = 14;
+function _rankFlowHit(x, y) {
+  const s = _rankFlowState;
+  if (!s.rows || !s.geom) return null;
+  const { rows } = s;
+  const { m, plotW, plotH, N, xFor, yFor } = s.geom;
+  if (x < m.l - 4 || x > m.l + plotW + 4) return null;
+  // Locate the X fraction → which two date columns we sit between
+  const frac = rows.length === 1 ? 0 : (x - m.l) / plotW * (rows.length - 1);
+  const i0 = Math.max(0, Math.min(rows.length - 1, Math.floor(frac)));
+  const i1 = Math.max(0, Math.min(rows.length - 1, Math.ceil(frac)));
+  const t = i0 === i1 ? 0 : (frac - i0);
+  let bestIdx = null, bestDist = HIT_TOLERANCE_PX + 1;
+  for (let p = 0; p < N; p++) {
+    const r0 = rows[i0].ranks[p], r1 = rows[i1].ranks[p];
+    if (r0 == null || r1 == null) continue;
+    const yLine = yFor(r0 + (r1 - r0) * t);
+    const d = Math.abs(yLine - y);
+    if (d < bestDist) { bestDist = d; bestIdx = p; }
+  }
+  return bestIdx;
+}
+
+function _rankFlowMousePos(evt, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (evt.touches?.[0]?.clientX ?? evt.clientX);
+  const cy = (evt.touches?.[0]?.clientY ?? evt.clientY);
+  return { x: cx - rect.left, y: cy - rect.top };
+}
+
+function _rankFlowOnMove(evt) {
+  const canvas = document.getElementById('rank-flow-chart');
+  if (!canvas) return;
+  const { x, y } = _rankFlowMousePos(evt, canvas);
+  const hit = _rankFlowHit(x, y);
+  if (hit !== _rankFlowState.hoverIdx) {
+    _rankFlowState.hoverIdx = hit;
+    canvas.style.cursor = hit != null ? 'pointer' : 'default';
+    _drawRankFlow();
+  }
+}
+function _rankFlowOnLeave() {
+  if (_rankFlowState.hoverIdx != null) {
+    _rankFlowState.hoverIdx = null;
+    const canvas = document.getElementById('rank-flow-chart');
+    if (canvas) canvas.style.cursor = 'default';
+    _drawRankFlow();
+  }
+}
+function _rankFlowOnClick(evt) {
+  const canvas = document.getElementById('rank-flow-chart');
+  if (!canvas) return;
+  const { x, y } = _rankFlowMousePos(evt, canvas);
+  const hit = _rankFlowHit(x, y);
+  // Toggle: clicking the same locked line unlocks; clicking empty unlocks
+  if (hit == null) {
+    if (_rankFlowState.lockedIdx != null) {
+      _rankFlowState.lockedIdx = null;
+      _drawRankFlow();
+    }
+  } else if (hit === _rankFlowState.lockedIdx) {
+    _rankFlowState.lockedIdx = null;
+    _drawRankFlow();
+  } else {
+    _rankFlowState.lockedIdx = hit;
+    _drawRankFlow();
+  }
+}
+function _rankFlowOnTouchStart(evt) {
+  // On touch we treat tap as click — no mouseover semantics.
+  // Don't preventDefault so users can still scroll past the chart.
+  const canvas = document.getElementById('rank-flow-chart');
+  if (!canvas) return;
+  const { x, y } = _rankFlowMousePos(evt, canvas);
+  const hit = _rankFlowHit(x, y);
+  if (hit == null) {
+    if (_rankFlowState.lockedIdx != null) {
+      _rankFlowState.lockedIdx = null;
+      _drawRankFlow();
+    }
+  } else if (hit === _rankFlowState.lockedIdx) {
+    _rankFlowState.lockedIdx = null;
+    _drawRankFlow();
+  } else {
+    _rankFlowState.lockedIdx = hit;
+    _drawRankFlow();
+  }
+}
+
 function renderRankFlowChart() {
   const canvas = document.getElementById('rank-flow-chart');
   const legendEl = document.getElementById('rank-flow-legend');
   if (!canvas) return;
   const wrap = canvas.parentElement;
   if (!wrap) return;
-
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
   const rows = getDailyRankFlow();
   if (!rows || rows.length < 2) {
-    // Show a placeholder until we have ≥2 days of history.
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (legendEl) legendEl.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:6px 0">Rank flow appears once two trading days of data are saved.</div>`;
+    _rankFlowState.rows = null;
+    _rankFlowState.geom = null;
     return;
   }
 
@@ -3881,19 +3983,60 @@ function renderRankFlowChart() {
   canvas.style.width  = cssW + 'px';
   canvas.style.height = cssH + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, cssW, cssH);
 
   const N = S.players.length;
-  // Layout — leave margin for axis labels & end-of-line names
   const m = { t: 16, r: 110, b: 30, l: 30 };
   const plotW = cssW - m.l - m.r;
   const plotH = cssH - m.t - m.b;
   if (plotW <= 0 || plotH <= 0) return;
-
   const xFor = i => m.l + (rows.length === 1 ? plotW / 2 : (i / (rows.length - 1)) * plotW);
-  const yFor = rank => m.t + ((rank - 1) / Math.max(1, N - 1)) * plotH; // 1 → top
+  const yFor = rank => m.t + ((rank - 1) / Math.max(1, N - 1)) * plotH;
 
-  // Background grid: a horizontal line per rank tier (every 4 ranks for ≤24)
+  const meIdx = S.players.findIndex(p =>
+    currentUser && p.name && currentUser.displayName &&
+    p.name.toLowerCase() === currentUser.displayName.toLowerCase()
+  );
+
+  // Stash everything the event handlers need
+  _rankFlowState.rows = rows;
+  _rankFlowState.geom = { cssW, cssH, m, plotW, plotH, N, xFor, yFor };
+  _rankFlowState.meIdx = meIdx;
+  // Drop a stale lock if the player was removed between renders
+  if (_rankFlowState.lockedIdx != null && _rankFlowState.lockedIdx >= N) {
+    _rankFlowState.lockedIdx = null;
+  }
+
+  // Bind listeners once. The canvas DOM element is stable across re-renders,
+  // so we don't need to detach/reattach.
+  if (!_rankFlowState.bound) {
+    canvas.addEventListener('mousemove', _rankFlowOnMove);
+    canvas.addEventListener('mouseleave', _rankFlowOnLeave);
+    canvas.addEventListener('click', _rankFlowOnClick);
+    canvas.addEventListener('touchstart', _rankFlowOnTouchStart, { passive: true });
+    _rankFlowState.bound = true;
+  }
+
+  _drawRankFlow();
+}
+
+// Pure draw using the current _rankFlowState. Called on initial render and
+// from event handlers (hover/click/touch).
+function _drawRankFlow() {
+  const canvas = document.getElementById('rank-flow-chart');
+  const legendEl = document.getElementById('rank-flow-legend');
+  if (!canvas || !_rankFlowState.rows || !_rankFlowState.geom) return;
+  const ctx = canvas.getContext('2d');
+  const { rows, meIdx, lockedIdx, hoverIdx } = _rankFlowState;
+  const { cssW, cssH, m, plotW, plotH, N, xFor, yFor } = _rankFlowState.geom;
+
+  // Active player priority: clicked > hovered > self. null means "no focus".
+  const activeIdx = lockedIdx != null ? lockedIdx
+                    : hoverIdx != null ? hoverIdx
+                    : (meIdx >= 0 ? meIdx : null);
+
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  // Grid
   ctx.strokeStyle = '#E6D9CE';
   ctx.lineWidth = 1;
   ctx.setLineDash([2, 4]);
@@ -3912,7 +4055,7 @@ function renderRankFlowChart() {
   }
   ctx.setLineDash([]);
 
-  // X-axis date labels: first, middle, last
+  // X-axis date labels
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const fmtDate = s => {
@@ -3926,18 +4069,12 @@ function renderRankFlowChart() {
     ctx.fillText(fmtDate(rows[i].date), xFor(i), m.t + plotH + 6);
   });
 
-  // Identify the signed-in user so we can highlight their line
-  const meIdx = S.players.findIndex(p =>
-    currentUser && p.name && currentUser.displayName &&
-    p.name.toLowerCase() === currentUser.displayName.toLowerCase()
-  );
-
-  // Draw lines — non-self lines first (faded), self last (bold + on top)
-  const drawLine = (playerIdx, isMe) => {
+  // Lines — dimmed first, active last so it sits on top
+  const drawLine = (playerIdx, isActive) => {
     const color = (PLAYER_COLORS && PLAYER_COLORS[playerIdx % PLAYER_COLORS.length]) || '#9E2F50';
     ctx.strokeStyle = color;
-    ctx.globalAlpha = isMe ? 1 : (meIdx >= 0 ? 0.18 : 0.55);
-    ctx.lineWidth = isMe ? 2.4 : 1.5;
+    ctx.globalAlpha = isActive ? 1 : (activeIdx != null ? 0.16 : 0.55);
+    ctx.lineWidth = isActive ? 2.6 : 1.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -3953,11 +4090,22 @@ function renderRankFlowChart() {
     ctx.globalAlpha = 1;
   };
 
-  for (let i = 0; i < N; i++) if (i !== meIdx) drawLine(i, false);
-  if (meIdx >= 0) drawLine(meIdx, true);
+  for (let i = 0; i < N; i++) if (i !== activeIdx) drawLine(i, false);
+  if (activeIdx != null && activeIdx < N) {
+    drawLine(activeIdx, true);
+    // Dot markers on every data point of the active line for easy reading
+    const color = (PLAYER_COLORS && PLAYER_COLORS[activeIdx % PLAYER_COLORS.length]) || '#9E2F50';
+    ctx.fillStyle = color;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].ranks[activeIdx];
+      if (r == null) continue;
+      ctx.beginPath();
+      ctx.arc(xFor(i), yFor(r), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
-  // Right-edge labels — current rank + first name. Stagger if multiple
-  // players share the same end rank (rare but possible).
+  // Right-edge labels
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.font = '11px Inter, sans-serif';
@@ -3966,25 +4114,38 @@ function renderRankFlowChart() {
     .map((p, i) => ({ idx: i, name: (p.name || '').split(' ')[0], rank: lastRow.ranks[i] }))
     .filter(o => o.rank != null)
     .sort((a, b) => a.rank - b.rank);
-  // Place labels with simple anti-overlap: never let two consecutive
-  // labels be within 12px vertically.
   let lastY = -Infinity;
   labels.forEach(o => {
     let y = yFor(o.rank);
     if (y - lastY < 12) y = lastY + 12;
     lastY = y;
-    const isMe = o.idx === meIdx;
+    const isActive = o.idx === activeIdx;
     const color = (PLAYER_COLORS && PLAYER_COLORS[o.idx % PLAYER_COLORS.length]) || '#9E2F50';
-    ctx.globalAlpha = isMe ? 1 : (meIdx >= 0 ? 0.45 : 0.85);
+    ctx.globalAlpha = isActive ? 1 : (activeIdx != null ? 0.35 : 0.8);
     ctx.fillStyle = color;
     ctx.fillText(o.name, m.l + plotW + 6, y);
     ctx.globalAlpha = 1;
   });
 
   if (legendEl) {
-    legendEl.innerHTML = meIdx >= 0
-      ? `<div style="font-size:11px;color:var(--muted);padding:6px 0;font-family:var(--mono)">Your line is highlighted. Others dimmed for legibility.</div>`
-      : `<div style="font-size:11px;color:var(--muted);padding:6px 0;font-family:var(--mono)">Sign in to highlight your own line.</div>`;
+    let activeLabel = null;
+    if (activeIdx != null && S.players[activeIdx]) {
+      const p = S.players[activeIdx];
+      const lastRank = lastRow.ranks[activeIdx];
+      const firstRank = rows[0].ranks[activeIdx];
+      const delta = (firstRank != null && lastRank != null) ? (firstRank - lastRank) : null;
+      const deltaTxt = delta == null ? '' :
+        delta > 0 ? ` · climbed ${delta}` :
+        delta < 0 ? ` · dropped ${Math.abs(delta)}` : ' · unchanged';
+      activeLabel = `${esc(p.name)} · #${lastRank ?? '—'}${deltaTxt}`;
+    }
+    const tip = lockedIdx != null
+      ? `<span style="color:var(--muted)">Tap empty space to clear</span>`
+      : `<span style="color:var(--muted)">Hover or tap a line to focus · click to pin</span>`;
+    legendEl.innerHTML = `<div style="font-size:11px;padding:6px 0;font-family:var(--mono);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <span style="color:var(--text);font-weight:700">${activeLabel || ''}</span>
+      <span>${tip}</span>
+    </div>`;
   }
 }
 
