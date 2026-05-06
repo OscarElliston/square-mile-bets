@@ -712,6 +712,8 @@ function load() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
     if (d) S = {...S,...d};
+    // Defensive: Firestore can return non-array values if the doc was hand-edited.
+    if (!Array.isArray(S.players)) S.players = [];
     return !!d && S.players.length > 0;
   } catch { return false; }
 }
@@ -722,12 +724,14 @@ async function loadFromFirebase() {
     const doc = await db.collection('squaremile').doc('game').get();
     if (!doc.exists || !doc.data().startDate) return false;
     S = {...S, ...doc.data()};
+    if (!Array.isArray(S.players)) S.players = [];
     return true;
   } catch(e) { console.error('Firebase load error:', e); return false; }
 }
 
 // Real-time listener — pushes updates to all connected browsers instantly.
 // Stores the unsubscribe function so repeated calls don't stack up listeners.
+let realtimeToken = 0;
 function startRealtimeSync() {
   if (!USE_FIREBASE) return;
   // Tear down any previous subscription before opening a new one
@@ -735,7 +739,11 @@ function startRealtimeSync() {
     try { realtimeUnsub(); } catch (e) { /* ignore */ }
     realtimeUnsub = null;
   }
+  // Token guards against late callbacks from a previous subscription
+  // overwriting newer state if startRealtimeSync is called again.
+  const myToken = ++realtimeToken;
   realtimeUnsub = db.collection('squaremile').doc('game').onSnapshot(snapshot => {
+    if (myToken !== realtimeToken) return; // a newer subscription has taken over
     if (!snapshot.exists) return;
     const incoming = snapshot.data();
     const changed =
@@ -744,6 +752,7 @@ function startRealtimeSync() {
     if (changed) {
       const wasLocked = Object.keys(S.startPrices || {}).length > 0;
       S = {...S, ...incoming};
+      if (!Array.isArray(S.players)) S.players = [];
       const nowLocked = Object.keys(S.startPrices || {}).length > 0;
       // If the game just started on another browser, reveal the game content
       if (!wasLocked && nowLocked) {
@@ -755,7 +764,12 @@ function startRealtimeSync() {
       }
       renderDash();
       if (currentDashTab === 'stocks')   renderStockLeaderboard();
-      if (currentDashTab === 'history')  { myChart = null; myFundChart = null; initChart(); initFundChart(); }
+      if (currentDashTab === 'history')  {
+        if (myChart && myChart.destroy) myChart.destroy();
+        if (myFundChart && myFundChart.destroy) myFundChart.destroy();
+        myChart = null; myFundChart = null;
+        initChart(); initFundChart(); renderRankFlowChart();
+      }
       updateJoinBtn();
       updateInlineJoinPanel();
       toast('🔄 Dashboard synced!');
@@ -1534,7 +1548,7 @@ async function submitJoin() {
   if (document.getElementById('dashboard-screen')?.style.display !== 'none') {
     renderDash();
     if (currentDashTab === 'stocks')  renderStockLeaderboard();
-    if (currentDashTab === 'history') { myChart = null; myFundChart = null; initChart(); initFundChart(); }
+    if (currentDashTab === 'history') { myChart = null; myFundChart = null; initChart(); initFundChart(); renderRankFlowChart(); }
   }
 }
 
@@ -1825,7 +1839,15 @@ async function startGameManually() {
         else {
           const fxKey  = 'GBP' + cur + '=X';
           const fxRate = fxData[fxKey]?.price;
-          priceGBP = fxRate ? rawPrice / fxRate : rawPrice; // fallback: treat as GBP
+          // Refuse to bake wrong startShares if FX is missing — abort the
+          // start instead so the operator can retry rather than locking in
+          // a price that's silently in the wrong currency.
+          if (!fxRate) {
+            console.error(`[startGame] missing FX for ${cur} (pair ${fxKey}); aborting`);
+            toast(`⚠️ Missing FX rate for ${cur}. Try again in a moment.`);
+            throw new Error(`Missing FX rate for ${cur}`);
+          }
+          priceGBP = rawPrice / fxRate;
         }
         const alloc           = (player.allocations?.[j] ?? 100);
         player.startShares[sym] = alloc / priceGBP;
@@ -1957,7 +1979,7 @@ function switchDashTab(tab) {
     document.getElementById('dt-'+t).classList.toggle('hidden',t!==tab);
     document.getElementById('dt-btn-'+t).classList.toggle('active',t===tab);
   });
-  if (tab==='history') { initChart(); initFundChart(); }
+  if (tab==='history') { initChart(); initFundChart(); renderRankFlowChart(); }
   if (tab==='stocks')  renderStockLeaderboard();
 }
 
@@ -1998,7 +2020,10 @@ async function refreshPrices() {
         S.fxHistory[todayKey] = {};
         fxSyms.forEach(s => { if (prices[s]) S.fxHistory[todayKey][s] = prices[s].price; });
       }
-      save(); // fire-and-forget — persist to Firebase
+      // Persist to Firebase. Fire-and-forget is fine here (refresh loop runs
+      // every 5 min) but we must not swallow the error silently — log it so
+      // a long-running outage shows up in the console.
+      save().catch(err => console.error('[refreshPrices] save failed:', err));
     }
     if (isGameOver()) {
       setDot('stale');
@@ -2011,7 +2036,11 @@ async function refreshPrices() {
     renderDash(); show('dash-content');
     renderStockLeaderboard();
     // Refresh fund chart if currently visible
-    if (currentDashTab === 'history') { myFundChart = null; initFundChart(); }
+    if (currentDashTab === 'history') {
+      if (myFundChart && myFundChart.destroy) myFundChart.destroy();
+      myFundChart = null;
+      initFundChart();
+    }
   } catch(e) {
     setDot('error');
     document.getElementById('last-updated').textContent='Failed to update';
@@ -2103,7 +2132,11 @@ function stockValueGBP(player, sym) {
     else {
       const fxKey  = 'GBP' + cur + '=X';
       const fxRate = prices[fxKey]?.price;
-      startGBP = fxRate ? startRaw / fxRate : startRaw; // treat as GBP if no FX
+      // If FX is missing we MUST NOT pretend the foreign price is GBP —
+      // a JPY price of 1000 would otherwise be displayed as £1000 instead of
+      // ~£5.50. Returning null causes the row to render "–" until FX recovers.
+      if (!fxRate) return null;
+      startGBP = startRaw / fxRate;
     }
     if (!startGBP) return null;
     shares = alloc / startGBP;
@@ -2280,6 +2313,37 @@ function renderDash() {
   if (cardsSectionTitle) cardsSectionTitle.style.display = 'none';
 }
 
+// Consecutive trading-day streak based on portfolio value direction.
+// Returns { dir: 'up'|'down', count: N } when there are at least 2 consecutive
+// same-direction days, else null. Walks the series backward from the most
+// recent day. Treats a flat day as breaking the streak in either direction.
+function getPlayerStreak(p) {
+  let series;
+  try { series = getPlayerPortfolioHistory(p); } catch { return null; }
+  if (!Array.isArray(series) || series.length < 3) return null;
+  // Build daily deltas (length series.length - 1). Skip if any value is null.
+  const deltas = [];
+  for (let i = 1; i < series.length; i++) {
+    const a = series[i - 1], b = series[i];
+    if (typeof a !== 'number' || typeof b !== 'number') return null;
+    deltas.push(b - a);
+  }
+  if (!deltas.length) return null;
+  const last = deltas[deltas.length - 1];
+  if (Math.abs(last) < 0.005) return null; // last day flat — no streak
+  const dir = last > 0 ? 'up' : 'down';
+  let count = 1;
+  for (let i = deltas.length - 2; i >= 0; i--) {
+    const d = deltas[i];
+    if (Math.abs(d) < 0.005) break;
+    if ((d > 0 ? 'up' : 'down') !== dir) break;
+    count++;
+  }
+  // Minimum of 2 to be worth shouting about
+  if (count < 2) return null;
+  return { dir, count };
+}
+
 function renderLeaderboard(sorted) {
   const prevRanking = getPreviousDayRanking();
   document.getElementById('leaderboard').innerHTML = sorted.map((p, i) => {
@@ -2377,12 +2441,19 @@ function renderLeaderboard(sorted) {
       </div>`;
     }).join('');
 
+    // Streak badge — only appears if there are 2+ consecutive same-direction
+    // trading days. Sits under the picks line so the row height stays sane.
+    const streak = getPlayerStreak(p);
+    const streakEl = streak
+      ? `<span class="lb-streak ${streak.dir}" title="${streak.count} trading days ${streak.dir === 'up' ? 'up' : 'down'}">${streak.dir === 'up' ? '🔥' : '🥶'} ${streak.count}d ${streak.dir === 'up' ? 'up' : 'down'}</span>`
+      : '';
+
     return `<div class="lb-row ${rowCls} ${tintCls} ${meCls}" data-player-idx="${p.origIdx}" onclick="toggleExpand(${i})" style="animation-delay:${i * 0.03}s">
       <div class="lb-rank">${rankEl}${posChangeEl}</div>
       <div style="display:flex;align-items:center;gap:8px;min-width:0">
         ${playerAvatar(p, 30)}
         <div style="min-width:0">
-          <div class="lb-name">${esc(p.name)}</div>
+          <div class="lb-name">${esc(p.name)}${streakEl ? ' ' + streakEl : ''}</div>
           <div class="lb-picks muted">${p.picks.map(esc).join(' · ')}</div>
         </div>
       </div>
@@ -2486,6 +2557,35 @@ function renderCards(sorted) {
 // ═══════════════════════════════════════════════════════════
 //  RENDER — STOCK LEADERBOARD
 // ═══════════════════════════════════════════════════════════
+
+// Build a map of ticker → previous-day rank using the most recent priceHistory
+// snapshot before today. Mirrors getPreviousDayRanking() but for the stock
+// leaderboard. Returns null on day 1 (no prior snapshot) so callers can omit
+// the marker entirely.
+function getPreviousDayStockRanking() {
+  const history = S.priceHistory || {};
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const prevDates = Object.keys(history).filter(d => d < todayKey).sort().reverse();
+  if (!prevDates.length) return null;
+  const snap = history[prevDates[0]];
+  if (!snap) return null;
+
+  // Same set of tickers we rank today: every symbol any player picked.
+  // gainPct = (prevPrice - startPrice) / startPrice — currency cancels out
+  // because both legs are in the same native currency, so no FX needed.
+  const tickers = [...new Set(S.players.flatMap(p => p.picks))];
+  const ranked = tickers.map(sym => {
+    const start = S.startPrices?.[sym];
+    const prev  = snap[sym];
+    const g = (start && prev) ? ((prev - start) / start) * 100 : null;
+    return { sym, g };
+  });
+  ranked.sort((a, b) => (b.g ?? -Infinity) - (a.g ?? -Infinity));
+  const map = {};
+  ranked.forEach((r, i) => { map[r.sym] = i + 1; });
+  return map;
+}
+
 function renderStockLeaderboard() {
   const all=[];
   // Build sym→name lookup from stored player names (most reliable source)
@@ -2506,13 +2606,36 @@ function renderStockLeaderboard() {
     document.getElementById('stock-leaderboard').innerHTML = `<div class="empty-state"><div class="icon">📊</div>Prices not yet loaded — refresh to fetch latest data.</div>`;
     return;
   }
+
+  // Day-over-day rank movement. Same ticker can appear in multiple rows (when
+  // more than one player picked it); each instance gets the same arrow.
+  const prevStockRank = getPreviousDayStockRanking();
+
   document.getElementById('stock-leaderboard').innerHTML=all.map((s,i)=>{
     const isPos=s.gain>=0;
     const dayHtml = s.day!=null
       ? `<div class="slb-pct ${s.day>=0?'green':'red'}" style="font-size:11px">${s.day>=0?'+':''}${s.day.toFixed(2)}%</div>`
       : `<div class="slb-pct muted">—</div>`;
+
+    // Rank-movement marker (▲N moved up, ▼N moved down). Same styling as the
+    // player leaderboard so it reads consistently across tabs.
+    let moveEl = '';
+    const currentRank = i + 1;
+    if (prevStockRank) {
+      const prev = prevStockRank[s.sym];
+      if (prev != null) {
+        const diff = prev - currentRank; // positive = climbed
+        if (diff > 0) {
+          moveEl = `<span class="slb-move up">▲${diff}</span>`;
+        } else if (diff < 0) {
+          moveEl = `<span class="slb-move down">▼${Math.abs(diff)}</span>`;
+        }
+      }
+    }
+
     return `<div class="slb-row">
-      <div class="slb-rank">${i+1}</div>
+      <div class="slb-rank">${currentRank}</div>
+      <div class="slb-move-cell">${moveEl}</div>
       <div class="slb-ticker ${isPos?'green':'red'}">${esc(s.sym)}</div>
       <div class="slb-name">${esc(s.name)}</div>
       <div class="slb-pct ${isPos?'green':'red'}">${fmt(s.gain)}</div>
@@ -2704,7 +2827,15 @@ function renderSparklines() {
 class LineChart {
   constructor(canvasId, opts) {
     this.canvas   = document.getElementById(canvasId);
+    if (!this.canvas) {
+      console.warn(`[LineChart] canvas '${canvasId}' not found`);
+      return;
+    }
     this.ctx      = this.canvas.getContext('2d');
+    if (!this.ctx) {
+      console.warn(`[LineChart] could not get 2D context for '${canvasId}'`);
+      return;
+    }
     this.labels   = [];
     this.datasets = [];
     this.hidden   = new Set();
@@ -2719,7 +2850,19 @@ class LineChart {
     this.dragYPan0  = 0;
     this.dragDPP    = 1;  // data-units per pixel at drag start
     this._bindEvents();
-    window.addEventListener('resize', ()=>this._resize());
+    // Store the resize handler so destroy() can remove it. Without this,
+    // every time myChart was reassigned (tab switch, sync re-init) we leaked
+    // a window-level resize listener.
+    this._onResize = () => this._resize();
+    window.addEventListener('resize', this._onResize);
+  }
+
+  // Detach window-level listeners. Call before reassigning a chart variable.
+  destroy() {
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
+    }
   }
 
   setData(labels, datasets) {
@@ -3223,6 +3366,7 @@ function initChart() {
       datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
     }
 
+    if (myChart && myChart.destroy) myChart.destroy();
     myChart = new LineChart('portfolio-chart');
     myChart.setData(labels, datasets);
     buildChartLegend(S.players);
@@ -3332,6 +3476,7 @@ function initChart() {
     datasets.push({ label: 'Fund Average', data: avgData, color: '#1A1614' });
   }
 
+  if (myChart && myChart.destroy) myChart.destroy();
   myChart = new LineChart('portfolio-chart');
   myChart.setData(labels, datasets);
   buildChartLegend(S.players);
@@ -3490,6 +3635,7 @@ function initFundChart() {
       ...benchDatasets,
     ];
 
+    if (myFundChart && myFundChart.destroy) myFundChart.destroy();
     myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
     myFundChart.baseline = 100;
     myFundChart.setData(labels, datasets);
@@ -3609,6 +3755,7 @@ function initFundChart() {
     ...benchDatasets,
   ];
 
+  if (myFundChart && myFundChart.destroy) myFundChart.destroy();
   myFundChart = new LineChart('fund-chart', { uiPrefix: 'fund' });
   myFundChart.baseline = 100;
   myFundChart.setData(labels, datasets);
@@ -3633,6 +3780,213 @@ function toggleFundDataset(idx) {
   buildFundChartLegend(myFundChart.datasets);
 }
 
+
+// ═══════════════════════════════════════════════════════════
+//  DAILY RANK FLOW (bump chart)
+//
+// Plots each player's leaderboard rank day by day on an inverted Y axis
+// (rank 1 at the top). Reuses the existing PLAYER_COLORS palette but
+// dims everyone except the signed-in user so a 24-line chart is still
+// readable. Rendered with raw canvas — the Y axis here is integer ranks,
+// not currency, so the LineChart class would have needed retrofitting.
+// ═══════════════════════════════════════════════════════════
+
+// Build a per-day { date: [...rankedPlayerIndices] } map from priceHistory.
+// For each date we replay the same valuation logic used by the live
+// leaderboard (snapshot prices × startShares, FX-corrected to GBP).
+function getDailyRankFlow() {
+  if (!S.players || !S.players.length) return null;
+  const history = S.priceHistory || {};
+  const fxHistory = S.fxHistory || {};
+  // Skip weekends — priceHistory only contains weekdays anyway, but be safe.
+  const dates = Object.keys(history)
+    .filter(d => {
+      const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+      return dow !== 0 && dow !== 6;
+    })
+    .sort();
+  if (dates.length < 2) return null; // need ≥2 points for a line
+
+  const rows = dates.map(date => {
+    const snap = history[date] || {};
+    const fxSnap = fxHistory[date] || {};
+    const values = S.players.map((p, idx) => {
+      const total = (p.picks || []).reduce((sum, sym, j) => {
+        const shares = p.startShares?.[sym];
+        const raw = snap[sym];
+        const allocFb = (p.allocations?.[j] ?? 100);
+        if (!shares || !raw) return sum + allocFb;
+        const cur = S.currencies?.[sym] || 'USD';
+        let priceGBP;
+        if (cur === 'GBP') priceGBP = raw;
+        else if (cur === 'GBp') priceGBP = raw / 100;
+        else {
+          const fxKey = 'GBP' + cur + '=X';
+          const fxRate = fxSnap[fxKey] ?? prices[fxKey]?.price;
+          priceGBP = fxRate ? raw / fxRate : null;
+        }
+        return sum + (priceGBP !== null ? shares * priceGBP : allocFb);
+      }, 0);
+      return { idx, total };
+    });
+    // Sort and assign 1-based ranks. Same total → same rank not handled —
+    // ties are vanishingly rare in £ portfolio values.
+    values.sort((a, b) => b.total - a.total);
+    const rankOf = new Array(S.players.length).fill(null);
+    values.forEach((v, i) => { rankOf[v.idx] = i + 1; });
+    return { date, ranks: rankOf };
+  });
+
+  return rows;
+}
+
+// Bind a single resize listener once. Re-renders the rank-flow chart when
+// the window changes size — only if the Charts tab is active so we don't
+// burn cycles.
+if (typeof window !== 'undefined' && !window.__rankFlowResizeBound) {
+  window.__rankFlowResizeBound = true;
+  let rankFlowResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(rankFlowResizeTimer);
+    rankFlowResizeTimer = setTimeout(() => {
+      if (currentDashTab === 'history') renderRankFlowChart();
+    }, 120);
+  });
+}
+
+function renderRankFlowChart() {
+  const canvas = document.getElementById('rank-flow-chart');
+  const legendEl = document.getElementById('rank-flow-legend');
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  if (!wrap) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const rows = getDailyRankFlow();
+  if (!rows || rows.length < 2) {
+    // Show a placeholder until we have ≥2 days of history.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (legendEl) legendEl.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:6px 0">Rank flow appears once two trading days of data are saved.</div>`;
+    return;
+  }
+
+  // DPI-aware sizing
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = wrap.clientWidth;
+  const cssH = wrap.clientHeight;
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const N = S.players.length;
+  // Layout — leave margin for axis labels & end-of-line names
+  const m = { t: 16, r: 110, b: 30, l: 30 };
+  const plotW = cssW - m.l - m.r;
+  const plotH = cssH - m.t - m.b;
+  if (plotW <= 0 || plotH <= 0) return;
+
+  const xFor = i => m.l + (rows.length === 1 ? plotW / 2 : (i / (rows.length - 1)) * plotW);
+  const yFor = rank => m.t + ((rank - 1) / Math.max(1, N - 1)) * plotH; // 1 → top
+
+  // Background grid: a horizontal line per rank tier (every 4 ranks for ≤24)
+  ctx.strokeStyle = '#E6D9CE';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 4]);
+  ctx.font = '10px ui-monospace, monospace';
+  ctx.fillStyle = '#A69E97';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const tierStep = N <= 8 ? 1 : N <= 16 ? 2 : 4;
+  for (let r = 1; r <= N; r += tierStep) {
+    const y = yFor(r);
+    ctx.beginPath();
+    ctx.moveTo(m.l, y);
+    ctx.lineTo(m.l + plotW, y);
+    ctx.stroke();
+    ctx.fillText('#' + r, m.l - 6, y);
+  }
+  ctx.setLineDash([]);
+
+  // X-axis date labels: first, middle, last
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const fmtDate = s => {
+    const d = new Date(s + 'T12:00:00Z');
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+  const labelDays = rows.length <= 3
+    ? rows.map((_, i) => i)
+    : [0, Math.floor(rows.length / 2), rows.length - 1];
+  labelDays.forEach(i => {
+    ctx.fillText(fmtDate(rows[i].date), xFor(i), m.t + plotH + 6);
+  });
+
+  // Identify the signed-in user so we can highlight their line
+  const meIdx = S.players.findIndex(p =>
+    currentUser && p.name && currentUser.displayName &&
+    p.name.toLowerCase() === currentUser.displayName.toLowerCase()
+  );
+
+  // Draw lines — non-self lines first (faded), self last (bold + on top)
+  const drawLine = (playerIdx, isMe) => {
+    const color = (PLAYER_COLORS && PLAYER_COLORS[playerIdx % PLAYER_COLORS.length]) || '#9E2F50';
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = isMe ? 1 : (meIdx >= 0 ? 0.18 : 0.55);
+    ctx.lineWidth = isMe ? 2.4 : 1.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].ranks[playerIdx];
+      if (r == null) continue;
+      const x = xFor(i), y = yFor(r);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+
+  for (let i = 0; i < N; i++) if (i !== meIdx) drawLine(i, false);
+  if (meIdx >= 0) drawLine(meIdx, true);
+
+  // Right-edge labels — current rank + first name. Stagger if multiple
+  // players share the same end rank (rare but possible).
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.font = '11px Inter, sans-serif';
+  const lastRow = rows[rows.length - 1];
+  const labels = S.players
+    .map((p, i) => ({ idx: i, name: (p.name || '').split(' ')[0], rank: lastRow.ranks[i] }))
+    .filter(o => o.rank != null)
+    .sort((a, b) => a.rank - b.rank);
+  // Place labels with simple anti-overlap: never let two consecutive
+  // labels be within 12px vertically.
+  let lastY = -Infinity;
+  labels.forEach(o => {
+    let y = yFor(o.rank);
+    if (y - lastY < 12) y = lastY + 12;
+    lastY = y;
+    const isMe = o.idx === meIdx;
+    const color = (PLAYER_COLORS && PLAYER_COLORS[o.idx % PLAYER_COLORS.length]) || '#9E2F50';
+    ctx.globalAlpha = isMe ? 1 : (meIdx >= 0 ? 0.45 : 0.85);
+    ctx.fillStyle = color;
+    ctx.fillText(o.name, m.l + plotW + 6, y);
+    ctx.globalAlpha = 1;
+  });
+
+  if (legendEl) {
+    legendEl.innerHTML = meIdx >= 0
+      ? `<div style="font-size:11px;color:var(--muted);padding:6px 0;font-family:var(--mono)">Your line is highlighted. Others dimmed for legibility.</div>`
+      : `<div style="font-size:11px;color:var(--muted);padding:6px 0;font-family:var(--mono)">Sign in to highlight your own line.</div>`;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 //  ADMIN — email whitelist auth
@@ -4096,6 +4450,12 @@ function setupMasthead() {
       document.body.appendChild(sentinel);
     }
 
+    // Disconnect the previous observer if setupMasthead has run before
+    // (e.g. game just started, or hot-reload). Without this we'd leak an
+    // observer per call.
+    if (window.__mhObserver) {
+      try { window.__mhObserver.disconnect(); } catch (e) { /* ignore */ }
+    }
     const observer = new IntersectionObserver(entries => {
       const entry = entries[0];
       if (!entry) return;
@@ -4105,11 +4465,18 @@ function setupMasthead() {
     }, { threshold: [0] });
 
     observer.observe(sentinel);
+    window.__mhObserver = observer;
   }
 
-  // 3. Live clock + date in the dateline
+  // 3. Live clock + date in the dateline. Guard against stacking intervals
+  //    if setupMasthead is invoked more than once per session.
+  if (window.__mhClockInterval) clearInterval(window.__mhClockInterval);
   updateMhClock();
-  setInterval(updateMhClock, 30_000);
+  updateMastheadProgress();
+  window.__mhClockInterval = setInterval(() => {
+    updateMhClock();
+    updateMastheadProgress();
+  }, 30_000);
 
   // 4. Flag the body so CSS knows to hide the old .topbar + progress bar.
   document.body.classList.add('game-live');
@@ -4126,6 +4493,25 @@ function updateMhClock() {
   dateEl.textContent = now.toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   }).toUpperCase();
+}
+
+// Slim progress bar across the top of the masthead. Updates the % fill
+// based on how far we are through the game window. Idempotent; safe to
+// call from any tick. Hides itself if dates aren't set yet.
+function updateMastheadProgress() {
+  const fill = document.getElementById('mh-progress-fill');
+  if (!fill) return;
+  if (!S.startDate || !S.endDate) { fill.style.width = '0%'; return; }
+  const start = new Date(S.startDate).getTime();
+  const end   = new Date(S.endDate).getTime();
+  const now   = Date.now();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+  const pct = Math.max(0, Math.min(100, ((now - start) / (end - start)) * 100));
+  fill.style.width = pct.toFixed(2) + '%';
+  fill.classList.toggle('complete', pct >= 100);
+  fill.title = pct >= 100
+    ? 'Game over'
+    : `Day ${Math.max(1, Math.ceil((now - start) / 864e5))} of ${Math.ceil((end - start) / 864e5)}`;
 }
 
 // Build a ticker-tape marquee from player picks. Uses S.players + prices

@@ -3,16 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Square Mile Bets — a live multiplayer stock-picking game. Pick 3 stocks, allocate £300, climb the leaderboard." />
+  <meta name="theme-color" content="#FFF1E0" />
   <title>Square Mile Bets</title>
+
+  <!-- Open Graph / share previews -->
+  <meta property="og:title" content="Square Mile Bets" />
+  <meta property="og:description" content="A live multiplayer stock-picking game. Pick 3 stocks, allocate £300, climb the leaderboard." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+
   <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
-  <!-- Firebase SDK (compat mode — no build step needed) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <!-- Firebase SDK (compat mode — no build step needed). `defer` lets the
+       parser keep going while these download in parallel; deferred scripts
+       still execute in document order, so app.js (also loaded later) sees
+       firebase already initialised. -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -443,6 +456,11 @@
          and IDs keep working.
     ══════════════════════════════════════ -->
     <header class="masthead" id="masthead">
+      <!-- Game-progress bar pinned to the very top edge of the masthead.
+           Width is updated by updateMastheadProgress() in app.js. -->
+      <div class="mh-progress" aria-hidden="true">
+        <div class="mh-progress-fill" id="mh-progress-fill" style="width:0%"></div>
+      </div>
       <div class="dateline">
         <div class="dateline-left">
           <span id="mh-date-str">—</span>
@@ -509,7 +527,7 @@
       <div class="section-title">Stock Performance</div>
       <div class="slb-card">
         <div class="slb-head">
-          <span>#</span><span>Ticker</span><span>Company</span>
+          <span>#</span><span aria-label="Day-over-day rank movement"></span><span>Ticker</span><span>Company</span>
           <span style="text-align:right">Total</span><span style="text-align:right">Today</span><span>Player</span>
         </div>
         <div id="stock-leaderboard"></div>
@@ -578,6 +596,21 @@
           <canvas id="fund-chart" style="display:block;cursor:crosshair"></canvas>
         </div>
         <div class="chart-legend-custom" id="fund-legend"></div>
+      </div>
+
+      <!-- ── DAILY RANK FLOW (bump chart) ── -->
+      <div style="margin:28px 0 0"></div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Daily Rank Flow</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono)">leaderboard position day by day · 1 = top of the table</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:360px;position:relative">
+          <canvas id="rank-flow-chart" style="display:block"></canvas>
+        </div>
+        <div class="chart-legend-custom" id="rank-flow-legend"></div>
       </div>
     </div>
 
@@ -897,6 +930,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 
-<script src="/app.js"></script>
+<!-- defer so it executes after firebase-*-compat scripts (also deferred) -->
+<script defer src="/app.js"></script>
 </body>
 </html>
