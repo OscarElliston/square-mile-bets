@@ -3866,15 +3866,26 @@ const _rankFlowState = {
 };
 
 // Hit-test: given an (x,y) in CSS pixels relative to the canvas, find the
-// closest player line within HIT_TOLERANCE_PX. Returns playerIdx or null.
+// player under the cursor. Three regions:
+//   1. Right-edge name labels (computed during draw, stashed on state)
+//   2. Plot area: closest line within HIT_TOLERANCE_PX
+//   3. Anywhere else → null
 const HIT_TOLERANCE_PX = 14;
 function _rankFlowHit(x, y) {
   const s = _rankFlowState;
   if (!s.rows || !s.geom) return null;
+
+  // 1) Right-edge name labels — bigger hit target than the lines themselves
+  if (Array.isArray(s.labelHits)) {
+    for (const h of s.labelHits) {
+      if (x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1) return h.idx;
+    }
+  }
+
+  // 2) Plot region — closest line by vertical distance at cursor's X
   const { rows } = s;
-  const { m, plotW, plotH, N, xFor, yFor } = s.geom;
+  const { m, plotW, N, xFor, yFor } = s.geom;
   if (x < m.l - 4 || x > m.l + plotW + 4) return null;
-  // Locate the X fraction → which two date columns we sit between
   const frac = rows.length === 1 ? 0 : (x - m.l) / plotW * (rows.length - 1);
   const i0 = Math.max(0, Math.min(rows.length - 1, Math.floor(frac)));
   const i1 = Math.max(0, Math.min(rows.length - 1, Math.ceil(frac)));
@@ -4105,7 +4116,8 @@ function _drawRankFlow() {
     }
   }
 
-  // Right-edge labels
+  // Right-edge labels — also serve as hover/tap targets, so we stash a
+  // bounding-box per label on _rankFlowState.labelHits for the hit-test.
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.font = '11px Inter, sans-serif';
@@ -4114,6 +4126,7 @@ function _drawRankFlow() {
     .map((p, i) => ({ idx: i, name: (p.name || '').split(' ')[0], rank: lastRow.ranks[i] }))
     .filter(o => o.rank != null)
     .sort((a, b) => a.rank - b.rank);
+  const labelHits = [];
   let lastY = -Infinity;
   labels.forEach(o => {
     let y = yFor(o.rank);
@@ -4123,25 +4136,25 @@ function _drawRankFlow() {
     const color = (PLAYER_COLORS && PLAYER_COLORS[o.idx % PLAYER_COLORS.length]) || '#9E2F50';
     ctx.globalAlpha = isActive ? 1 : (activeIdx != null ? 0.35 : 0.8);
     ctx.fillStyle = color;
-    ctx.fillText(o.name, m.l + plotW + 6, y);
+    const x = m.l + plotW + 6;
+    ctx.fillText(o.name, x, y);
     ctx.globalAlpha = 1;
+    // Hit box — slightly padded for forgiving taps
+    const w = ctx.measureText(o.name).width;
+    labelHits.push({ idx: o.idx, x0: x - 2, x1: x + w + 6, y0: y - 9, y1: y + 9 });
   });
+  _rankFlowState.labelHits = labelHits;
 
   if (legendEl) {
     let activeLabel = null;
     if (activeIdx != null && S.players[activeIdx]) {
       const p = S.players[activeIdx];
       const lastRank = lastRow.ranks[activeIdx];
-      const firstRank = rows[0].ranks[activeIdx];
-      const delta = (firstRank != null && lastRank != null) ? (firstRank - lastRank) : null;
-      const deltaTxt = delta == null ? '' :
-        delta > 0 ? ` · climbed ${delta}` :
-        delta < 0 ? ` · dropped ${Math.abs(delta)}` : ' · unchanged';
-      activeLabel = `${esc(p.name)} · #${lastRank ?? '—'}${deltaTxt}`;
+      activeLabel = `${esc(p.name)} · #${lastRank ?? '—'}`;
     }
     const tip = lockedIdx != null
       ? `<span style="color:var(--muted)">Tap empty space to clear</span>`
-      : `<span style="color:var(--muted)">Hover or tap a line to focus · click to pin</span>`;
+      : `<span style="color:var(--muted)">Hover or tap a line or name to focus · click to pin</span>`;
     legendEl.innerHTML = `<div style="font-size:11px;padding:6px 0;font-family:var(--mono);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <span style="color:var(--text);font-weight:700">${activeLabel || ''}</span>
       <span>${tip}</span>
